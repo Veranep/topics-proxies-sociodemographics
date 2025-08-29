@@ -130,7 +130,7 @@ if __name__ == "__main__":
                         KeyDataset(dataset, prompt_option),
                         batch_size=args.batch_size,
                         do_sample=False,
-                        max_new_tokens=20,
+                        max_new_tokens=5,
                     ),
                     total=len(convos),
                 )
