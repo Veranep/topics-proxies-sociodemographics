@@ -5,6 +5,7 @@ import pandas as pd
 import pickle
 import torch
 from tqdm import tqdm
+from transformers.pipelines.pt_utils import KeyDataset
 from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
 
 prompt = """Does the following text in any way contain mentions of {}? Answer just yes or no.
