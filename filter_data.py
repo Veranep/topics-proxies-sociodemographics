@@ -138,6 +138,7 @@ if __name__ == "__main__":
         for prompt_option in prompt_options:
             questions = pd_dataset[prompt_option].tolist()
             print(questions[0])
+            print(ListDataset(questions)[0])
             answers = [
                 "yes" in answer[0]["generated_text"][-1]["content"].lower()
                 for answer in tqdm(
