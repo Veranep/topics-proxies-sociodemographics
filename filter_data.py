@@ -121,6 +121,7 @@ if __name__ == "__main__":
         pd_dataset = dataset.with_format("pandas")
         for prompt_option in prompt_options:
             dataset.map(lambda x: format_prompt(x, prompt_option))
+            print(dataset[0])
             print(dataset[0][prompt_option])
             answers = [
                 "yes" in answer[0]["generated_text"][-1]["content"].lower()
