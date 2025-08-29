@@ -53,6 +53,7 @@ def format_prompt(example, prompt_name):
             ),
         }
     ]
+    return example
 
 
 if __name__ == "__main__":
