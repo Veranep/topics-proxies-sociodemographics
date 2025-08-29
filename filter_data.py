@@ -4,6 +4,7 @@ from huggingface_hub import login
 import pandas as pd
 import pickle
 import torch
+from torch.utils.data import Dataset
 from tqdm import tqdm
 from transformers.pipelines.pt_utils import KeyDataset
 from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
@@ -54,6 +55,16 @@ def format_prompt(example, prompt_name):
         }
     ]
     return example
+
+class ListDataset(Dataset):
+     def __init__(self, original_list)
+        self.original_list = original_list
+
+    def __len__(self):
+        return len(self.original_list)
+
+    def __getitem__(self, i):
+        return self.original_list[i]
 
 
 if __name__ == "__main__":
@@ -119,20 +130,22 @@ if __name__ == "__main__":
             )
         )
         print(dataset.shape)
-        pd_dataset = dataset.with_format("pandas")
+
         for prompt_option in prompt_options:
             dataset = dataset.map(lambda x: format_prompt(x, prompt_option))
-            print(dataset[0][prompt_option])
+        pd_dataset = dataset.with_format("pandas")
+        for prompt_option in prompt_options:
+            questions = pd_dataset[prompt_option].tolist()
             answers = [
                 "yes" in answer[0]["generated_text"][-1]["content"].lower()
                 for answer in tqdm(
                     model(
-                        KeyDataset(dataset, prompt_option),
+                        ListDataset(questions),
                         batch_size=args.batch_size,
                         do_sample=False,
                         max_new_tokens=5,
                     ),
-                    total=len(convos),
+                    total=len(questions),
                 )
             ]
             pd_dataset[prompt_option] = answers
