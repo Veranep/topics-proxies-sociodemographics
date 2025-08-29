@@ -45,15 +45,19 @@ def get_first_user_turn(example):
     return example
 
 
-def format_prompt(example, prompt_name):
-    example[prompt_name] = [
-        {
-            "role": "user",
-            "content": prompt.format(
-                prompt_options[prompt_name], example["opening_prompt"]
-            ),
-        }
-    ]
+def format_prompt(example, prompt_name, tokenizer):
+    example[prompt_name] = tokenizer.apply_chat_template(
+        [
+            {
+                "role": "user",
+                "content": prompt.format(
+                    prompt_options[prompt_name], example["opening_prompt"]
+                ),
+            }
+        ],
+        tokenize=False,
+        add_generation_prompt=True,
+    )
     return example
 
 
@@ -133,12 +137,12 @@ if __name__ == "__main__":
         print(dataset.shape)
 
         for prompt_option in prompt_options:
-            dataset = dataset.map(lambda x: format_prompt(x, prompt_option))
+            dataset = dataset.map(
+                lambda x: format_prompt(x, prompt_option, tokenizer)
+            )
         pd_dataset = dataset.with_format("pandas")
         for prompt_option in prompt_options:
             questions = pd_dataset[prompt_option].tolist()
-            print(questions[0])
-            print(ListDataset(questions)[0])
             answers = [
                 "yes" in answer[0]["generated_text"][-1]["content"].lower()
                 for answer in tqdm(
