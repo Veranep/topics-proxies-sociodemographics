@@ -57,7 +57,7 @@ def format_prompt(example, prompt_name):
     return example
 
 class ListDataset(Dataset):
-     def __init__(self, original_list)
+     def __init__(self, original_list):
         self.original_list = original_list
 
     def __len__(self):
