@@ -4,6 +4,7 @@ from huggingface_hub import login
 import pandas as pd
 import pickle
 import torch
+from tqdm import tqdm
 from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
 
 prompt = """Does the following text in any way contain mentions of {}? Answer just yes or no.
@@ -106,7 +107,7 @@ if __name__ == "__main__":
         "lmsys/lmsys-chat-1m",
         "allenai/WildChat-4.8M",
     ]:
-        dataset = load_dataset(dataset_name)
+        dataset = load_dataset(dataset_name, split="train")
         dataset = dataset.map(get_first_user_turn)
 
         dataset = dataset.filter(
