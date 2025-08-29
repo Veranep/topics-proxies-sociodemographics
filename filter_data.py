@@ -143,6 +143,15 @@ if __name__ == "__main__":
         pd_dataset = dataset.with_format("pandas")
         for prompt_option in prompt_options:
             questions = pd_dataset[prompt_option].tolist()
+            print(
+                model(
+                    questions[0],
+                    batch_size=args.batch_size,
+                    do_sample=False,
+                    max_new_tokens=5,
+                    return_full_text=False,
+                )
+            )
             answers = [
                 "yes" in answer[0]["generated_text"][-1]["content"].lower()
                 for answer in tqdm(
@@ -151,6 +160,7 @@ if __name__ == "__main__":
                         batch_size=args.batch_size,
                         do_sample=False,
                         max_new_tokens=5,
+                        return_full_text=False,
                     ),
                     total=len(questions),
                 )
