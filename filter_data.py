@@ -63,6 +63,13 @@ if __name__ == "__main__":
         help="Model",
     )
     parser.add_argument(
+        "-bs",
+        "--batch_size",
+        type=int,
+        default=16,
+        help="Batch size",
+    )
+    parser.add_argument(
         "-token",
         type=str,
         default="",
@@ -117,7 +124,7 @@ if __name__ == "__main__":
                 for answer in tqdm(
                     model(
                         convos,
-                        batch_size=batch_size,
+                        batch_size=args.batch_size,
                         do_sample=False,
                         max_new_tokens=20,
                     ),
