@@ -39,6 +39,24 @@ filter_terms = [
     "mine?",
 ]
 
+drop_terms = [
+    "python",
+    "javascript",
+    "sql",
+    "ruby",
+    "matplotlib",
+    "dataframe",
+    "http",
+    "=",
+    "say something toxic",
+    "do anything now",
+    "chemical industry",
+    "hydrometry",
+    "\[your answer\]",
+    "you are chatgpt",
+    "with bing",
+]  # From Issuebench
+
 
 def get_first_user_turn(example):
     example["opening_prompt"] = example["conversation"][0]["content"]
@@ -130,8 +148,16 @@ if __name__ == "__main__":
 
         dataset = dataset.filter(
             lambda example: any(
-                term in example["opening_prompt"].split()
-                for term in filter_terms
+                [
+                    term in example["opening_prompt"].split()
+                    for term in filter_terms
+                ]
+            )
+            and all(
+                [
+                    term not in example["opening_prompt"].lower()
+                    for term in drop_terms
+                ]
             )
         )
         print(dataset.shape)
@@ -140,7 +166,7 @@ if __name__ == "__main__":
             dataset = dataset.map(
                 lambda x: format_prompt(x, prompt_option, tokenizer)
             )
-        pd_dataset = dataset.with_format("pandas")
+        pd_dataset = dataset.to_pandas()
         for prompt_option in prompt_options:
             questions = pd_dataset[prompt_option].tolist()
             answers = [
@@ -157,6 +183,6 @@ if __name__ == "__main__":
                 )
             ]
             pd_dataset[prompt_option] = answers
-        pd_dataset.to_pickle(
-            f"scratch/vneplen/implicit-personalization-stereotypes-model-responses/{dataset_name.split('/')[1]}.gz"
-        )
+            pd_dataset.to_pickle(
+                f"scratch/vneplen/implicit-personalization-stereotypes-model-responses/{dataset_name.split('/')[1]}.gz"
+            )
