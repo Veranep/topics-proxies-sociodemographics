@@ -184,5 +184,5 @@ if __name__ == "__main__":
             ]
             pd_dataset[prompt_option] = answers
             pd_dataset.to_pickle(
-                f"scratch/vneplen/implicit-personalization-stereotypes-model-responses/{dataset_name.split('/')[1]}.gz"
+                f"/scratch/vneplen/implicit-personalization-stereotypes-model-responses/{dataset_name.split('/')[1]}.gz"
             )
