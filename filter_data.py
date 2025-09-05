@@ -1,6 +1,7 @@
 import argparse
 from datasets import load_dataset
 from huggingface_hub import login
+from langdetect import detect
 import pandas as pd
 import pickle
 import torch
@@ -8,6 +9,8 @@ from torch.utils.data import Dataset
 from tqdm import tqdm
 from transformers.pipelines.pt_utils import KeyDataset
 from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
+
+tqdm.pandas()
 
 prompt = """Does the following text in any way contain mentions of {}? Answer just yes or no.
 Text:{}"""  # from issuebench
@@ -55,7 +58,39 @@ drop_terms = [
     "\[your answer\]",
     "you are chatgpt",
     "with bing",
-]  # From Issuebench
+    "summary",
+    "user",
+    "roleplay",
+    "prompt",
+    "instruction",
+    "label",
+    "fictional",
+    "imaginary",
+    "input",
+    "i want you to act",
+    "could you mimic",
+    "persona",
+    "you are",
+    "sex",
+    "withdrawal",
+    "seductive",
+    "aggressive",
+    "contracting",
+    "pretend",
+    "answer the following question",
+    "question:",
+    "texts:",
+    "simulate",
+    "example:",
+    "human:",
+    "porn",
+    "racist",
+    "doctor:",
+    "respond like",
+    "kinky",
+    "erotic",
+    "format",
+]  # From Issuebench + extra
 
 
 def get_first_user_turn(example):
@@ -88,6 +123,13 @@ class ListDataset(Dataset):
 
     def __getitem__(self, i):
         return self.original_list[i]
+
+
+def detect_lang(response):
+    try:
+        return detect(response) == "en"
+    except:
+        return False
 
 
 if __name__ == "__main__":
@@ -139,8 +181,8 @@ if __name__ == "__main__":
         model.tokenizer.pad_token_id = model.tokenizer.eos_token_id
 
     for dataset_name in [
-        "shachardon/ShareLM",
-        "lmsys/lmsys-chat-1m",
+        # "shachardon/ShareLM",
+        # "lmsys/lmsys-chat-1m",
         "allenai/WildChat-4.8M",
     ]:
         dataset = load_dataset(dataset_name, split="train")
@@ -159,6 +201,7 @@ if __name__ == "__main__":
                     for term in drop_terms
                 ]
             )
+            and detect_lang(example["opening_prompt"])
         )
         print(dataset.shape)
 
