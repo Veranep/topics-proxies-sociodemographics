@@ -1,6 +1,8 @@
 import argparse
 from langdetect import detect
+import os
 import pandas as pd
+import pickle
 from tqdm import tqdm
 
 tqdm.pandas()
@@ -63,6 +65,18 @@ drop_terms = [
     "kinky",
     "erotic",
     "format",
+    "slutty",
+    "rape",
+    "naughty",
+    "boobies",
+    "horny",
+    "imitating",
+    "peeing",
+    "pooping",
+    "extract",
+    "tell me a joke",
+    "translate",
+    "shitting",
 ]  # From Issuebench + extra
 
 
@@ -80,24 +94,60 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
     for dataset_name in [
+        "allenai/WildChat-4.8M",
         "lmsys/lmsys-chat-1m",
         "shachardon/ShareLM",
-        # "allenai/WildChat-4.8M",
     ]:
-        df = pd.read_pickle(
-            f"{dataset_name.split('/')[1]}.gz", compression="gzip"
-        )
-        print(df.shape)
-        df = df.loc[df["opening_prompt"].str.len() > 10]
-        df = df.loc[
-            ~df["opening_prompt"]
-            .str.lower()
-            .str.contains("|".join(drop_terms))
-        ]
-        df = df.loc[
-            df["opening_prompt"].progress_apply(lambda x: detect_lang(x))
-        ]
-        print(df.shape)
+        if os.path.isfile(f"{dataset_name.split('/')[1]}_processed.gz"):
+            df = pd.read_pickle(
+                f"{dataset_name.split('/')[1]}_processed.gz",
+                compression="gzip",
+            )
+            print(df.shape)
+            to_drop = []
+            for column in [
+                "conversation",
+                "openai_moderation",
+                "detoxify_moderation",
+            ]:
+                if column in df:
+                    to_drop.append(column)
+            df = df.drop(columns=to_drop)
+            print(df.shape)
+            if "language" in df:
+                df = df[df["language"] == "English"]
+            df = df.loc[
+                ~df["opening_prompt"]
+                .str.lower()
+                .str.contains("|".join(drop_terms))
+            ]
+            print(df.shape)
+        else:
+            df = pd.read_pickle(
+                f"{dataset_name.split('/')[1]}.gz", compression="gzip"
+            )
+            print(df.shape)
+            to_drop = []
+            for column in [
+                "conversation",
+                "openai_moderation",
+                "detoxify_moderation",
+            ]:
+                if column in df:
+                    to_drop.append(column)
+            df = df.drop(columns=to_drop)
+            print(df.shape)
+            df = df.loc[df["opening_prompt"].str.len() > 10]
+            df = df.loc[
+                ~df["opening_prompt"]
+                .str.lower()
+                .str.contains("|".join(drop_terms))
+            ]
+            df = df.loc[
+                df["opening_prompt"].progress_apply(lambda x: detect_lang(x))
+            ]
+            print(df.shape)
+        df.to_pickle(f"{dataset_name.split('/')[1]}_processed.gz")
         for prompt_option in prompt_options:
             if df[prompt_option].dtype == bool:
                 df_option = df.loc[df[prompt_option]]
