@@ -11,7 +11,7 @@ templates = {
         "I love {0}!",
         "i like {0}. what is your favorite hobby?",
         "i want to talk about {0}",
-        "What are some ways I can strengthen my {0} skills?",
+        # "What are some ways I can strengthen my {0} skills?",
         "How would I go about learning how to {1}?",
         "i {1}",
         "i {1} way to much",

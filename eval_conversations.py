@@ -3,6 +3,9 @@ from itertools import permutations, product
 import numpy as np
 import pandas as pd
 from utils import explicit_indicators, templates
+import torch
+from tqdm import tqdm
+from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
 
 
 def get_conversations(
@@ -53,37 +56,53 @@ def get_conversations(
         return stereo_convos, explicit_stereo_convos
 
 
-def ask_questions(convos, questions):
-    convo_len = len(convos[0])
-    current_convos = [[] for _ in range(len(convos))]
-    user_turns = [
-        [{"role": "user", "content": turn} for turn in convo]
-        for convo in convos
-    ]
+def ask_questions(convos, questions, model):
     question_turns = [[{"role": "user", "content": q}] for q in questions]
-    # for i in range(convo_len):
-    #     for j, current_convo in enumerate(current_convos):
-    #         current_convo.append(user_turns[j][i])
-    #     current_convos = [
-    #         convo[0]["generated_text"]
-    #         for convo in tqdm(
-    #             model(
-    #                 current_convos,
-    #                 batch_size=batch_size,
-    #                 do_sample=False,
-    #                 max_new_tokens=100,
-    #             ),
-    #             total=len(current_convos),
-    #         )
-    #     ]
-    print(current_convos[0], question_turns[0])
-    convo_with_questions = list(
-        map(
-            lambda x: x[0] + x[1],
-            list(product(current_convos, question_turns)),
+    if convos:
+        convo_len = len(convos[0])
+        current_convos = [[] for _ in range(len(convos))]
+        user_turns = [
+            [{"role": "user", "content": turn} for turn in convo]
+            for convo in convos
+        ]
+        for i in range(convo_len):
+            for j, current_convo in enumerate(current_convos):
+                current_convo.append(user_turns[j][i])
+                current_convos = [
+                    convo[0]["generated_text"]
+                    for convo in tqdm(
+                        model(
+                            current_convos,
+                            batch_size=batch_size,
+                            do_sample=False,
+                            max_new_tokens=100,
+                        ),
+                        total=len(current_convos),
+                    )
+                ]
+        convos_with_questions = list(
+            map(
+                lambda x: x[0] + x[1],
+                list(product(current_convos, question_turns)),
+            )
         )
-    )
-    print(convo_with_questions)
+    else:
+        convos_with_questions = question_turns
+    answers = [
+        convo[0]["generated_text"]
+        for convo in tqdm(
+            model(
+                convos_with_questions,
+                batch_size=batch_size,
+                do_sample=False,
+                max_new_tokens=100,
+            ),
+            total=len(current_convos),
+        )
+    ]
+    all_questions = [c[-1]["content"] for c in convos_with_questions]
+    convo_ids = np.repeat(range(len(convos)), len(questions))
+    return all_questions, answers, convo_ids
 
 
 if __name__ == "__main__":
@@ -108,15 +127,38 @@ if __name__ == "__main__":
         default=None,
         help="Number of samples",
     )
-    parser.add_argument(
-        "-d",
-        "--demo",
-        type=str,
-        default="gender",
-        help="Demographic group to evaluate",
-    )
+    # parser.add_argument(
+    #     "-d",
+    #     "--demo",
+    #     type=str,
+    #     default="gender",
+    #     help="Demographic group to evaluate",
+    # )
     args = parser.parse_args()
     np.random.seed(42)
+    tokenizer = AutoTokenizer.from_pretrained(args.model, padding_side="left")
+    if "gemma" in args.model:
+        model = AutoModelForCausalLM.from_pretrained(
+            args.model,
+            torch_dtype=torch.bfloat16,
+            device_map="auto",
+            attn_implementation="eager",
+        )
+    else:
+        model = AutoModelForCausalLM.from_pretrained(
+            args.model,
+            torch_dtype=torch.bfloat16,
+            device_map="auto",
+        )
+    model = pipeline(
+        "text-generation",
+        model=model,
+        tokenizer=tokenizer,
+        torch_dtype=torch.bfloat16,
+        device_map="auto",
+    )
+    if not model.tokenizer.pad_token_id:
+        model.tokenizer.pad_token_id = model.tokenizer.eos_token_id
     stereotypes = pd.read_csv("stereotypes - Updated.csv").drop(
         columns=["source"]
     )
@@ -147,7 +189,7 @@ if __name__ == "__main__":
                 neutral=False,
             )
             initial_conversations[demographic][value]["explicit"] = [
-                "Hi, I am {0}.".format(indicator)
+                ["Hi, I am {0}.".format(indicator)]
                 for indicator in explicit_indicators[demographic][value]
             ]
     clean_medical_data = lambda x: x.replace(
@@ -176,6 +218,57 @@ if __name__ == "__main__":
             )
         )
     }
+    results_dict = {
+        "eval": [],
+        "demographic": [],
+        "value": [],
+        "setting": [],
+        "questions": [],
+        "answers": [],
+        "convo_ids": [],
+    }
     for e in evals:
         questions = evals[e]
-        ask_questions(initial_conversations["neutral"], questions)
+        results_dict["eval"].append(e)
+        results_dict["demographic"].append(None)
+        results_dict["value"].append(None)
+        results_dict["setting"].append("question_only")
+        all_questions, answers, convo_ids = ask_questions(
+            None, questions, model
+        )
+        results_dict["questions"].append(all_questions)
+        results_dict["answers"].append(answers)
+        results_dict["convo_ids"].append(convo_ids)
+        results_dict["eval"].append(e)
+        results_dict["demographic"].append(None)
+        results_dict["value"].append(None)
+        results_dict["setting"].append("neutral")
+        all_questions, answers, convo_ids = ask_questions(
+            initial_conversations["neutral"], questions, model
+        )
+        results_dict["questions"].append(all_questions)
+        results_dict["answers"].append(answers)
+        results_dict["convo_ids"].append(convo_ids)
+        for demographic in initial_conversations:
+            if demographic == "neutral":
+                continue
+            for value in initial_conversations[demographic]:
+                print(demographic, value)
+                for setting in initial_conversations[demographic][value]:
+                    results_dict["eval"].append(e)
+                    results_dict["demographic"].append(demographic)
+                    results_dict["value"].append(value)
+                    results_dict["setting"].append(setting)
+                    all_questions, answers, convo_ids = ask_questions(
+                        initial_conversations[demographic][value][setting],
+                        questions,
+                        model,
+                    )
+                    results_dict["questions"].append(all_questions)
+                    results_dict["answers"].append(answers)
+                    results_dict["convo_ids"].append(convo_ids)
+    results_df = pd.DataFrame(data=results_dict)
+    results_df.to_pickle(
+        f"/scratch/vneplen/implicit-personalization-stereotypes-model-responses/{args.model('/')[1]}.gz"
+    )
+    print(results_df, results_df.shape)
