@@ -56,7 +56,7 @@ def get_user_turns(
         return stereo_convos, explicit_stereo_convos
 
 
-def get_conversations(convos, model):
+def get_conversations(convos, model, batch_size):
     convo_len = len(convos[0])
     current_convos = [[] for _ in range(len(convos))]
     user_turns = [
@@ -81,7 +81,7 @@ def get_conversations(convos, model):
     return convos
 
 
-def ask_questions(convos, questions, model):
+def ask_questions(convos, questions, model, batch_size):
     question_turns = [[{"role": "user", "content": q}] for q in questions]
     if convos:
         convos_with_questions = list(
@@ -231,7 +231,9 @@ if __name__ == "__main__":
         "answers": [],
         "convo_ids": [],
     }
-    neutral_convos = get_conversations(initial_conversations["neutral"], model)
+    neutral_convos = get_conversations(
+        initial_conversations["neutral"], model, args.batch_size
+    )
     for e in evals:
         questions = evals[e]
         results_dict["eval"].append(e)
@@ -239,7 +241,7 @@ if __name__ == "__main__":
         results_dict["value"].append(None)
         results_dict["setting"].append("question_only")
         all_questions, answers, convo_ids = ask_questions(
-            None, questions, model
+            None, questions, model, args.batch_size
         )
         results_dict["questions"].append(all_questions)
         results_dict["answers"].append(answers)
@@ -249,7 +251,7 @@ if __name__ == "__main__":
         results_dict["value"].append(None)
         results_dict["setting"].append("neutral")
         all_questions, answers, convo_ids = ask_questions(
-            neutral_convos, questions, model
+            neutral_convos, questions, model, args.batch_size
         )
         results_dict["questions"].append(all_questions)
         results_dict["answers"].append(answers)
@@ -260,7 +262,9 @@ if __name__ == "__main__":
         for value in initial_conversations[demographic]:
             for setting in initial_conversations[demographic][value]:
                 convos = get_conversations(
-                    initial_conversations[demographic][value][setting], model
+                    initial_conversations[demographic][value][setting],
+                    model,
+                    args.batch_size,
                 )
                 for e in evals:
                     print(demographic, value, setting, e)
@@ -270,9 +274,7 @@ if __name__ == "__main__":
                     results_dict["value"].append(value)
                     results_dict["setting"].append(setting)
                     all_questions, answers, convo_ids = ask_questions(
-                        convos,
-                        questions,
-                        model,
+                        convos, questions, model, args.batch_size
                     )
                     results_dict["questions"].append(all_questions)
                     results_dict["answers"].append(answers)
