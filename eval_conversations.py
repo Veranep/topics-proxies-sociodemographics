@@ -73,7 +73,7 @@ def get_conversations(convos, model, batch_size):
                     current_convos,
                     batch_size=batch_size,
                     do_sample=False,
-                    max_new_tokens=100,
+                    max_new_tokens=250,
                 ),
                 total=len(current_convos),
             )
