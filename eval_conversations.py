@@ -8,7 +8,7 @@ from tqdm import tqdm
 from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
 
 
-def get_conversations(
+def get_user_turns(
     demographic, value, stereotypes, indicators, templates, n, neutral
 ):
     if neutral:
@@ -56,30 +56,34 @@ def get_conversations(
         return stereo_convos, explicit_stereo_convos
 
 
+def get_conversations(convos, model):
+    convo_len = len(convos[0])
+    current_convos = [[] for _ in range(len(convos))]
+    user_turns = [
+        [{"role": "user", "content": turn} for turn in convo]
+        for convo in convos
+    ]
+    for i in range(convo_len):
+        for j, current_convo in enumerate(current_convos):
+            current_convo.append(user_turns[j][i])
+            current_convos = [
+                convo[0]["generated_text"]
+                for convo in tqdm(
+                    model(
+                        current_convos,
+                        batch_size=batch_size,
+                        do_sample=False,
+                        max_new_tokens=100,
+                    ),
+                    total=len(current_convos),
+                )
+            ]
+    return convos
+
+
 def ask_questions(convos, questions, model):
     question_turns = [[{"role": "user", "content": q}] for q in questions]
     if convos:
-        convo_len = len(convos[0])
-        current_convos = [[] for _ in range(len(convos))]
-        user_turns = [
-            [{"role": "user", "content": turn} for turn in convo]
-            for convo in convos
-        ]
-        for i in range(convo_len):
-            for j, current_convo in enumerate(current_convos):
-                current_convo.append(user_turns[j][i])
-                current_convos = [
-                    convo[0]["generated_text"]
-                    for convo in tqdm(
-                        model(
-                            current_convos,
-                            batch_size=batch_size,
-                            do_sample=False,
-                            max_new_tokens=100,
-                        ),
-                        total=len(current_convos),
-                    )
-                ]
         convos_with_questions = list(
             map(
                 lambda x: x[0] + x[1],
@@ -163,7 +167,7 @@ if __name__ == "__main__":
         columns=["source"]
     )
     initial_conversations = {
-        "neutral": get_conversations(
+        "neutral": get_user_turns(
             None, None, stereotypes, None, templates, n=args.n, neutral=True
         ),
     }
@@ -174,7 +178,7 @@ if __name__ == "__main__":
             (
                 initial_conversations[demographic][value]["stereo"],
                 initial_conversations[demographic][value]["explicit_stereo"],
-            ) = get_conversations(
+            ) = get_user_turns(
                 demographic,
                 value,
                 stereotypes,
@@ -227,6 +231,7 @@ if __name__ == "__main__":
         "answers": [],
         "convo_ids": [],
     }
+    neutral_convos = get_conversations(initial_conversations["neutral"], model)
     for e in evals:
         questions = evals[e]
         results_dict["eval"].append(e)
@@ -244,23 +249,28 @@ if __name__ == "__main__":
         results_dict["value"].append(None)
         results_dict["setting"].append("neutral")
         all_questions, answers, convo_ids = ask_questions(
-            initial_conversations["neutral"], questions, model
+            neutral_convos, questions, model
         )
         results_dict["questions"].append(all_questions)
         results_dict["answers"].append(answers)
         results_dict["convo_ids"].append(convo_ids)
-        for demographic in initial_conversations:
-            if demographic == "neutral":
-                continue
-            for value in initial_conversations[demographic]:
-                print(demographic, value)
-                for setting in initial_conversations[demographic][value]:
+    for demographic in initial_conversations:
+        if demographic == "neutral":
+            continue
+        for value in initial_conversations[demographic]:
+            print(demographic, value)
+            for setting in initial_conversations[demographic][value]:
+                convos = get_conversations(
+                    initial_conversations[demographic][value][setting], model
+                )
+                for e in evals:
+                    questions = evals[e]
                     results_dict["eval"].append(e)
                     results_dict["demographic"].append(demographic)
                     results_dict["value"].append(value)
                     results_dict["setting"].append(setting)
                     all_questions, answers, convo_ids = ask_questions(
-                        initial_conversations[demographic][value][setting],
+                        convos,
                         questions,
                         model,
                     )
