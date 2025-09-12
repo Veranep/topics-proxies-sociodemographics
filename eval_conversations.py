@@ -105,7 +105,10 @@ def ask_questions(convos, questions, model, batch_size):
         )
     ]
     all_questions = [c[-1]["content"] for c in convos_with_questions]
-    convo_ids = np.repeat(range(len(convos)), len(questions))
+    if convos:
+        convo_ids = np.repeat(range(len(convos)), len(questions))
+    else:
+        convo_ids = []
     return all_questions, answers, convo_ids
 
 
