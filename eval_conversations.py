@@ -92,6 +92,7 @@ def ask_questions(convos, questions, model, batch_size):
         )
     else:
         convos_with_questions = question_turns
+    print(convos_with_questions[0])
     answers = [
         convo[0]["generated_text"]
         for convo in tqdm(
@@ -225,6 +226,12 @@ if __name__ == "__main__":
             )
         )
     }
+    conversations_dict = {
+        "demographic": [],
+        "value": [],
+        "setting": [],
+        "conversations": [],
+    }
     results_dict = {
         "eval": [],
         "demographic": [],
@@ -237,6 +244,10 @@ if __name__ == "__main__":
     neutral_convos = get_conversations(
         initial_conversations["neutral"], model, args.batch_size
     )
+    conversations_dict["demographic"].append(None)
+    conversations_dict["value"].append(None)
+    conversations_dict["setting"].append("neutral")
+    conversations_dict["conversations"].append(neutral_convos)
     for e in evals:
         questions = evals[e]
         results_dict["eval"].append(e)
@@ -269,6 +280,10 @@ if __name__ == "__main__":
                     model,
                     args.batch_size,
                 )
+                conversations_dict["demographic"].append(demographic)
+                conversations_dict["value"].append(value)
+                conversations_dict["setting"].append(setting)
+                conversations_dict["conversations"].append(convos)
                 for e in evals:
                     print(demographic, value, setting, e)
                     questions = evals[e]
@@ -284,6 +299,10 @@ if __name__ == "__main__":
                     results_dict["convo_ids"].append(convo_ids)
     results_df = pd.DataFrame(data=results_dict)
     results_df.to_pickle(
-        f"/scratch/vneplen/implicit-personalization-stereotypes-model-responses/{args.model('/')[1]}.gz"
+        f"/scratch/vneplen/implicit-personalization-stereotypes-model-responses/{args.model('/')[1]}_results.gz"
     )
     print(results_df, results_df.shape)
+    conversations_df = pd.DataFrame(data=conversations_dict)
+    conversations_df.to_pickle(
+        f"/scratch/vneplen/implicit-personalization-stereotypes-model-responses/{args.model('/')[1]}_conversations.gz"
+    )
