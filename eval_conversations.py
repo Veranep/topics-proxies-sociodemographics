@@ -87,7 +87,7 @@ def ask_questions(convos, questions, model, batch_size):
         convos_with_questions = list(
             map(
                 lambda x: x[0] + x[1],
-                list(product(current_convos, question_turns)),
+                list(product(convos, question_turns)),
             )
         )
     else:
@@ -101,7 +101,7 @@ def ask_questions(convos, questions, model, batch_size):
                 do_sample=False,
                 max_new_tokens=100,
             ),
-            total=len(current_convos),
+            total=len(convos_with_questions),
         )
     ]
     all_questions = [c[-1]["content"] for c in convos_with_questions]
