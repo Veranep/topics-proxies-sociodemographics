@@ -66,18 +66,18 @@ def get_conversations(convos, model, batch_size):
     for i in range(convo_len):
         for j, current_convo in enumerate(current_convos):
             current_convo.append(user_turns[j][i])
-            current_convos = [
-                convo[0]["generated_text"]
-                for convo in tqdm(
-                    model(
-                        current_convos,
-                        batch_size=batch_size,
-                        do_sample=False,
-                        max_new_tokens=100,
-                    ),
-                    total=len(current_convos),
-                )
-            ]
+        current_convos = [
+            convo[0]["generated_text"]
+            for convo in tqdm(
+                model(
+                    current_convos,
+                    batch_size=batch_size,
+                    do_sample=False,
+                    max_new_tokens=100,
+                ),
+                total=len(current_convos),
+            )
+        ]
     return convos
 
 
