@@ -258,12 +258,12 @@ if __name__ == "__main__":
         if demographic == "neutral":
             continue
         for value in initial_conversations[demographic]:
-            print(demographic, value)
             for setting in initial_conversations[demographic][value]:
                 convos = get_conversations(
                     initial_conversations[demographic][value][setting], model
                 )
                 for e in evals:
+                    print(demographic, value, setting, e)
                     questions = evals[e]
                     results_dict["eval"].append(e)
                     results_dict["demographic"].append(demographic)
