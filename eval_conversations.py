@@ -78,7 +78,7 @@ def get_conversations(convos, model, batch_size):
                 total=len(current_convos),
             )
         ]
-    return convos
+    return current_convos
 
 
 def ask_questions(convos, questions, model, batch_size):
