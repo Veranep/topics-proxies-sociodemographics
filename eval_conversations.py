@@ -275,6 +275,9 @@ if __name__ == "__main__":
             continue
         for value in initial_conversations[demographic]:
             for setting in initial_conversations[demographic][value]:
+                if not initial_conversations[demographic][value][setting]:
+                    print("no conversations for ", demographic, value, setting)
+                    continue
                 convos = get_conversations(
                     initial_conversations[demographic][value][setting],
                     model,
