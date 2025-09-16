@@ -270,6 +270,15 @@ if __name__ == "__main__":
         results_dict["questions"].append(all_questions)
         results_dict["answers"].append(answers)
         results_dict["convo_ids"].append(convo_ids)
+    results_df = pd.DataFrame(data=results_dict)
+    results_df.to_pickle(
+        f"/scratch/vneplen/implicit-personalization-stereotypes-model-responses/{args.model.split('/')[1]}_results.gz"
+    )
+    print(results_df, results_df.shape)
+    conversations_df = pd.DataFrame(data=conversations_dict)
+    conversations_df.to_pickle(
+        f"/scratch/vneplen/implicit-personalization-stereotypes-model-responses/{args.model.split('/')[1]}_conversations.gz"
+    )
     for demographic in initial_conversations:
         if demographic == "neutral":
             continue
@@ -300,12 +309,12 @@ if __name__ == "__main__":
                     results_dict["questions"].append(all_questions)
                     results_dict["answers"].append(answers)
                     results_dict["convo_ids"].append(convo_ids)
-    results_df = pd.DataFrame(data=results_dict)
-    results_df.to_pickle(
-        f"/scratch/vneplen/implicit-personalization-stereotypes-model-responses/{args.model('/')[1]}_results.gz"
-    )
-    print(results_df, results_df.shape)
-    conversations_df = pd.DataFrame(data=conversations_dict)
-    conversations_df.to_pickle(
-        f"/scratch/vneplen/implicit-personalization-stereotypes-model-responses/{args.model('/')[1]}_conversations.gz"
-    )
+        results_df = pd.DataFrame(data=results_dict)
+        results_df.to_pickle(
+            f"/scratch/vneplen/implicit-personalization-stereotypes-model-responses/{args.model.split('/')[1]}_results.gz"
+        )
+        print(results_df, results_df.shape)
+        conversations_df = pd.DataFrame(data=conversations_dict)
+        conversations_df.to_pickle(
+            f"/scratch/vneplen/implicit-personalization-stereotypes-model-responses/{args.model.split('/')[1]}_conversations.gz"
+        )
