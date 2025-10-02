@@ -128,7 +128,7 @@ if __name__ == "__main__":
                 max_new_tokens=1,
                 return_full_text=False,
             ),
-            total=len(questions),
+            total=len(conversations_with_questions),
         )
     ]
     df["answers"] = answers
