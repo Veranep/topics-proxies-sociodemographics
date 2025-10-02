@@ -87,23 +87,14 @@ if __name__ == "__main__":
             #     .findall("topic")
             # ],
             "medical": list(
-
                 set(
-
                     pd.read_csv("old/medical_llama_prompts.csv")[
-
                         "prompts"
-
                     ].tolist()
-
                     + pd.read_csv("old/medical_qwen_prompts.csv")[
-
                         "prompts"
-
                     ].tolist(),
-
                 )
-
             )
         }
         all_gold_answers = {
@@ -113,7 +104,8 @@ if __name__ == "__main__":
             #     .getroot()
             #     .findall("topic")
             # ],
-            "medical" = ["-"] * len(all_questions["medical"])
+            "medical": ["-"]
+            * len(all_questions["medical"])
         }
         questions = [
             q
