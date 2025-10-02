@@ -42,8 +42,7 @@ def get_repr(df, model, tokenizer, device):
 
     df["representations"] = representations
 
-    n_layers = len(representations[0])
-    return df, n_layers
+    return df
 
 
 def train_probe(
@@ -149,7 +148,7 @@ if __name__ == "__main__":
                 "/scratch/vneplen/sociodemographics-interpretability-mitigation/prism_preprocessed.gz"
             )
 
-        df, n_layers = get_repr(df, model, tokenizer, device)
+        df = get_repr(df, model, tokenizer, device)
         df.to_pickle(
             f"/scratch/vneplen/sociodemographics-interpretability-mitigation/{args.model.split('/')[1]}_representations.gz"
         )
@@ -166,6 +165,9 @@ if __name__ == "__main__":
         "marital_status",  # not in facts paper
         "english_proficiency",  # not in facts paper
     ]
+
+    n_layers = len(df.iloc[0]["representations"][0])
+    print(n_layers)
 
     train_probe(
         df,
