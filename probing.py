@@ -167,7 +167,6 @@ if __name__ == "__main__":
     ]
 
     n_layers = len(df.iloc[0]["representations"])
-    print(n_layers)
 
     train_probe(
         df,
