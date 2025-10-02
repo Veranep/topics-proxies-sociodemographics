@@ -166,7 +166,7 @@ if __name__ == "__main__":
         "english_proficiency",  # not in facts paper
     ]
 
-    n_layers = len(df.iloc[0]["representations"][0])
+    n_layers = len(df.iloc[0]["representations"])
     print(n_layers)
 
     train_probe(
