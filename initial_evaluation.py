@@ -115,7 +115,7 @@ if __name__ == "__main__":
             for turn in df.iloc[i]["conversation_history"]
             if turn["role"] == "user" or turn["if_chosen"] == True
         ]
-        + [{"role": "user", "content": df.iloc[i]["question"]}]
+        + [{"role": "user", "content": df.iloc[i]["questions"]}]
         for i in range(len(df))
     ]
     answers = [
