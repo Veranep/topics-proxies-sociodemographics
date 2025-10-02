@@ -31,7 +31,7 @@ def get_repr(df, model, tokenizer, device):
         [
             rep[-1, -1, :].detach().cpu().clone().to(torch.float)
             for rep in model(
-                inp,
+                inp.to(device),
                 output_hidden_states=True,
                 max_new_tokens=1,
                 return_dict=True,
