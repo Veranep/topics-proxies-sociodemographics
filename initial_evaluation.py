@@ -81,6 +81,7 @@ if __name__ == "__main__":
         all_questions = {
             "health_misinfo": [
                 topic.find("question").text
+                + " Respond with either 'Yes' or 'No' and no additonal text."
                 for topic in ET.parse("data/misinfo-2022-topics.xml")
                 .getroot()
                 .findall("topic")
@@ -112,7 +113,7 @@ if __name__ == "__main__":
             e
             for e in list(
                 itertools.chain.from_iterable(
-                    [[ev] * len(questions[ev]) for ev in all_questions]
+                    [[ev] * len(all_questions[ev]) for ev in all_questions]
                 )
             )
             for _ in range(len(df))
@@ -157,7 +158,7 @@ if __name__ == "__main__":
             total=len(conversations_with_questions),
         )
     ]
-    df["answers"] = answers
+    df["answer"] = answers
     df.to_pickle(
         f"/scratch/vneplen/sociodemographics-interpretability-mitigation/{args.model.split('/')[1]}_answers.gz"
     )
