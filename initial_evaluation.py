@@ -89,14 +89,20 @@ if __name__ == "__main__":
                 )
             )
         }
-        questions = list(itertools.chain.from_iterable(evals.values())) * len(
-            df
-        )
-        evaluation = list(
-            itertools.chain.from_iterable(
-                [[ev] * len(evals[ev]) for ev in evals]
+        questions = [
+            q
+            for q in list(itertools.chain.from_iterable(evals.values()))
+            for _ in range(len(df))
+        ]
+        evaluation = [
+            e
+            for e in list(
+                itertools.chain.from_iterable(
+                    [[ev] * len(evals[ev]) for ev in evals]
+                )
             )
-        ) * len(df)
+            for _ in range(len(df))
+        ]
 
         df = pd.concat(
             [df] * len(list(itertools.chain.from_iterable(evals.values()))),
@@ -104,7 +110,7 @@ if __name__ == "__main__":
         )
 
         df["evaluation"] = evaluation
-        df["questions"] = questions
+        df["question"] = questions
         df.to_pickle(
             "/scratch/vneplen/sociodemographics-interpretability-mitigation/prism_questions.gz"
         )
@@ -116,7 +122,7 @@ if __name__ == "__main__":
                 for turn in df.iloc[i]["conversation_history"]
                 if turn["role"] == "user" or turn["if_chosen"] == True
             ]
-            + [{"role": "user", "content": df.iloc[i]["questions"]}],
+            + [{"role": "user", "content": df.iloc[i]["question"]}],
             tokenize=False,
             add_generation_prompt=True,
         )
