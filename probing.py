@@ -99,50 +99,60 @@ if __name__ == "__main__":
     ).to(device)
 
     if os.path.isfile(
-        "/scratch/vneplen/sociodemographics-interpretability-mitigation/prism_preprocessed.gz"
+        f"/scratch/vneplen/sociodemographics-interpretability-mitigation/{args.model.split('/')[1]}_representations.gz"
     ):
         df = pd.read_pickle(
-            "/scratch/vneplen/sociodemographics-interpretability-mitigation/prism_preprocessed.gz",
+            f"/scratch/vneplen/sociodemographics-interpretability-mitigation/{args.model.split('/')[1]}_representations.gz",
             compression="gzip",
         )
     else:
-        conversations = load_dataset(
-            "HannahRoseKirk/prism-alignment", "conversations"
-        )["train"].to_pandas()
-        survey = load_dataset("HannahRoseKirk/prism-alignment", "survey")[
-            "train"
-        ].to_pandas()
-
-        df = pd.merge(
-            conversations,
-            survey,
-            on=["user_id"],
-        )
-        to_simplify = ["religion", "ethnicity"]
-        for column in to_simplify:
-            df[column] = df[column].apply(
-                lambda x: (
-                    dict(x)["simplified"]
-                    if type(x) == dict
-                    else "Prefer not to say"
-                )
-            )
-        regions = ["birth_region", "reside_region"]
-        for region in regions:
-            df[region] = df["location"].apply(
-                lambda x: (
-                    dict(x)[region] if type(x) == dict else "Prefer not to say"
-                )
-            )
-
-        df.to_pickle(
+        if os.path.isfile(
             "/scratch/vneplen/sociodemographics-interpretability-mitigation/prism_preprocessed.gz"
-        )
+        ):
+            df = pd.read_pickle(
+                "/scratch/vneplen/sociodemographics-interpretability-mitigation/prism_preprocessed.gz",
+                compression="gzip",
+            )
+        else:
+            conversations = load_dataset(
+                "HannahRoseKirk/prism-alignment", "conversations"
+            )["train"].to_pandas()
+            survey = load_dataset("HannahRoseKirk/prism-alignment", "survey")[
+                "train"
+            ].to_pandas()
 
-    df, n_layers = get_repr(df, model, tokenizer, device)
-    df.to_pickle(
-        f"/scratch/vneplen/sociodemographics-interpretability-mitigation/{args.model.split('/')[1]}_representations.gz"
-    )
+            df = pd.merge(
+                conversations,
+                survey,
+                on=["user_id"],
+            )
+            to_simplify = ["religion", "ethnicity"]
+            for column in to_simplify:
+                df[column] = df[column].apply(
+                    lambda x: (
+                        dict(x)["simplified"]
+                        if type(x) == dict
+                        else "Prefer not to say"
+                    )
+                )
+            regions = ["birth_region", "reside_region"]
+            for region in regions:
+                df[region] = df["location"].apply(
+                    lambda x: (
+                        dict(x)[region]
+                        if type(x) == dict
+                        else "Prefer not to say"
+                    )
+                )
+
+            df.to_pickle(
+                "/scratch/vneplen/sociodemographics-interpretability-mitigation/prism_preprocessed.gz"
+            )
+
+        df, n_layers = get_repr(df, model, tokenizer, device)
+        df.to_pickle(
+            f"/scratch/vneplen/sociodemographics-interpretability-mitigation/{args.model.split('/')[1]}_representations.gz"
+        )
 
     demographic_cols = [
         "age",
@@ -158,7 +168,7 @@ if __name__ == "__main__":
     ]
 
     train_probe(
-        reps,
+        df,
         n_layers,
         f"/scratch/vneplen/sociodemographics-interpretability-mitigation/{args.model.split('/')[1]}_probe_results.pkl",
         demographic_cols,
