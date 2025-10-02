@@ -177,7 +177,7 @@ if __name__ == "__main__":
     train_probe(
         df,
         n_layers,
-        f"/scratch/vneplen/sociodemographics-interpretability-mitigation/{args.model.split('/')[1]}_probe_results.pkl",
+        f"/scratch/vneplen/sociodemographics-interpretability-mitigation/{args.model.split('/')[1]}_probe_results_2nd.pkl",
         demographic_cols,
         # random=args.random,
         save=args.save_probe,
