@@ -8,6 +8,7 @@ import numpy as np
 import os
 import pandas as pd
 import itertools
+import xml.etree.ElementTree as ET
 
 
 class ListDataset(Dataset):
@@ -77,40 +78,55 @@ if __name__ == "__main__":
             compression="gzip",
         )
     else:
-        evals = {
-            "medical": list(
-                set(
-                    pd.read_csv("old/medical_llama_prompts.csv")[
-                        "prompts"
-                    ].tolist()
-                    + pd.read_csv("old/medical_qwen_prompts.csv")[
-                        "prompts"
-                    ].tolist(),
-                )
-            )
+        all_questions = {
+            "health_misinfo": [
+                topic.find("question").text
+                for topic in ET.parse("data/misinfo-2022-topics.xml")
+                .getroot()
+                .findall("topic")
+            ],
+        }
+        all_gold_answers = {
+            "health_misinfo": [
+                topic.find("answer").text
+                for topic in ET.parse("data/misinfo-2022-topics.xml")
+                .getroot()
+                .findall("topic")
+            ],
         }
         questions = [
             q
-            for q in list(itertools.chain.from_iterable(evals.values()))
+            for q in list(
+                itertools.chain.from_iterable(all_questions.values())
+            )
+            for _ in range(len(df))
+        ]
+        gold_answers = [
+            q
+            for q in list(
+                itertools.chain.from_iterable(all_gold_answers.values())
+            )
             for _ in range(len(df))
         ]
         evaluation = [
             e
             for e in list(
                 itertools.chain.from_iterable(
-                    [[ev] * len(evals[ev]) for ev in evals]
+                    [[ev] * len(questions[ev]) for ev in all_questions]
                 )
             )
             for _ in range(len(df))
         ]
 
         df = pd.concat(
-            [df] * len(list(itertools.chain.from_iterable(evals.values()))),
+            [df]
+            * len(list(itertools.chain.from_iterable(all_questions.values()))),
             ignore_index=True,
         )
 
         df["evaluation"] = evaluation
         df["question"] = questions
+        df["gold_answer"] = gold_answers
         df.to_pickle(
             "/scratch/vneplen/sociodemographics-interpretability-mitigation/prism_questions.gz"
         )
