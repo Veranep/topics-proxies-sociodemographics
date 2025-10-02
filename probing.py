@@ -37,7 +37,7 @@ def get_repr(df, model, tokenizer, device):
                 return_dict=True,
             )["hidden_states"]
         ]
-        for inp in inputs
+        for inp in tqdm(inputs)
     ]
 
     df["representations"] = representations
