@@ -68,27 +68,46 @@ if __name__ == "__main__":
         compression="gzip",
     )
 
-    evals = {
-        "medical": list(
-            set(
-                pd.read_csv("old/medical_llama_prompts.csv")[
-                    "prompts"
-                ].tolist()
-                + pd.read_csv("old/medical_qwen_prompts.csv")[
-                    "prompts"
-                ].tolist(),
-            )
+    if os.path.isfile(
+        "/scratch/vneplen/sociodemographics-interpretability-mitigation/prism_questions.gz"
+    ):
+        df = pd.read_pickle(
+            "/scratch/vneplen/sociodemographics-interpretability-mitigation/prism_questions.gz",
+            compression="gzip",
         )
-    }
-    questions = list(itertools.chain.from_iterable(evals.values())) * len(df)
-    evaluation = list(
-        itertools.chain.from_iterable([[ev] * len(evals[ev]) for ev in evals])
-    ) * len(df)
+    else:
+        evals = {
+            "medical": list(
+                set(
+                    pd.read_csv("old/medical_llama_prompts.csv")[
+                        "prompts"
+                    ].tolist()
+                    + pd.read_csv("old/medical_qwen_prompts.csv")[
+                        "prompts"
+                    ].tolist(),
+                )
+            )
+        }
+        questions = list(itertools.chain.from_iterable(evals.values())) * len(
+            df
+        )
+        evaluation = list(
+            itertools.chain.from_iterable(
+                [[ev] * len(evals[ev]) for ev in evals]
+            )
+        ) * len(df)
 
-    # replicate df # len questions times
+        df = pd.concat(
+            [df] * len(list(itertools.chain.from_iterable(evals.values()))),
+            ignore_index=True,
+        )
 
-    df["evaluation"] = evaluation
-    df["questions"] = questions
+        df["evaluation"] = evaluation
+        df["questions"] = questions
+        df.to_pickle(
+            "/scratch/vneplen/sociodemographics-interpretability-mitigation/prism_questions.gz"
+        )
+
     conversations_with_questions = [
         [
             {"role": turn["role"], "content": turn["content"]}

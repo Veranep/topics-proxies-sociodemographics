@@ -100,7 +100,7 @@ if __name__ == "__main__":
     if os.path.isfile(
         "/scratch/vneplen/sociodemographics-interpretability-mitigation/prism_preprocessed.gz"
     ):
-        pd.read_pickle(
+        df = pd.read_pickle(
             "/scratch/vneplen/sociodemographics-interpretability-mitigation/prism_preprocessed.gz",
             compression="gzip",
         )
