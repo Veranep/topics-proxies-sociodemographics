@@ -122,8 +122,6 @@ if __name__ == "__main__":
         )
         for i in range(len(df))
     ]
-    df = df.iloc[:10]
-    conversations_with_questions = conversations_with_questions[:10]
     answers = [
         answer[0]["generated_text"].lower()
         for answer in tqdm(
