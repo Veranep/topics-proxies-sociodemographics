@@ -1,6 +1,7 @@
 import argparse
 from datasets import load_dataset
 import numpy as np
+import os
 import pandas as pd
 import pickle
 from sklearn.linear_model import LogisticRegression
