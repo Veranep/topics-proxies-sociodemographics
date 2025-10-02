@@ -116,7 +116,7 @@ if __name__ == "__main__":
             if turn["role"] == "user" or turn["if_chosen"] == True
         ]
         + [{"role": "user", "content": df.iloc[i]["question"]}]
-        for i in len(df)
+        for i in range(len(df))
     ]
     answers = [
         answer[0]["generated_text"].lower()
