@@ -118,6 +118,7 @@ if __name__ == "__main__":
         + [{"role": "user", "content": df.iloc[i]["questions"]}]
         for i in range(len(df))
     ]
+    print(conversations_with_questions[0])
     answers = [
         answer[0]["generated_text"].lower()
         for answer in tqdm(
