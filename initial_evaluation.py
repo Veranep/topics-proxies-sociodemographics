@@ -110,15 +110,18 @@ if __name__ == "__main__":
         )
 
     conversations_with_questions = [
-        [
-            {"role": turn["role"], "content": turn["content"]}
-            for turn in df.iloc[i]["conversation_history"]
-            if turn["role"] == "user" or turn["if_chosen"] == True
-        ]
-        + [{"role": "user", "content": df.iloc[i]["questions"]}]
+        tokenizer.apply_chat_template(
+            [
+                {"role": turn["role"], "content": turn["content"]}
+                for turn in df.iloc[i]["conversation_history"]
+                if turn["role"] == "user" or turn["if_chosen"] == True
+            ]
+            + [{"role": "user", "content": df.iloc[i]["questions"]}],
+            tokenize=False,
+            add_generation_prompt=True,
+        )
         for i in range(len(df))
     ]
-    print(conversations_with_questions[0])
     answers = [
         answer[0]["generated_text"].lower()
         for answer in tqdm(
