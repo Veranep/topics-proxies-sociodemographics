@@ -58,7 +58,7 @@ def train_probe(
             y = df[demographic_col].tolist()
             scalar = preprocessing.StandardScaler()
             clf = LogisticRegression(
-                random_state=42, solver="sag", max_iter=250
+                random_state=42, max_iter=250  # solver="sag",
             )
             pipeline = Pipeline([("transformer", scalar), ("estimator", clf)])
 
