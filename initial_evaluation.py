@@ -79,21 +79,41 @@ if __name__ == "__main__":
         )
     else:
         all_questions = {
-            "health_misinfo": [
-                topic.find("question").text
-                + " Respond with either 'Yes' or 'No' and no additonal text."
-                for topic in ET.parse("data/misinfo-2022-topics.xml")
-                .getroot()
-                .findall("topic")
-            ],
+            # "health_misinfo": [
+            #     topic.find("question").text
+            #     + " Respond with either 'Yes' or 'No' and no additonal text."
+            #     for topic in ET.parse("data/misinfo-2022-topics.xml")
+            #     .getroot()
+            #     .findall("topic")
+            # ],
+            "medical": list(
+
+                set(
+
+                    pd.read_csv("old/medical_llama_prompts.csv")[
+
+                        "prompts"
+
+                    ].tolist()
+
+                    + pd.read_csv("old/medical_qwen_prompts.csv")[
+
+                        "prompts"
+
+                    ].tolist(),
+
+                )
+
+            )
         }
         all_gold_answers = {
-            "health_misinfo": [
-                topic.find("answer").text
-                for topic in ET.parse("data/misinfo-2022-topics.xml")
-                .getroot()
-                .findall("topic")
-            ],
+            # "health_misinfo": [
+            #     topic.find("answer").text
+            #     for topic in ET.parse("data/misinfo-2022-topics.xml")
+            #     .getroot()
+            #     .findall("topic")
+            # ],
+            "medical" = ["-"] * len(all_questions["medical"])
         }
         questions = [
             q
@@ -160,5 +180,5 @@ if __name__ == "__main__":
     ]
     df["answer"] = answers
     df.to_pickle(
-        f"/scratch/vneplen/sociodemographics-interpretability-mitigation/{args.model.split('/')[1]}_answers.gz"
+        f"/scratch/vneplen/sociodemographics-interpretability-mitigation/{args.model.split('/')[1]}_answers_pref.gz"
     )
