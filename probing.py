@@ -49,6 +49,7 @@ def get_repr(df, model, tokenizer, device, questions):
             )
             for convo in df["conversation_history"].tolist()
         ]
+        print(inputs[0])
 
     representations = [
         [
