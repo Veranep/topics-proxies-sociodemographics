@@ -49,7 +49,16 @@ def get_repr(df, model, tokenizer, device, questions):
             )
             for convo in df["conversation_history"].tolist()
         ]
-        print(inputs[0])
+        print(
+            [
+                {
+                    "role": turn["role"].replace("model", "assistant"),
+                    "content": turn["content"],
+                }
+                for turn in df["conversation_history"].tolist()[0]
+                if turn["role"] == "user" or turn["if_chosen"] == True
+            ]
+        )
 
     representations = [
         [
@@ -124,7 +133,7 @@ if __name__ == "__main__":
         args.model,
         torch_dtype=torch.bfloat16,
         device_map="auto",
-    ).to(device)
+    )
 
     if os.path.isfile(
         f"/scratch/vneplen/sociodemographics-interpretability-mitigation/{args.model.split('/')[1]}_representations.gz"
