@@ -79,33 +79,33 @@ if __name__ == "__main__":
         )
     else:
         all_questions = {
-            # "health_misinfo": [
-            #     topic.find("question").text
-            #     + " Respond with either 'Yes' or 'No' and no additonal text."
-            #     for topic in ET.parse("data/misinfo-2022-topics.xml")
-            #     .getroot()
-            #     .findall("topic")
-            # ],
-            "medical": list(
-                set(
-                    pd.read_csv("old/medical_llama_prompts.csv")[
-                        "prompts"
-                    ].tolist()
-                    + pd.read_csv("old/medical_qwen_prompts.csv")[
-                        "prompts"
-                    ].tolist(),
-                )
-            )
+            "health_misinfo": [
+                topic.find("question").text
+                + " Respond with either 'Yes' or 'No' and no additonal text."
+                for topic in ET.parse("data/misinfo-2022-topics.xml")
+                .getroot()
+                .findall("topic")
+            ],
+            # "medical": list(
+            #     set(
+            #         pd.read_csv("old/medical_llama_prompts.csv")[
+            #             "prompts"
+            #         ].tolist()
+            #         + pd.read_csv("old/medical_qwen_prompts.csv")[
+            #             "prompts"
+            #         ].tolist(),
+            #     )
+            # )
         }
         all_gold_answers = {
-            # "health_misinfo": [
-            #     topic.find("answer").text
-            #     for topic in ET.parse("data/misinfo-2022-topics.xml")
-            #     .getroot()
-            #     .findall("topic")
-            # ],
-            "medical": ["-"]
-            * len(all_questions["medical"])
+            "health_misinfo": [
+                topic.find("answer").text
+                for topic in ET.parse("data/misinfo-2022-topics.xml")
+                .getroot()
+                .findall("topic")
+            ],
+            # "medical": ["-"]
+            # * len(all_questions["medical"])
         }
         questions = [
             q
@@ -147,7 +147,10 @@ if __name__ == "__main__":
     conversations_with_questions = [
         tokenizer.apply_chat_template(
             [
-                {"role": turn["role"], "content": turn["content"]}
+                {
+                    "role": turn["role"].replace("model", "assistant"),
+                    "content": turn["content"],
+                }
                 for turn in df.iloc[i]["conversation_history"]
                 if turn["role"] == "user" or turn["if_chosen"] == True
             ]

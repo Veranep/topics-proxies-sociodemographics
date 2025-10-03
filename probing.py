@@ -12,20 +12,43 @@ from tqdm import tqdm
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 
-def get_repr(df, model, tokenizer, device):
-    inputs = [
-        tokenizer.apply_chat_template(
-            [
-                {"role": turn["role"], "content": turn["content"]}
-                for turn in convo
-                if turn["role"] == "user" or turn["if_chosen"] == True
-            ],
-            tokenize=True,
-            add_generation_prompt=True,
-            return_tensors="pt",
-        )
-        for convo in df["conversation_history"].tolist()
-    ]
+def get_repr(df, model, tokenizer, device, questions):
+    if questions:
+        inputs = [
+            tokenizer.apply_chat_template(
+                [
+                    {
+                        "role": turn["role"].replace("model", "assistant"),
+                        "content": turn["content"],
+                    }
+                    for turn in convo
+                    if turn["role"] == "user" or turn["if_chosen"] == True
+                ]
+                + [{"role": "user", "content": question}],
+                tokenize=True,
+                add_generation_prompt=True,
+                return_tensors="pt",
+            )
+            for question in questions
+            for convo in df["conversation_history"].tolist()
+        ]
+    else:
+        inputs = [
+            tokenizer.apply_chat_template(
+                [
+                    {
+                        "role": turn["role"].replace("model", "assistant"),
+                        "content": turn["content"],
+                    }
+                    for turn in convo
+                    if turn["role"] == "user" or turn["if_chosen"] == True
+                ],
+                tokenize=True,
+                add_generation_prompt=True,
+                return_tensors="pt",
+            )
+            for convo in df["conversation_history"].tolist()
+        ]
 
     representations = [
         [
@@ -86,6 +109,9 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--save_probe", action="store_true", help="Save trained probe"
+    )
+    parser.add_argument(
+        "--add_questions", action="store_true", help="Probe after question"
     )
     # parser.add_argument(
     #     "--random", action="store_true", help="Train probe on random labels"
@@ -150,10 +176,27 @@ if __name__ == "__main__":
                 "/scratch/vneplen/sociodemographics-interpretability-mitigation/prism_preprocessed.gz"
             )
 
-        df = get_repr(df, model, tokenizer, device)
-        df.to_pickle(
-            f"/scratch/vneplen/sociodemographics-interpretability-mitigation/{args.model.split('/')[1]}_representations.gz"
+        questions = list(
+            set(
+                pd.read_csv("old/medical_llama_prompts.csv")[
+                    "prompts"
+                ].tolist()
+                + pd.read_csv("old/medical_qwen_prompts.csv")[
+                    "prompts"
+                ].tolist(),
+            )
         )
+
+        df = get_repr(
+            df,
+            model,
+            tokenizer,
+            device,
+            questions=questions if args.add_questions else None,
+        )
+        # df.to_pickle(
+        #     f"/scratch/vneplen/sociodemographics-interpretability-mitigation/{args.model.split('/')[1]}_representations.gz"
+        # )
 
     demographic_cols = [
         "age",
