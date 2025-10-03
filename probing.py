@@ -4,8 +4,6 @@ import numpy as np
 import os
 import pandas as pd
 import pickle
-from sklearn.pipeline import Pipeline
-from sklearn import preprocessing
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import cross_val_score, train_test_split
 
@@ -56,11 +54,9 @@ def train_probe(
         for l in tqdm(range(n_layers)):
             X = [rep[l] for rep in df["representations"].tolist()]
             y = df[demographic_col].tolist()
-            scalar = preprocessing.StandardScaler()
             clf = LogisticRegression(
-                random_state=42, max_iter=250  # solver="sag",
+                random_state=42,
             )
-            pipeline = Pipeline([("transformer", scalar), ("estimator", clf)])
 
             if save:
                 clf = pipeline.fit(X, y)
@@ -69,14 +65,14 @@ def train_probe(
                 ) as outfile:
                     pickle.dump(clf, outfile)
             else:
-                scores = cross_val_score(pipeline, X, y, cv=5)
+                scores = cross_val_score(clf, X, y, cv=5)
                 results[demographic_col].append(scores)
-    if not save:
-        with open(
-            results_file,
-            "wb",
-        ) as outfile:
-            pickle.dump(results, outfile)
+        if not save:
+            with open(
+                results_file,
+                "wb",
+            ) as outfile:
+                pickle.dump(results, outfile)
 
 
 if __name__ == "__main__":
