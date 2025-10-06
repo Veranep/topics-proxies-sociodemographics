@@ -5,7 +5,7 @@ import os
 import pandas as pd
 import pickle
 from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import cross_val_score, train_test_split
+from sklearn.model_selection import cross_validate, train_test_split
 
 import torch
 from tqdm import tqdm
@@ -60,16 +60,31 @@ def get_repr(df, model, tokenizer, device, questions):
             ]
         )
 
+    # representations = [
+    #     [
+    #         rep[-1, -1, :].detach().cpu().clone().to(torch.float)
+    #         for rep in model(
+    #             inp.to(device),
+    #             output_hidden_states=True,
+    #             max_new_tokens=1,
+    #             return_dict=True,
+    #         )["hidden_states"]
+    #     ]
+    #     for inp in tqdm(inputs)
+    # ]
     representations = [
-        [
-            rep[-1, -1, :].detach().cpu().clone().to(torch.float)
-            for rep in model(
-                inp.to(device),
-                output_hidden_states=True,
-                max_new_tokens=1,
-                return_dict=True,
-            )["hidden_states"]
-        ]
+        torch.mean(
+            [
+                rep[-1, :, :].detach().cpu().clone().to(torch.float)
+                for rep in model(
+                    inp.to(device),
+                    output_hidden_states=True,
+                    max_new_tokens=1,
+                    return_dict=True,
+                )["hidden_states"]
+            ],
+            0,
+        )
         for inp in tqdm(inputs)
     ]
 
@@ -98,8 +113,20 @@ def train_probe(
                 ) as outfile:
                     pickle.dump(clf, outfile)
             else:
-                scores = cross_val_score(clf, X, y, cv=5)
-                results[demographic_col].append(scores)
+                scores = cross_validate(
+                    clf,
+                    X,
+                    y,
+                    cv=5,
+                    scoring=["f1_micro", "f1_macro", "f1_weighted"],
+                )
+                results[demographic_col].append(
+                    {
+                        "f1_micro": scores["test_f1_micro"],
+                        "f1_macro": scores["test_f1_macro"],
+                        "f1_weighted": scores["test_f1_weighted"],
+                    }
+                )
         if not save:
             with open(
                 results_file,
@@ -226,7 +253,7 @@ if __name__ == "__main__":
     train_probe(
         df,
         n_layers,
-        f"/scratch/vneplen/sociodemographics-interpretability-mitigation/{args.model.split('/')[1]}_probe_results_2nd.pkl",
+        f"/scratch/vneplen/sociodemographics-interpretability-mitigation/{args.model.split('/')[1]}_probe_results_alltext_f1.pkl",
         demographic_cols,
         # random=args.random,
         save=args.save_probe,
