@@ -49,16 +49,6 @@ def get_repr(df, model, tokenizer, device, questions):
             )
             for convo in df["conversation_history"].tolist()
         ]
-        print(
-            [
-                {
-                    "role": turn["role"].replace("model", "assistant"),
-                    "content": turn["content"],
-                }
-                for turn in df["conversation_history"].tolist()[0]
-                if turn["role"] == "user" or turn["if_chosen"] == True
-            ]
-        )
 
     # representations = [
     #     [
@@ -73,18 +63,15 @@ def get_repr(df, model, tokenizer, device, questions):
     #     for inp in tqdm(inputs)
     # ]
     representations = [
-        torch.mean(
-            [
-                rep[-1, :, :].detach().cpu().clone().to(torch.float)
-                for rep in model(
-                    inp.to(device),
-                    output_hidden_states=True,
-                    max_new_tokens=1,
-                    return_dict=True,
-                )["hidden_states"]
-            ],
-            0,
-        )
+        [
+            torch.mean(rep[-1, :, :].detach().cpu().clone().to(torch.float), 0)
+            for rep in model(
+                inp.to(device),
+                output_hidden_states=True,
+                max_new_tokens=1,
+                return_dict=True,
+            )["hidden_states"]
+        ]
         for inp in tqdm(inputs)
     ]
 
