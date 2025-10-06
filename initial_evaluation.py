@@ -135,10 +135,12 @@ if __name__ == "__main__":
                 )
             )
             answers = ["-"] * len(questions)
-
+        print("preparing data")
         all_questions = [q for q in questions for _ in range(len(df))]
         gold_answers = [a for a in answers for _ in range(len(df))]
         evaluation = [args.dataset] * len(all_questions)
+
+        print("extending df")
 
         df = pd.concat(
             [df] * len(all_questions),
@@ -148,6 +150,7 @@ if __name__ == "__main__":
         df["evaluation"] = evaluation
         df["question"] = all_questions
         df["gold_answer"] = gold_answers
+        print("got all data")
         df.to_pickle(
             f"/scratch/vneplen/sociodemographics-interpretability-mitigation/prism_questions_{args.dataset}.gz"
         )
