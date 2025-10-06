@@ -143,7 +143,7 @@ if __name__ == "__main__":
         print("extending df")
 
         df = pd.concat(
-            [df] * len(all_questions),
+            [df] * len(questions),
             ignore_index=True,
         )
 
