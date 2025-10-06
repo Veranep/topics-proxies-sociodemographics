@@ -97,7 +97,7 @@ if __name__ == "__main__":
     else:
         if args.dataset == "climate_fever":
             climate_fever = (
-                load_dataset("tdiggelm/climate_fever", "test")
+                load_dataset("tdiggelm/climate_fever", split="test")
                 .shuffle(seed=42)
                 .filter(
                     lambda x: x["claim_label"] == 0 or x["claim_label"] == 1
