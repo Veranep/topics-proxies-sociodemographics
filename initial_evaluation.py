@@ -3,6 +3,7 @@ import argparse
 import torch
 from torch.utils.data import Dataset
 from tqdm import tqdm
+from datasets import load_dataset
 from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
 import numpy as np
 import os
