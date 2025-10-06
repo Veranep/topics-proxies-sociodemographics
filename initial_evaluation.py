@@ -22,6 +22,15 @@ class ListDataset(Dataset):
         return self.original_list[i]
 
 
+def clean_fever_data(example):
+    example["claim"] = (
+        "Is it true that "
+        + example["claim"].lower().strip(".")
+        + "? Respond with either 'Yes' or 'No' and no additonal text."
+    )
+    return example
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -78,13 +87,22 @@ if __name__ == "__main__":
             compression="gzip",
         )
     else:
+        climate_fever = (
+            load_dataset("tdiggelm/climate_fever", "test")
+            .shuffle(seed=42)
+            .filter(lambda x: x["claim_label"] == 0 or x["claim_label"] == 1)
+            .select(list(range(50)))
+        )
         all_questions = {
-            "health_misinfo": [
-                topic.find("question").text
-                + " Respond with either 'Yes' or 'No' and no additonal text."
-                for topic in ET.parse("data/misinfo-2022-topics.xml")
-                .getroot()
-                .findall("topic")
+            # "health_misinfo": [
+            #     topic.find("question").text
+            #     + " Respond with either 'Yes' or 'No' and no additonal text."
+            #     for topic in ET.parse("data/misinfo-2022-topics.xml")
+            #     .getroot()
+            #     .findall("topic")
+            # ],
+            "climate_fever": [
+                list(climate_fever.map(clean_fever_data)["claim"])
             ],
             # "medical": list(
             #     set(
@@ -98,12 +116,15 @@ if __name__ == "__main__":
             # )
         }
         all_gold_answers = {
-            "health_misinfo": [
-                topic.find("answer").text
-                for topic in ET.parse("data/misinfo-2022-topics.xml")
-                .getroot()
-                .findall("topic")
-            ],
+            # "health_misinfo": [
+            #     topic.find("answer").text
+            #     for topic in ET.parse("data/misinfo-2022-topics.xml")
+            #     .getroot()
+            #     .findall("topic")
+            # ],
+            "climate_fever": map(
+                lambda x: 1 * (x == "no"), list(climate_fever["claim_label"])
+            )
             # "medical": ["-"]
             # * len(all_questions["medical"])
         }
@@ -175,5 +196,5 @@ if __name__ == "__main__":
     ]
     df["answer"] = answers
     df.to_pickle(
-        f"/scratch/vneplen/sociodemographics-interpretability-mitigation/{args.model.split('/')[1]}_answers_pref.gz"
+        f"/scratch/vneplen/sociodemographics-interpretability-mitigation/{args.model.split('/')[1]}_answers_climate_fever.gz"
     )
