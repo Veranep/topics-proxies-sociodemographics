@@ -47,6 +47,13 @@ if __name__ == "__main__":
         default=16,
         help="Batch size",
     )
+    parser.add_argument(
+        "-d",
+        "--dataset",
+        type=str,
+        default="health_misinfo",
+        help="Dataset to evaluate model on",
+    )
     args = parser.parse_args()
     np.random.seed(42)
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -80,89 +87,69 @@ if __name__ == "__main__":
     )
 
     if os.path.isfile(
-        "/scratch/vneplen/sociodemographics-interpretability-mitigation/prism_questions.gz"
+        f"/scratch/vneplen/sociodemographics-interpretability-mitigation/prism_questions_{args.dataset}.gz"
     ):
         df = pd.read_pickle(
-            "/scratch/vneplen/sociodemographics-interpretability-mitigation/prism_questions.gz",
+            f"/scratch/vneplen/sociodemographics-interpretability-mitigation/prism_questions_{args.dataset}.gz",
             compression="gzip",
         )
     else:
-        climate_fever = (
-            load_dataset("tdiggelm/climate_fever", "test")
-            .shuffle(seed=42)
-            .filter(lambda x: x["claim_label"] == 0 or x["claim_label"] == 1)
-            .select(list(range(50)))
-        )
-        all_questions = {
-            # "health_misinfo": [
-            #     topic.find("question").text
-            #     + " Respond with either 'Yes' or 'No' and no additonal text."
-            #     for topic in ET.parse("data/misinfo-2022-topics.xml")
-            #     .getroot()
-            #     .findall("topic")
-            # ],
-            "climate_fever": [
-                list(climate_fever.map(clean_fever_data)["claim"])
-            ],
-            # "medical": list(
-            #     set(
-            #         pd.read_csv("old/medical_llama_prompts.csv")[
-            #             "prompts"
-            #         ].tolist()
-            #         + pd.read_csv("old/medical_qwen_prompts.csv")[
-            #             "prompts"
-            #         ].tolist(),
-            #     )
-            # )
-        }
-        all_gold_answers = {
-            # "health_misinfo": [
-            #     topic.find("answer").text
-            #     for topic in ET.parse("data/misinfo-2022-topics.xml")
-            #     .getroot()
-            #     .findall("topic")
-            # ],
-            "climate_fever": map(
+        if args.dataset == "climate_fever":
+            climate_fever = (
+                load_dataset("tdiggelm/climate_fever", "test")
+                .shuffle(seed=42)
+                .filter(
+                    lambda x: x["claim_label"] == 0 or x["claim_label"] == 1
+                )
+                .select(list(range(50)))
+            )
+            questions = list(climate_fever.map(clean_fever_data)["claim"])
+            answers = map(
                 lambda x: 1 * (x == "no"), list(climate_fever["claim_label"])
             )
-            # "medical": ["-"]
-            # * len(all_questions["medical"])
-        }
-        questions = [
-            q
-            for q in list(
-                itertools.chain.from_iterable(all_questions.values())
-            )
-            for _ in range(len(df))
-        ]
-        gold_answers = [
-            q
-            for q in list(
-                itertools.chain.from_iterable(all_gold_answers.values())
-            )
-            for _ in range(len(df))
-        ]
-        evaluation = [
-            e
-            for e in list(
-                itertools.chain.from_iterable(
-                    [[ev] * len(all_questions[ev]) for ev in all_questions]
+
+        elif args.dataset == "health_misinfo":
+            questions = [
+                topic.find("question").text
+                + " Respond with either 'Yes' or 'No' and no additonal text."
+                for topic in ET.parse("data/misinfo-2022-topics.xml")
+                .getroot()
+                .findall("topic")
+            ]
+            answers = [
+                topic.find("answer").text
+                for topic in ET.parse("data/misinfo-2022-topics.xml")
+                .getroot()
+                .findall("topic")
+            ]
+        elif args.dataset == "medical":
+            questions = list(
+                set(
+                    pd.read_csv("old/medical_llama_prompts.csv")[
+                        "prompts"
+                    ].tolist()
+                    + pd.read_csv("old/medical_qwen_prompts.csv")[
+                        "prompts"
+                    ].tolist(),
                 )
             )
-            for _ in range(len(df))
-        ]
+            answers = ["-"]
+            * len(questions)
+
+        all_questions = [q for q in questions for _ in range(len(df))]
+        gold_answers = [a for a in answers for _ in range(len(df))]
+        evaluation = [args.dataset] * len(all_questions)
 
         df = pd.concat(
-            [df]
-            * len(list(itertools.chain.from_iterable(all_questions.values()))),
+            [df] * len(all_questions),
             ignore_index=True,
         )
 
         df["evaluation"] = evaluation
-        df["question"] = questions
+        df["question"] = all_questions
         df["gold_answer"] = gold_answers
         df.to_pickle(
-            "/scratch/vneplen/sociodemographics-interpretability-mitigation/prism_questions.gz"
+            f"/scratch/vneplen/sociodemographics-interpretability-mitigation/prism_questions_{args.dataset}.gz"
         )
 
     conversations_with_questions = [
