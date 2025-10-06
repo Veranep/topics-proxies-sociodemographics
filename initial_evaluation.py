@@ -133,8 +133,7 @@ if __name__ == "__main__":
                     ].tolist(),
                 )
             )
-            answers = ["-"]
-            * len(questions)
+            answers = ["-"] * len(questions)
 
         all_questions = [q for q in questions for _ in range(len(df))]
         gold_answers = [a for a in answers for _ in range(len(df))]
