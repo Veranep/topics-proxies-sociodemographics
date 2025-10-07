@@ -155,7 +155,8 @@ if __name__ == "__main__":
             f"/scratch/vneplen/sociodemographics-interpretability-mitigation/prism_questions_{args.dataset}.gz"
         )
 
-    print(
+    double_counter = 0
+    for convo in
         [
             [
                 {
@@ -167,9 +168,15 @@ if __name__ == "__main__":
             ]
             + [{"role": "user", "content": df.iloc[i]["question"]}]
             for i in range(len(df))
-        ][:5]
-    )
+        ]:
+        roles = [t["role"] for t in convo]
+        for i in range(len(roles)):
+            if i > 0 and role[i] == role[i-1]:
+                print(convo)
+                double_counter +=1
+                break
 
+    print(double_counter)
     conversations_with_questions = [
         tokenizer.apply_chat_template(
             [
