@@ -155,6 +155,21 @@ if __name__ == "__main__":
             f"/scratch/vneplen/sociodemographics-interpretability-mitigation/prism_questions_{args.dataset}.gz"
         )
 
+    print(
+        [
+            [
+                {
+                    "role": turn["role"].replace("model", "assistant"),
+                    "content": turn["content"],
+                }
+                for turn in df.iloc[i]["conversation_history"]
+                if turn["role"] == "user" or turn["if_chosen"] == True
+            ]
+            + [{"role": "user", "content": df.iloc[i]["question"]}]
+            for i in range(len(df))
+        ][:5]
+    )
+
     conversations_with_questions = [
         tokenizer.apply_chat_template(
             [
@@ -171,7 +186,6 @@ if __name__ == "__main__":
         )
         for i in range(len(df))
     ]
-    print(conversations_with_questions[:5])
     answers = [
         answer[0]["generated_text"].lower()
         for answer in tqdm(
