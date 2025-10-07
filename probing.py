@@ -12,68 +12,75 @@ from tqdm import tqdm
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 
-def get_repr(df, model, tokenizer, device, questions):
+def get_repr(df, model, tokenizer, device, agg_method, questions):
+    convos = [
+        [
+            {
+                "role": turn["role"].replace("model", "assistant"),
+                "content": turn["content"],
+            }
+            for turn in convo
+            if turn["role"] == "user" or turn["if_chosen"] == True
+        ]
+        for convo in df["conversation_history"].tolist()
+    ]
+    for convo in convos:
+        to_remove = []
+        for i in range(len(convo)):
+            if i > 0 and convo[i]["role"] == convo[i - 1]["role"]:
+                to_remove.append(i)
+        to_remove = to_remove[::-1]
+        for idx in to_remove:
+            del convo[idx]
     if questions:
         inputs = [
             tokenizer.apply_chat_template(
-                [
-                    {
-                        "role": turn["role"].replace("model", "assistant"),
-                        "content": turn["content"],
-                    }
-                    for turn in convo
-                    if turn["role"] == "user" or turn["if_chosen"] == True
-                ]
-                + [{"role": "user", "content": question}],
+                convo + [{"role": "user", "content": question}],
                 tokenize=True,
                 add_generation_prompt=True,
                 return_tensors="pt",
             )
             for question in questions
-            for convo in df["conversation_history"].tolist()
+            for convo in convos
         ]
     else:
         inputs = [
             tokenizer.apply_chat_template(
-                [
-                    {
-                        "role": turn["role"].replace("model", "assistant"),
-                        "content": turn["content"],
-                    }
-                    for turn in convo
-                    if turn["role"] == "user" or turn["if_chosen"] == True
-                ],
+                convo,
                 tokenize=True,
                 add_generation_prompt=True,
                 return_tensors="pt",
             )
-            for convo in df["conversation_history"].tolist()
+            for convo in convos
         ]
-
-    # representations = [
-    #     [
-    #         rep[-1, -1, :].detach().cpu().clone().to(torch.float)
-    #         for rep in model(
-    #             inp.to(device),
-    #             output_hidden_states=True,
-    #             max_new_tokens=1,
-    #             return_dict=True,
-    #         )["hidden_states"]
-    #     ]
-    #     for inp in tqdm(inputs)
-    # ]
-    representations = [
-        [
-            torch.mean(rep[-1, :, :].detach().cpu().clone().to(torch.float), 0)
-            for rep in model(
-                inp.to(device),
-                output_hidden_states=True,
-                max_new_tokens=1,
-                return_dict=True,
-            )["hidden_states"]
+    if agg_method == "last":
+        representations = [
+            [
+                rep[-1, -1, :].detach().cpu().clone().to(torch.float)
+                for rep in model(
+                    inp.to(device),
+                    output_hidden_states=True,
+                    max_new_tokens=1,
+                    return_dict=True,
+                )["hidden_states"]
+            ]
+            for inp in tqdm(inputs)
         ]
-        for inp in tqdm(inputs)
-    ]
+    elif agg_method == "mean":
+        representations = [
+            [
+                torch.mean(
+                    rep[-1, :, :].detach().cpu().clone().to(torch.float), 0
+                )
+                for rep in model(
+                    inp.to(device),
+                    output_hidden_states=True,
+                    max_new_tokens=1,
+                    return_dict=True,
+                )["hidden_states"]
+            ]
+            for inp in tqdm(inputs)
+        ]
 
     df["representations"] = representations
 
@@ -105,13 +112,19 @@ def train_probe(
                     X,
                     y,
                     cv=5,
-                    scoring=["f1_micro", "f1_macro", "f1_weighted"],
+                    scoring=[
+                        "f1_micro",
+                        "f1_macro",
+                        "f1_weighted",
+                        "balanced_accuracy",
+                    ],
                 )
                 results[demographic_col].append(
                     {
                         "f1_micro": scores["test_f1_micro"],
                         "f1_macro": scores["test_f1_macro"],
                         "f1_weighted": scores["test_f1_weighted"],
+                        "balanced_accuracy": scores["test_balanced_accuracy"],
                     }
                 )
         if not save:
@@ -130,6 +143,13 @@ if __name__ == "__main__":
         type=str,
         default="meta-llama/Llama-3.1-8B-Instruct",
         help="Model to evaluate",
+    )
+    parser.add_argument(
+        "-am",
+        "--agg_method",
+        type=str,
+        default="mean",
+        help="Method for aggregating representations across a conversation",
     )
     parser.add_argument(
         "--save_probe", action="store_true", help="Save trained probe"
@@ -216,6 +236,7 @@ if __name__ == "__main__":
             model,
             tokenizer,
             device,
+            args.agg_method,
             questions=questions if args.add_questions else None,
         )
         # df.to_pickle(
@@ -240,7 +261,7 @@ if __name__ == "__main__":
     train_probe(
         df,
         n_layers,
-        f"/scratch/vneplen/sociodemographics-interpretability-mitigation/{args.model.split('/')[1]}_probe_results_alltext_f1.pkl",
+        f"/scratch/vneplen/sociodemographics-interpretability-mitigation/{args.model.split('/')[1]}_probe_results_{args.agg_method}.pkl",
         demographic_cols,
         # random=args.random,
         save=args.save_probe,
