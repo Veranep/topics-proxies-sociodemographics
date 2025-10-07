@@ -170,7 +170,7 @@ if __name__ == "__main__":
     ]:
         roles = [t["role"] for t in convo]
         for i in range(len(roles)):
-            if i > 0 and role[i] == role[i - 1]:
+            if i > 0 and roles[i] == roles[i - 1]:
                 print(convo)
                 double_counter += 1
                 break
