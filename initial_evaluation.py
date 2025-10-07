@@ -156,24 +156,23 @@ if __name__ == "__main__":
         )
 
     double_counter = 0
-    for convo in
+    for convo in [
         [
-            [
-                {
-                    "role": turn["role"].replace("model", "assistant"),
-                    "content": turn["content"],
-                }
-                for turn in df.iloc[i]["conversation_history"]
-                if turn["role"] == "user" or turn["if_chosen"] == True
-            ]
-            + [{"role": "user", "content": df.iloc[i]["question"]}]
-            for i in range(len(df))
-        ]:
+            {
+                "role": turn["role"].replace("model", "assistant"),
+                "content": turn["content"],
+            }
+            for turn in df.iloc[i]["conversation_history"]
+            if turn["role"] == "user" or turn["if_chosen"] == True
+        ]
+        + [{"role": "user", "content": df.iloc[i]["question"]}]
+        for i in range(len(df))
+    ]:
         roles = [t["role"] for t in convo]
         for i in range(len(roles)):
-            if i > 0 and role[i] == role[i-1]:
+            if i > 0 and role[i] == role[i - 1]:
                 print(convo)
-                double_counter +=1
+                double_counter += 1
                 break
 
     print(double_counter)
