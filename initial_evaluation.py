@@ -171,6 +171,7 @@ if __name__ == "__main__":
         )
         for i in range(len(df))
     ]
+    print(conversations_with_questions[:5])
     answers = [
         answer[0]["generated_text"].lower()
         for answer in tqdm(
@@ -186,5 +187,5 @@ if __name__ == "__main__":
     ]
     df["answer"] = answers
     df.to_pickle(
-        f"/scratch/vneplen/sociodemographics-interpretability-mitigation/{args.model.split('/')[1]}_answers_climate_fever.gz"
+        f"/scratch/vneplen/sociodemographics-interpretability-mitigation/{args.model.split('/')[1]}_answers_{args.dataset}.gz"
     )
