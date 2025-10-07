@@ -172,24 +172,17 @@ if __name__ == "__main__":
         for i in range(len(convo)):
             if i > 0 and convo[i]["role"] == convo[i - 1]["role"]:
                 to_remove.append(i)
-        if len(to_remove) > 1:
-            print(convo, to_remove)
+        to_remove = to_remove[::-1]
+        for idx in to_remove:
+            del convo[idx]
 
     conversations_with_questions = [
         tokenizer.apply_chat_template(
-            [
-                {
-                    "role": turn["role"].replace("model", "assistant"),
-                    "content": turn["content"],
-                }
-                for turn in df.iloc[i]["conversation_history"]
-                if turn["role"] == "user" or turn["if_chosen"] == True
-            ]
-            + [{"role": "user", "content": df.iloc[i]["question"]}],
+            convo,
             tokenize=False,
             add_generation_prompt=True,
         )
-        for i in range(len(df))
+        for convo in convos
     ]
     answers = [
         answer[0]["generated_text"].lower()
