@@ -156,6 +156,11 @@ if __name__ == "__main__":
         help="Method for aggregating representations across a conversation",
     )
     parser.add_argument(
+        "--folder",
+        type=str,
+        default="",  # "/scratch/vneplen/sociodemographics-interpretability-mitigation/"
+    )
+    parser.add_argument(
         "--save_probe", action="store_true", help="Save trained probe"
     )
     parser.add_argument(
@@ -176,22 +181,19 @@ if __name__ == "__main__":
     )
 
     if os.path.isfile(
-        #f"/scratch/vneplen/sociodemographics-interpretability-mitigation/{args.model.split('/')[1]}_{args.agg_method}_representations.gz"
-            f"{args.model.split('/')[1]}_{args.agg_method}_representations.gz"
+        args.folder
+        + f"{args.model.split('/')[1]}_{args.agg_method}_representations.gz"
     ):
         df = pd.read_pickle(
-            #f"/scratch/vneplen/sociodemographics-interpretability-mitigation/{args.model.split('/')[1]}_{args.agg_method}_representations.gz",
+            # f"/scratch/vneplen/sociodemographics-interpretability-mitigation/{args.model.split('/')[1]}_{args.agg_method}_representations.gz",
             f"{args.model.split('/')[1]}_{args.agg_method}_representations.gz",
             compression="gzip",
         )
     else:
-        if os.path.isfile(
-            #"/scratch/vneplen/sociodemographics-interpretability-mitigation/prism_preprocessed.gz"
-                "prism_preprocessed.gz"
-        ):
+        if os.path.isfile(args.folder + "prism_preprocessed.gz"):
             df = pd.read_pickle(
-                #"/scratch/vneplen/sociodemographics-interpretability-mitigation/prism_preprocessed.gz",
-                "prism_preprocessed.gz"
+                # "/scratch/vneplen/sociodemographics-interpretability-mitigation/prism_preprocessed.gz",
+                "prism_preprocessed.gz",
                 compression="gzip",
             )
         else:
