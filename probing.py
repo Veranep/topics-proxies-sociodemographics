@@ -176,10 +176,10 @@ if __name__ == "__main__":
     )
 
     if os.path.isfile(
-        f"/scratch/vneplen/sociodemographics-interpretability-mitigation/{args.model.split('/')[1]}_representations.gz"
+        f"/scratch/vneplen/sociodemographics-interpretability-mitigation/{args.model.split('/')[1]}_{args.agg_method}_representations.gz"
     ):
         df = pd.read_pickle(
-            f"/scratch/vneplen/sociodemographics-interpretability-mitigation/{args.model.split('/')[1]}_representations.gz",
+            f"/scratch/vneplen/sociodemographics-interpretability-mitigation/{args.model.split('/')[1]}_{args.agg_method}_representations.gz",
             compression="gzip",
         )
     else:
@@ -245,9 +245,9 @@ if __name__ == "__main__":
             args.agg_method,
             questions=questions if args.add_questions else None,
         )
-        # df.to_pickle(
-        #     f"/scratch/vneplen/sociodemographics-interpretability-mitigation/{args.model.split('/')[1]}_representations.gz"
-        # )
+        df.to_pickle(
+            f"/scratch/vneplen/sociodemographics-interpretability-mitigation/{args.model.split('/')[1]}_{args.agg_method}_representations.gz"
+        )
 
     demographic_cols = [
         "age",
