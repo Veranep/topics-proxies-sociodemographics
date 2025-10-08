@@ -253,27 +253,28 @@ if __name__ == "__main__":
             + f"{args.model.split('/')[1]}_{args.agg_method}_representations.gz"
         )
 
-    # demographic_cols = [
-    #     "age",
-    #     "gender",
-    #     "religion",
-    #     "ethnicity",
-    #     "employment_status",
-    #     "education",
-    #     "birth_region",
-    #     "reside_region",
-    #     "marital_status",  # not in facts paper
-    #     "english_proficiency",  # not in facts paper
-    # ]
+    demographic_cols = [
+        "age",
+        "gender",
+        "religion",
+        "ethnicity",
+        "employment_status",
+        "education",
+        "birth_region",
+        "reside_region",
+        "marital_status",  # not in facts paper
+        "english_proficiency",  # not in facts paper
+    ]
 
-    # n_layers = len(df.iloc[0]["representations"])
+    n_layers = len(df.iloc[0]["representations"])
 
-    # train_probe(
-    #     df,
-    #     n_layers,
-    #     f"/scratch/vneplen/sociodemographics-interpretability-mitigation/{args.model.split('/')[1]}_probe_results_{args.agg_method}.pkl",
-    #     demographic_cols,
-    #     # random=args.random,
-    #     save=args.save_probe,
-    #     save_file=f"/scratch/vneplen/sociodemographics-interpretability-mitigation/{args.model.split('/')[1]}_probe",
-    # )
+    train_probe(
+        df,
+        n_layers,
+        args.folder
+        + f"{args.model.split('/')[1]}_probe_results_{args.agg_method}.pkl",
+        demographic_cols,
+        # random=args.random,
+        save=args.save_probe,
+        save_file=args.folder + f"{args.model.split('/')[1]}_probe",
+    )
