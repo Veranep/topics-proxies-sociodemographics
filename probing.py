@@ -176,18 +176,22 @@ if __name__ == "__main__":
     )
 
     if os.path.isfile(
-        f"/scratch/vneplen/sociodemographics-interpretability-mitigation/{args.model.split('/')[1]}_{args.agg_method}_representations.gz"
+        #f"/scratch/vneplen/sociodemographics-interpretability-mitigation/{args.model.split('/')[1]}_{args.agg_method}_representations.gz"
+            f"{args.model.split('/')[1]}_{args.agg_method}_representations.gz"
     ):
         df = pd.read_pickle(
-            f"/scratch/vneplen/sociodemographics-interpretability-mitigation/{args.model.split('/')[1]}_{args.agg_method}_representations.gz",
+            #f"/scratch/vneplen/sociodemographics-interpretability-mitigation/{args.model.split('/')[1]}_{args.agg_method}_representations.gz",
+            f"{args.model.split('/')[1]}_{args.agg_method}_representations.gz",
             compression="gzip",
         )
     else:
         if os.path.isfile(
-            "/scratch/vneplen/sociodemographics-interpretability-mitigation/prism_preprocessed.gz"
+            #"/scratch/vneplen/sociodemographics-interpretability-mitigation/prism_preprocessed.gz"
+                "prism_preprocessed.gz"
         ):
             df = pd.read_pickle(
-                "/scratch/vneplen/sociodemographics-interpretability-mitigation/prism_preprocessed.gz",
+                #"/scratch/vneplen/sociodemographics-interpretability-mitigation/prism_preprocessed.gz",
+                "prism_preprocessed.gz"
                 compression="gzip",
             )
         else:
@@ -223,7 +227,8 @@ if __name__ == "__main__":
                 )
 
             df.to_pickle(
-                "/scratch/vneplen/sociodemographics-interpretability-mitigation/prism_preprocessed.gz"
+                # "/scratch/vneplen/sociodemographics-interpretability-mitigation/prism_preprocessed.gz"
+                "prism_preprocessed.gz"
             )
 
         questions = list(
@@ -246,7 +251,8 @@ if __name__ == "__main__":
             questions=questions if args.add_questions else None,
         )
         df.to_pickle(
-            f"/scratch/vneplen/sociodemographics-interpretability-mitigation/{args.model.split('/')[1]}_{args.agg_method}_representations.gz"
+            # f"/scratch/vneplen/sociodemographics-interpretability-mitigation/{args.model.split('/')[1]}_{args.agg_method}_representations.gz"
+            "{args.model.split('/')[1]}_{args.agg_method}_representations.gz"
         )
 
     # demographic_cols = [
