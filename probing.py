@@ -170,97 +170,104 @@ if __name__ == "__main__":
         default="",  # "/scratch/vneplen/sociodemographics-interpretability-mitigation/"
     )
     parser.add_argument(
-        "--save_probe", action="store_true", help="Save trained probe"
+        "-mo",
+        "--mode",
+        type=str,
+        choices=["representations", "probe_cv", "probe_save"],
     )
     parser.add_argument(
         "--add_questions", action="store_true", help="Probe after question"
     )
-    # parser.add_argument(
-    #     "--random", action="store_true", help="Train probe on random labels"
-    # )
-    args = parser.parse_args()
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    tokenizer = AutoTokenizer.from_pretrained(args.model)
-    if not tokenizer.chat_template:
-        tokenizer.chat_template = chat_templates[args.model]
-    model = AutoModelForCausalLM.from_pretrained(
-        args.model,
-        torch_dtype=torch.bfloat16,
-        device_map="auto",
-    )
-
-    if os.path.isfile(
-        args.folder
-        + f"{args.model.split('/')[1]}_{args.agg_method}_representations.gz"
-    ):
-        df = pd.read_pickle(
-            args.folder
-            + f"{args.model.split('/')[1]}_{args.agg_method}_representations.gz",
-            compression="gzip",
+    if args.mode == "representations":
+        args = parser.parse_args()
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        tokenizer = AutoTokenizer.from_pretrained(args.model)
+        if not tokenizer.chat_template:
+            tokenizer.chat_template = chat_templates[args.model]
+        model = AutoModelForCausalLM.from_pretrained(
+            args.model,
+            torch_dtype=torch.bfloat16,
+            device_map="auto",
         )
-    else:
-        if os.path.isfile(args.folder + "prism_preprocessed.gz"):
+
+        if os.path.isfile(
+            args.folder
+            + f"{args.model.split('/')[1]}_{args.agg_method}_representations.gz"
+        ):
             df = pd.read_pickle(
-                args.folder + "prism_preprocessed.gz",
+                args.folder
+                + f"{args.model.split('/')[1]}_{args.agg_method}_representations.gz",
                 compression="gzip",
             )
         else:
-            conversations = load_dataset(
-                "HannahRoseKirk/prism-alignment", "conversations"
-            )["train"].to_pandas()
-            survey = load_dataset("HannahRoseKirk/prism-alignment", "survey")[
-                "train"
-            ].to_pandas()
-
-            df = pd.merge(
-                conversations,
-                survey,
-                on=["user_id"],
-            )
-            to_simplify = ["religion", "ethnicity"]
-            for column in to_simplify:
-                df[column] = df[column].apply(
-                    lambda x: (
-                        dict(x)["simplified"]
-                        if type(x) == dict
-                        else "Prefer not to say"
-                    )
+            if os.path.isfile(args.folder + "prism_preprocessed.gz"):
+                df = pd.read_pickle(
+                    args.folder + "prism_preprocessed.gz",
+                    compression="gzip",
                 )
-            regions = ["birth_region", "reside_region"]
-            for region in regions:
-                df[region] = df["location"].apply(
-                    lambda x: (
-                        dict(x)[region]
-                        if type(x) == dict
-                        else "Prefer not to say"
-                    )
+            else:
+                conversations = load_dataset(
+                    "HannahRoseKirk/prism-alignment", "conversations"
+                )["train"].to_pandas()
+                survey = load_dataset(
+                    "HannahRoseKirk/prism-alignment", "survey"
+                )["train"].to_pandas()
+
+                df = pd.merge(
+                    conversations,
+                    survey,
+                    on=["user_id"],
                 )
+                to_simplify = ["religion", "ethnicity"]
+                for column in to_simplify:
+                    df[column] = df[column].apply(
+                        lambda x: (
+                            dict(x)["simplified"]
+                            if type(x) == dict
+                            else "Prefer not to say"
+                        )
+                    )
+                regions = ["birth_region", "reside_region"]
+                for region in regions:
+                    df[region] = df["location"].apply(
+                        lambda x: (
+                            dict(x)[region]
+                            if type(x) == dict
+                            else "Prefer not to say"
+                        )
+                    )
 
-            df.to_pickle(args.folder + "prism_preprocessed.gz")
+                df.to_pickle(args.folder + "prism_preprocessed.gz")
 
-        questions = list(
-            set(
-                pd.read_csv("old/medical_llama_prompts.csv")[
-                    "prompts"
-                ].tolist()
-                + pd.read_csv("old/medical_qwen_prompts.csv")[
-                    "prompts"
-                ].tolist(),
+            # questions = list(
+            #     set(
+            #         pd.read_csv("old/medical_llama_prompts.csv")[
+            #             "prompts"
+            #         ].tolist()
+            #         + pd.read_csv("old/medical_qwen_prompts.csv")[
+            #             "prompts"
+            #         ].tolist(),
+            #     )
+            # )
+
+            df = get_repr(
+                df,
+                model,
+                tokenizer,
+                device,
+                args.agg_method,
+                questions=questions if args.add_questions else None,
             )
-        )
+            df.to_pickle(
+                args.folder
+                + f"{args.model.split('/')[1]}_{args.agg_method}_representations.gz"
+            )
 
-        df = get_repr(
-            df,
-            model,
-            tokenizer,
-            device,
-            args.agg_method,
-            questions=questions if args.add_questions else None,
-        )
-        df.to_pickle(
-            args.folder
-            + f"{args.model.split('/')[1]}_{args.agg_method}_representations.gz"
-        )
+    df = pd.read_pickle(
+        args.folder
+        + f"{args.model.split('/')[1]}_{args.agg_method}_representations.gz",
+        compression="gzip",
+    )
 
     demographic_cols = [
         "age",
@@ -274,16 +281,25 @@ if __name__ == "__main__":
         "marital_status",  # not in facts paper
         "english_proficiency",  # not in facts paper
     ]
-
     n_layers = len(df.iloc[0]["representations"])
+    if args.mode == "probe_cv":
+        train_probe(
+            df,
+            n_layers,
+            args.folder
+            + f"{args.model.split('/')[1]}_probe_results_{args.agg_method}.pkl",
+            demographic_cols,
+            save=False,
+            save_file=args.folder + f"{args.model.split('/')[1]}_probe",
+        )
 
-    train_probe(
-        df,
-        n_layers,
-        args.folder
-        + f"{args.model.split('/')[1]}_probe_results_{args.agg_method}.pkl",
-        demographic_cols,
-        # random=args.random,
-        save=args.save_probe,
-        save_file=args.folder + f"{args.model.split('/')[1]}_probe",
-    )
+    elif args.mode == "probe_save":
+        train_probe(
+            df,
+            n_layers,
+            args.folder
+            + f"{args.model.split('/')[1]}_probe_results_{args.agg_method}.pkl",
+            demographic_cols,
+            save=True,
+            save_file=args.folder + f"{args.model.split('/')[1]}_probe",
+        )
