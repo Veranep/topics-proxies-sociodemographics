@@ -112,7 +112,10 @@ def train_probe(
             X = X[keep_idx]
             demo_scoring = {
                 f"f1_{group}": make_scorer(
-                    f1_score, average="weighted", labels=[group]
+                    f1_score,
+                    average="weighted",
+                    labels=[group],
+                    pos_label=None,
                 )
                 for group in np.unique(y)
             }
