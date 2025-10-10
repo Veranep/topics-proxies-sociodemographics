@@ -175,8 +175,8 @@ if __name__ == "__main__":
         #     )
         #     answers = ["-"] * len(questions)
 
-        question_only = {col: "" for col in df.columns}
-        question_only["conversation_history"] = []
+        question_only = {col: [""] for col in df.columns}
+        question_only["conversation_history"] = [[]]
         question_only_df = pd.DataFrame(question_only)
         df = pd.concat([df, question_only_df], ignore_index=True)
         print("preparing data")
