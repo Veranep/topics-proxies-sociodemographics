@@ -95,11 +95,27 @@ def train_probe(
     df, n_layers, results_file, demographic_cols, save=False, save_file=""
 ):
     results = {}
+    standard_scoring = {
+        "f1_micro": "f1_micro",
+        "f1_macro": "f1_macro",
+        "f1_weighted": "f1_weighted",
+        "roc_auc_ovr_weighted": "roc_auc_ovr_weighted",
+    }
     for demographic_col in tqdm(demographic_cols):
         results[demographic_col] = []
         for l in tqdm(range(n_layers)):
-            X = [rep[l] for rep in df["representations"].tolist()]
-            y = df[demographic_col].tolist()
+            X = np.array([rep[l] for rep in df["representations"].tolist()])
+            y = np.array(df[demographic_col].tolist())
+            keep_idx = np.where(y != "Prefer not to say")[0]
+            y = y[keep_idx]
+            X = X[keep_idx]
+            demo_scoring = {
+                f"f1_{group}": make_scorer(
+                    f1_score, average="weighted", labels=[group]
+                )
+                for group in np.unique(y)
+            }
+            demo_scoring.update(standard_scoring)
             clf = LogisticRegression(
                 random_state=42,
             )
@@ -116,19 +132,12 @@ def train_probe(
                     X,
                     y,
                     cv=5,
-                    scoring=[
-                        "f1_micro",
-                        "f1_macro",
-                        "f1_weighted",
-                        "balanced_accuracy",
-                    ],
+                    scoring=demo_scoring,
                 )
                 results[demographic_col].append(
                     {
-                        "f1_micro": scores["test_f1_micro"],
-                        "f1_macro": scores["test_f1_macro"],
-                        "f1_weighted": scores["test_f1_weighted"],
-                        "balanced_accuracy": scores["test_balanced_accuracy"],
+                        metric: scores[f"test_{metric}"]
+                        for metric in demo_scoring
                     }
                 )
         if not save:
