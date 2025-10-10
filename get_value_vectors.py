@@ -1,4 +1,5 @@
 import argparse
+import os
 import pickle
 import torch
 import torch.nn.functional as F
@@ -105,48 +106,60 @@ if __name__ == "__main__":
         default="",  # "/scratch/vneplen/sociodemographics-interpretability-mitigation/"
     )
     args = parser.parse_args()
-    model = AutoModelForCausalLM.from_pretrained(
-        args.model,
-        torch_dtype=torch.bfloat16,
-        device_map="auto",
-    )
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    unembed = model.lm_head
-    unembed_weight = unembed.weight
-    stacked_params = []
-    for name, param in model.named_parameters():
-        if "mlp.c_proj.weight" in name:
-            stacked_params.append(param)
-        elif "mlp.dense_4h_to_h.weight" in name:
-            stacked_params.append(param.T)
-    if not stacked_params:
-        raise KeyError("Could not fetch value vectors with predefined keys")
-    layers = model.config.n_layer
-    big_matrix = torch.cat(stacked_params, dim=0).to(device)
-    n_neurons = big_matrix.shape[0] // layers
-    big_matrix = torch.split(big_matrix, [n_neurons] * layers)
-    unembed_weight = unembed_weight.to(device)
+    if os.path.isfile(
+        args.folder + f"/{args.model.split('/')[1]}_neurons.pkl"
+    ):
+        with open(
+            args.folder + f"/{args.model.split('/')[1]}_neurons.pkl", "rb"
+        ):
+            neurons = pickle.load(infile)
+    else:
+        model = AutoModelForCausalLM.from_pretrained(
+            args.model,
+            torch_dtype=torch.bfloat16,
+            device_map="auto",
+        )
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        unembed = model.lm_head
+        unembed_weight = unembed.weight
+        stacked_params = []
+        for name, param in model.named_parameters():
+            if "mlp.down_proj.weight" in name:  #'mlp.c_proj.weight'
+                n_neurons = param.shape[1]
+                stacked_params.append(param)
+        # elif "mlp.dense_4h_to_h.weight" in name:
+        #    stacked_params.append(param.T)
+        if not stacked_params:
+            raise KeyError(
+                "Could not fetch value vectors with predefined keys"
+            )
+        layers = len(stacked_params)
+        unembed_weight = unembed_weight.to(device)
 
-    imp_columns = {}
-    for demographic_col in demographic_cols:
-        imp_columns[demographic_col] = {}
-        for group, target in groups[demographic_col]:
-            imp_columns[demographic_col][group] = []
-            sims = []
-            for l in layers:
-                with open(
-                    args.folder
-                    + f"{args.model.split('/')[1]}_probe_{demographic_col}_{l}.pkl",
-                    "rb",
-                ) as infile:
-                    probe = pickle.load(infile)
-                weights = probe.coef_[target].to(device)
-                sims.append(F.cosine_similarity(big_matrix[l], weights))
-            _, top_ind = torch.topk(sims.unsqueeze(), 100, largest=True)
-            for global_id in top_ind:
-                layer_id = global_id // n_neurons
-                neuron_id = global_idd % n_neurons
-                imp_columns[demographic_col][group].append(
-                    (layer_id.item(), neuron_id.item())
-                )
-    print(imp_columns)
+        neurons = {}
+        for demographic_col in demographic_cols:
+            neurons[demographic_col] = {}
+            for group, target in groups[demographic_col]:
+                neurons[demographic_col][group] = []
+                sims = []
+                for l in range(layers):
+                    with open(
+                        args.folder
+                        + f"/{args.model.split('/')[1]}_probe_{demographic_col}_{l}.pkl",
+                        "rb",
+                    ) as infile:
+                        probe = pickle.load(infile)
+                    weights = probe.coef_[target].to(device)
+                    sims.append(
+                        F.cosine_similarity(
+                            stacked_params[l].to(device), weights
+                        )
+                    )
+                _, top_ind = torch.topk(sims.unsqueeze(), 100, largest=True)
+                for global_id in top_ind:
+                    layer_id = global_id // n_neurons
+                    neuron_id = global_idd % n_neurons
+                    neurons[demographic_col][group].append(
+                        (layer_id.item(), neuron_id.item())
+                    )
+        print(neurons)
