@@ -122,7 +122,7 @@ def train_probe(
             )
 
             if save:
-                clf = pipeline.fit(X, y)
+                clf = clf.fit(X, y)
                 with open(
                     save_file + f"_{demographic_col}_{l}.pkl", "wb"
                 ) as outfile:
