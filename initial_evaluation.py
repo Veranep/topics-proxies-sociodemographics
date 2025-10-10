@@ -108,9 +108,11 @@ if __name__ == "__main__":
                 .select(list(range(50)))
             )
             questions = list(climate_fever.map(clean_fact_data)["claim"])
-            answers = map(
-                lambda x: "no" if x == 1 else "yes",
-                list(climate_fever["claim_label"]),
+            answers = list(
+                map(
+                    lambda x: "no" if x == 1 else "yes",
+                    list(climate_fever["claim_label"]),
+                )
             )
 
         elif args.dataset == "health_misinfo":
@@ -137,9 +139,11 @@ if __name__ == "__main__":
                 .select(list(range(50)))
             )
             questions = list(pubhealth.map(clean_fact_data)["claim"])
-            answers = map(
-                lambda x: "no" if x == 1 else "yes",
-                list(pubhealth["label"]),
+            answers = list(
+                map(
+                    lambda x: "no" if x == 1 else "yes",
+                    list(pubhealth["label"]),
+                )
             )
         elif args.dataset == "finfact":
             finfact = (
@@ -151,9 +155,11 @@ if __name__ == "__main__":
                 )
             )
             questions = list(finfact.map(clean_fact_data)["claim"])
-            answers = map(
-                lambda x: "no" if x == "false" else "yes",
-                list(finfact["label"]),
+            answers = list(
+                map(
+                    lambda x: "no" if x == "false" else "yes",
+                    list(finfact["label"]),
+                )
             )
         # elif args.dataset == "medical":
         #     questions = list(
@@ -265,9 +271,6 @@ if __name__ == "__main__":
         f"/scratch/vneplen/sociodemographics-interpretability-mitigation/{args.model.split('/')[1]}_answers_{args.dataset}.gz"
     ):
         question_only["answer"] = answers
-        print(question_only)
-        for col in question_only:
-            print(col, len(question_only[col]))
         question_only_df = pd.DataFrame(question_only)
         df = pd.concat([df, question_only_df], ignore_index=True)
     else:
