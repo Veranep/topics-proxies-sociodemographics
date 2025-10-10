@@ -178,8 +178,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--add_questions", action="store_true", help="Probe after question"
     )
+    args = parser.parse_args()
     if args.mode == "representations":
-        args = parser.parse_args()
         device = "cuda" if torch.cuda.is_available() else "cpu"
         tokenizer = AutoTokenizer.from_pretrained(args.model)
         if not tokenizer.chat_template:
