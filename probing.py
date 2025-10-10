@@ -6,7 +6,7 @@ import pandas as pd
 import pickle
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import cross_validate, train_test_split
-from sklearn.metrics import make_scorer
+from sklearn.metrics import make_scorer, f1_score
 
 import torch
 from tqdm import tqdm
