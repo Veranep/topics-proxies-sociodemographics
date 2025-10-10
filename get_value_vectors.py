@@ -3,7 +3,10 @@ import os
 import pickle
 import torch
 import torch.nn.functional as F
+from tqdm import tqdm
 from transformers import AutoModelForCausalLM
+from transformer_lens import HookedTransformer
+from transformer_lens import utils
 
 demographic_cols = [
     "age",
@@ -101,25 +104,29 @@ if __name__ == "__main__":
         help="Model to evaluate",
     )
     parser.add_argument(
-        "--folder",
+        "--data_dir",
         type=str,
         default="",  # "/scratch/vneplen/sociodemographics-interpretability-mitigation/"
     )
+    parser.add_argument(
+        "--results_dir",
+        type=str,
+        default="",  # "/scratch/vneplen/sociodemographics-interpretability-mitigation/"
+    )
+    parser.add_argument(
+        "-mo",
+        "--mode",
+        type=str,
+        choices=["neurons", "activations", "vocab"],
+    )
     args = parser.parse_args()
-    if os.path.isfile(
-        args.folder + f"/{args.model.split('/')[1]}_neurons.pkl"
-    ):
-        with open(
-            args.folder + f"/{args.model.split('/')[1]}_neurons.pkl", "rb"
-        ):
-            neurons = pickle.load(infile)
-    else:
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    if args.mode == "neurons":
         model = AutoModelForCausalLM.from_pretrained(
             args.model,
             torch_dtype=torch.bfloat16,
             device_map="auto",
         )
-        device = "cuda" if torch.cuda.is_available() else "cpu"
         unembed = model.lm_head
         unembed_weight = unembed.weight
         stacked_params = []
@@ -137,29 +144,186 @@ if __name__ == "__main__":
         unembed_weight = unembed_weight.to(device)
 
         neurons = {}
-        for demographic_col in demographic_cols:
+        for demographic_col in tqdm(demographic_cols):
             neurons[demographic_col] = {}
-            for group, target in groups[demographic_col]:
+            for group, target in tqdm(groups[demographic_col]):
                 neurons[demographic_col][group] = []
                 sims = []
                 for l in range(layers):
                     with open(
-                        args.folder
+                        args.results_dir
                         + f"/{args.model.split('/')[1]}_probe_{demographic_col}_{l}.pkl",
                         "rb",
                     ) as infile:
                         probe = pickle.load(infile)
-                    weights = probe.coef_[target].to(device)
-                    sims.append(
-                        F.cosine_similarity(
-                            stacked_params[l].to(device), weights
-                        )
-                    )
-                _, top_ind = torch.topk(sims.unsqueeze(), 100, largest=True)
+                    weights = torch.from_numpy(probe.coef_[target]).to(device)
+                    params = stacked_params[l].to(device)
+                    sims += [
+                        F.cosine_similarity(params[:, i], weights, dim=0)
+                        for i in range(params.shape[1])
+                    ]
+                _, top_ind = torch.topk(torch.tensor(sims), 100, largest=True)
                 for global_id in top_ind:
                     layer_id = global_id // n_neurons
-                    neuron_id = global_idd % n_neurons
+                    neuron_id = global_id % n_neurons
                     neurons[demographic_col][group].append(
                         (layer_id.item(), neuron_id.item())
                     )
-        print(neurons)
+        with open(
+            args.results_dir + f"/{args.model.split('/')[1]}_neurons.pkl", "wb"
+        ) as outfile:
+            pickle.dump(neurons, outfile)
+
+    if args.mode == "activations":
+        with open(
+            args.results_dir + f"/{args.model.split('/')[1]}_neurons.pkl", "rb"
+        ) as infile:
+            neurons = pickle.load(infile)
+
+        neuron_activations = {}
+
+        try:
+            special_model = HookedTransformer.from_pretrained(
+                args.model, torch_dtype=torch.bfloat16, device=device
+            )
+        except:
+            special_model_hf = AutoModelForCausalLM.from_pretrained(
+                args.model, torch_dtype=torch.bfloat16, device=device
+            )
+            special_model = HookedTransformer.from_pretrained(
+                {args.model.split("/")[1]},
+                hf_model=special_model_hf,
+                device=device,
+            )
+        special_model.tokenizer.padding_side = "left"
+        special_model.tokenizer.pad_token_id = (
+            special_model.tokenizer.eos_token_id
+        )
+        df = pd.read_pickle(
+            args.data_dir + "prism_preprocessed.gz",
+            compression="gzip",
+        )
+        for demographic_col in tqdm(neurons):
+            neuron_activations[demographic_col] = {}
+            for group in tqdm(neurons[demographic_col]):
+                neuron_activations[demographic_col][group] = {}
+                neurons_group = neurons[demographic_col][group]
+                df_group = df[df[demographic_col] == group]
+                convos = [
+                    [
+                        {
+                            "role": turn["role"].replace("model", "assistant"),
+                            "content": turn["content"],
+                        }
+                        for turn in convo
+                        if turn["role"] == "user" or turn["if_chosen"] == True
+                    ]
+                    for convo in df_group["conversation_history"].tolist()
+                ]
+                for convo in convos:
+                    to_remove = []
+                    for i in range(len(convo)):
+                        if i > 0 and convo[i]["role"] == convo[i - 1]["role"]:
+                            to_remove.append(i)
+                    to_remove = to_remove[::-1]
+                    for idx in to_remove:
+                        del convo[idx]
+
+                inputs = [
+                    tokenizer.apply_chat_template(
+                        convo,
+                        tokenize=True,
+                        add_generation_prompt=True,
+                        return_tensors="pt",
+                    )
+                    for convo in convos
+                ]
+
+                prompt_tokens = special_model.to_tokens(inputs).to(device)
+                layers_of_interest = [n[0] for n in neurons_group]
+                layers_filter = lambda name: name in [
+                    utils.get_act_name("mlp_post", l)
+                    for l in layers_of_interest
+                ]
+
+                post_acts = defaultdict(list)
+
+                for idx in tqdm(range(0, prompt_tokens.shape[0], batch_size)):
+
+                    batch = prompt_tokens[idx : idx + batch_size]
+
+                    with torch.inference_mode():
+                        logits, cache = special_model.run_with_cache(
+                            batch, names_filter=layers_filter
+                        )
+                    for layer, idx in neuron_list:
+                        post_act = cache[
+                            utils.get_act_name("mlp_post", layer)
+                        ][:, -1, idx]
+                        post_acts[(layer, idx)].extend(post_act.tolist())
+
+                # Calculate average post activation for individual neuron
+                for layer, idx in neurons_group:
+                    neuron_activations[demographic_col][group][
+                        (layer, idx)
+                    ] = np.mean(post_acts[(layer, idx)])
+
+                # post_act_mean_group = np.mean(list(post_act_mean_individual.values()))
+        print(neuron_activations)
+        with open(
+            args.results_dir
+            + f"/{args.model.split('/')[1]}_neuron_activations.pkl",
+            "wb",
+        ) as outfile:
+            pickle.dump(neuron_activations, outfile)
+
+    if args.mode == "vocab":
+        model = AutoModelForCausalLM.from_pretrained(
+            args.model,
+            torch_dtype=torch.bfloat16,
+        ).to(device)
+        tokenizer = AutoTokenizer.from_pretrained(args.model)
+        unembed = model.lm_head.weight
+
+        vocab = {}
+
+        with open(
+            args.results_dir + f"/{args.model.split('/')[1]}_neurons.pkl", "rb"
+        ) as infile:
+            neurons = pickle.load(infile)
+        with open(
+            args.results_dir
+            + f"/{args.model.split('/')[1]}_neuron_activations.pkl",
+            "rb",
+        ) as infile:
+            neuron_activations = pickle.load(infile)
+
+        for demographic_col in tqdm(neurons):
+            vocab[demographic_col] = {}
+            for group in tqdm(neurons[demographic_col]):
+                vocab[demographic_col][group] = {}
+                filtered_neurons = [
+                    n
+                    for n in neurons[demographic_col][group]
+                    if neuron_activations[demographic_col][group] > 0
+                ]
+                for layer_id, neuron_id in filtered_neurons:
+                    down_column = model.transformer.h[
+                        layer_id
+                    ].mlp.down_proj.weight[neuron_id]
+                    assert unembed.size(1) == down_column.size(0)
+
+                    projection = unembed @ down_column
+                    _, sorted_indices = torch.sort(projection, descending=True)
+
+                    interp = []
+                    for ind in sorted_indices[:20]:
+                        interp.append(tokenizer.decode(ind))
+                    vocab[demographic_col][group][
+                        (layer_id, neuron_id)
+                    ] = interp
+        with open(
+            args.results_dir + f"/{args.model.split('/')[1]}_vocab.pkl",
+            "wb",
+        ) as outfile:
+            pickle.dump(vocab, outfile)
