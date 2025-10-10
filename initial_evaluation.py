@@ -23,11 +23,14 @@ class ListDataset(Dataset):
         return self.original_list[i]
 
 
-def clean_fever_data(example):
+def clean_fact_data(example):
+    if example["claim"][-1] != "?":
+        example["claim"] = (
+            "Is it true that " + example["claim"].lower().strip(".") + "?"
+        )
     example["claim"] = (
-        "Is it true that "
-        + example["claim"].lower().strip(".")
-        + "? Respond with either 'Yes' or 'No' and no additonal text."
+        example["claim"]
+        + " Respond with either 'Yes' or 'No' and no additonal text."
     )
     return example
 
@@ -104,9 +107,10 @@ if __name__ == "__main__":
                 )
                 .select(list(range(50)))
             )
-            questions = list(climate_fever.map(clean_fever_data)["claim"])
+            questions = list(climate_fever.map(clean_fact_data)["claim"])
             answers = map(
-                lambda x: 1 * (x == "no"), list(climate_fever["claim_label"])
+                lambda x: "no" if x == 1 else "yes",
+                list(climate_fever["claim_label"]),
             )
 
         elif args.dataset == "health_misinfo":
@@ -123,18 +127,55 @@ if __name__ == "__main__":
                 .getroot()
                 .findall("topic")
             ]
-        elif args.dataset == "medical":
-            questions = list(
-                set(
-                    pd.read_csv("old/medical_llama_prompts.csv")[
-                        "prompts"
-                    ].tolist()
-                    + pd.read_csv("old/medical_qwen_prompts.csv")[
-                        "prompts"
-                    ].tolist(),
+        elif args.dataset == "pubhealth":
+            pubhealth = (
+                load_dataset(
+                    "bigbio/pubhealth", "pubhealth_source", split="test"
+                )
+                .shuffle(seed=42)
+                .filter(lambda x: x["label"] == 0 or x["label"] == 1)
+                .select(list(range(50)))
+            )
+            questions = list(pubhealth.map(clean_fact_data)["claim"])
+            answers = map(
+                lambda x: "no" if x == 1 else "yes",
+                list(pubhealth["label"]),
+            )
+        elif args.dataset == "finfact":
+            finfact = (
+                load_dataset("amanrangapur/Fin-Fact", split="train")
+                .shuffle(seed=42)
+                .filter(
+                    lambda x: x["image_data"] == []
+                    and (x["label"] == "false" or x["label"] == "true")
                 )
             )
-            answers = ["-"] * len(questions)
+            questions = list(finfact.map(clean_fact_data)["claim"])
+            answers = map(
+                lambda x: "no" if x == "false" else "yes",
+                list(finfact["label"]),
+            )
+        # elif args.dataset == "medical":
+        #     questions = list(
+        #         set(
+        #             pd.read_csv("old/medical_llama_prompts.csv")[
+        #                 "prompts"
+        #             ].tolist()
+        #             + pd.read_csv("old/medical_qwen_prompts.csv")[
+        #                 "prompts"
+        #             ].tolist(),
+        #         )
+        #     )
+        #     answers = ["-"] * len(questions)
+
+        question_only = {
+            col: ["" for _ in range(len(questions))] for col in df.columns
+        }
+        question_only["conversation_history"] = [
+            [] for _ in range(len(questions))
+        ]
+        question_only_df = pd.DataFrame(question_only)
+        df = pd.concat([df, question_only_df], ignore_index=True)
         print("preparing data")
         all_questions = [q for q in questions for _ in range(len(df))]
         gold_answers = [a for a in answers for _ in range(len(df))]
@@ -155,26 +196,48 @@ if __name__ == "__main__":
             f"/scratch/vneplen/sociodemographics-interpretability-mitigation/prism_questions_{args.dataset}.gz"
         )
 
-    convos = [
-        [
-            {
-                "role": turn["role"].replace("model", "assistant"),
-                "content": turn["content"],
-            }
-            for turn in df.iloc[i]["conversation_history"]
-            if turn["role"] == "user" or turn["if_chosen"] == True
+    # temporary
+    if os.path.isfile(
+        f"/scratch/vneplen/sociodemographics-interpretability-mitigation/{args.model.split('/')[1]}_answers_{args.dataset}.gz"
+    ):
+        df = pd.read_pickle(
+            f"/scratch/vneplen/sociodemographics-interpretability-mitigation/{args.model.split('/')[1]}_answers_{args.dataset}.gz",
+            compression="gzip",
+        )
+        question_only = {
+            col: ["" for _ in range(len(questions))] for col in df.columns
+        }
+        question_only["conversation_history"] = [
+            [] for _ in range(len(questions))
         ]
-        + [{"role": "user", "content": df.iloc[i]["question"]}]
-        for i in range(len(df))
-    ]
-    for convo in convos:
-        to_remove = []
-        for i in range(len(convo)):
-            if i > 0 and convo[i]["role"] == convo[i - 1]["role"]:
-                to_remove.append(i)
-        to_remove = to_remove[::-1]
-        for idx in to_remove:
-            del convo[idx]
+        question_only["question"] = questions
+        question_only["gold_answer"] = answers
+        question_only["evaluation"] = [args.dataset] * len(questions)
+        convos = [
+            [{"role": "user", "content": question}] for question in questions
+        ]
+
+    else:
+        convos = [
+            [
+                {
+                    "role": turn["role"].replace("model", "assistant"),
+                    "content": turn["content"],
+                }
+                for turn in df.iloc[i]["conversation_history"]
+                if turn["role"] == "user" or turn["if_chosen"] == True
+            ]
+            + [{"role": "user", "content": df.iloc[i]["question"]}]
+            for i in range(len(df))
+        ]
+        for convo in convos:
+            to_remove = []
+            for i in range(len(convo)):
+                if i > 0 and convo[i]["role"] == convo[i - 1]["role"]:
+                    to_remove.append(i)
+            to_remove = to_remove[::-1]
+            for idx in to_remove:
+                del convo[idx]
 
     conversations_with_questions = [
         tokenizer.apply_chat_template(
@@ -197,7 +260,16 @@ if __name__ == "__main__":
             total=len(conversations_with_questions),
         )
     ]
-    df["answer"] = answers
+
+    if os.path.isfile(
+        f"/scratch/vneplen/sociodemographics-interpretability-mitigation/{args.model.split('/')[1]}_answers_{args.dataset}.gz"
+    ):
+        question_only["answer"] = answers
+        question_only_df = pd.DataFrame(question_only)
+        df = pd.concat([df, question_only_df], ignore_index=True)
+    else:
+        df["answer"] = answers
+
     df.to_pickle(
         f"/scratch/vneplen/sociodemographics-interpretability-mitigation/{args.model.split('/')[1]}_answers_{args.dataset}.gz"
     )
