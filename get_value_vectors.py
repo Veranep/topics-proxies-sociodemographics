@@ -1,5 +1,7 @@
 import argparse
 import os
+import numpy as np
+import pandas as pd
 import pickle
 import torch
 import torch.nn.functional as F
@@ -232,11 +234,10 @@ if __name__ == "__main__":
                         del convo[idx]
 
                 inputs = [
-                    tokenizer.apply_chat_template(
+                    special_model.tokenizer.apply_chat_template(
                         convo,
-                        tokenize=True,
+                        tokenize=False,
                         add_generation_prompt=True,
-                        return_tensors="pt",
                     )
                     for convo in convos
                 ]
