@@ -93,7 +93,13 @@ def get_repr(df, model, tokenizer, device, agg_method, questions):
 
 
 def train_probe(
-    df, n_layers, results_file, demographic_cols, save=False, save_file=""
+    df,
+    n_layers,
+    results_file,
+    demographic_cols,
+    save=False,
+    balanced=False,
+    save_file="",
 ):
     results = {}
     standard_scoring = {
@@ -121,7 +127,7 @@ def train_probe(
             }
             demo_scoring.update(standard_scoring)
             clf = LogisticRegression(
-                random_state=42,
+                random_state=42, class_weight="balanced" if balanced else None
             )
 
             if save:
@@ -181,6 +187,11 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--add_questions", action="store_true", help="Probe after question"
+    )
+    parser.add_argument(
+        "--balanced",
+        action="store_true",
+        help="Whether probe class weight is balanced",
     )
     args = parser.parse_args()
     if args.mode == "representations":
@@ -291,10 +302,12 @@ if __name__ == "__main__":
             df,
             n_layers,
             args.folder
-            + f"{args.model.split('/')[1]}_probe_results_{args.agg_method}.pkl",
+            + f"{args.model.split('/')[1]}_probe_results_{args.agg_method}{'_balanced' if args.balanced else ''}.pkl",
             demographic_cols,
             save=False,
-            save_file=args.folder + f"{args.model.split('/')[1]}_probe",
+            balanced=args.balanced,
+            save_file=args.folder
+            + f"{args.model.split('/')[1]}{'_balanced' if args.balanced else ''}_probe",
         )
 
     elif args.mode == "probe_save":
@@ -302,8 +315,10 @@ if __name__ == "__main__":
             df,
             n_layers,
             args.folder
-            + f"{args.model.split('/')[1]}_probe_results_{args.agg_method}.pkl",
+            + f"{args.model.split('/')[1]}_probe_results_{args.agg_method}{'_balanced' if args.balanced else ''}.pkl",
             demographic_cols,
             save=True,
-            save_file=args.folder + f"{args.model.split('/')[1]}_probe",
+            balanced=args.balanced,
+            save_file=args.folder
+            + f"{args.model.split('/')[1]}{'_balanced' if args.balanced else ''}_probe",
         )
