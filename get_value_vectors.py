@@ -188,11 +188,13 @@ if __name__ == "__main__":
             )
         except:
             special_model_hf = AutoModelForCausalLM.from_pretrained(
-                args.model, torch_dtype=torch.bfloat16, device=device
+                args.model,
+                torch_dtype=torch.bfloat16,
             )
             special_model = HookedTransformer.from_pretrained(
-                {args.model.split("/")[1]},
+                args.model.split("/")[1],
                 hf_model=special_model_hf,
+                torch_dtype=torch.bfloat16,
                 device=device,
             )
         special_model.tokenizer.padding_side = "left"
