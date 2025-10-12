@@ -189,8 +189,19 @@ if __name__ == "__main__":
             args.results_dir + f"/{args.model.split('/')[1]}_neurons.pkl", "rb"
         ) as infile:
             neurons = pickle.load(infile)
+        if os.path.isfile(
+            args.results_dir
+            + f"/{args.model.split('/')[1]}_neuron_activations.pkl"
+        ):
+            with open(
+                args.results_dir
+                + f"/{args.model.split('/')[1]}_neuron_activations.pkl",
+                "rb",
+            ) as infile:
+                neuron_activations = pickle.load(infile)
 
-        neuron_activations = {}
+        else:
+            neuron_activations = {}
 
         try:
             special_model = HookedTransformer.from_pretrained(
@@ -216,8 +227,11 @@ if __name__ == "__main__":
             compression="gzip",
         )
         for demographic_col in tqdm(neurons):
-            neuron_activations[demographic_col] = {}
+            if demographic_col not in neuron_activations:
+                neuron_activations[demographic_col] = {}
             for group in tqdm(neurons[demographic_col]):
+                if group in neuron_activations[demographic_col]:
+                    continue
                 neuron_activations[demographic_col][group] = {}
                 neurons_group = neurons[demographic_col][group]
                 df_group = df[df[demographic_col] == group]
@@ -282,13 +296,13 @@ if __name__ == "__main__":
                     ] = np.mean(post_acts[(layer, idx)])
 
                 # post_act_mean_group = np.mean(list(post_act_mean_individual.values()))
-        print(neuron_activations)
-        with open(
-            args.results_dir
-            + f"/{args.model.split('/')[1]}_neuron_activations.pkl",
-            "wb",
-        ) as outfile:
-            pickle.dump(neuron_activations, outfile)
+                print(neuron_activations)
+                with open(
+                    args.results_dir
+                    + f"/{args.model.split('/')[1]}_neuron_activations.pkl",
+                    "wb",
+                ) as outfile:
+                    pickle.dump(neuron_activations, outfile)
 
     if args.mode == "vocab":
         model = AutoModelForCausalLM.from_pretrained(
