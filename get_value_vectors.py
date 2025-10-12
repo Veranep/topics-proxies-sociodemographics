@@ -122,6 +122,13 @@ if __name__ == "__main__":
         type=str,
         choices=["neurons", "activations", "vocab"],
     )
+    parser.add_argument(
+        "-bs",
+        "--batch_size",
+        type=int,
+        default=16,
+        help="Batch size",
+    )
     args = parser.parse_args()
     device = "cuda" if torch.cuda.is_available() else "cpu"
     if args.mode == "neurons":
@@ -252,15 +259,17 @@ if __name__ == "__main__":
 
                 post_acts = defaultdict(list)
 
-                for idx in tqdm(range(0, prompt_tokens.shape[0], batch_size)):
+                for idx in tqdm(
+                    range(0, prompt_tokens.shape[0], args.batch_size)
+                ):
 
-                    batch = prompt_tokens[idx : idx + batch_size]
+                    batch = prompt_tokens[idx : idx + args.batch_size]
 
                     with torch.inference_mode():
                         logits, cache = special_model.run_with_cache(
                             batch, names_filter=layers_filter
                         )
-                    for layer, idx in neuron_list:
+                    for layer, idx in neurons_group:
                         post_act = cache[
                             utils.get_act_name("mlp_post", layer)
                         ][:, -1, idx]
