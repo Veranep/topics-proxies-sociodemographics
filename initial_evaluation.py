@@ -152,6 +152,9 @@ if __name__ == "__main__":
                 .filter(
                     lambda x: x["image_data"] == []
                     and (x["label"] == "false" or x["label"] == "true")
+                    and " i " not in x["claim"].lower()
+                    and len(x["claim"].split()) > 4
+                    and x["claim"].lower().split()[0] != "says"
                 )
                 .select(list(range(50)))
             )
