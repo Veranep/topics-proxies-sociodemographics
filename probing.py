@@ -39,6 +39,7 @@ def balanced_subsample(df, col):
         if key not in vals[col]:
             max_amount = val_counts[i]
             break
+    print(val_counts, max_amount)
 
     indices_to_drop = []
     for val in vals[col]:
@@ -184,11 +185,22 @@ def train_probe(
     }
     for demographic_col in tqdm(demographic_cols):
         if rebalance:
-            df = balanced_subsample(df, demographic_col)
+            rebalance_df = balanced_subsample(df, demographic_col)
         results[demographic_col] = []
         for l in tqdm(range(n_layers)):
-            X = np.array([rep[l] for rep in df["representations"].tolist()])
-            y = np.array(df[demographic_col].tolist())
+            if rebalance:
+                X = np.array(
+                    [
+                        rep[l]
+                        for rep in rebalance_df["representations"].tolist()
+                    ]
+                )
+                y = np.array(rebalance_df[demographic_col].tolist())
+            else:
+                X = np.array(
+                    [rep[l] for rep in df["representations"].tolist()]
+                )
+                y = np.array(df[demographic_col].tolist())
             keep_idx = np.where(y != "Prefer not to say")[0]
             y = y[keep_idx]
             X = X[keep_idx]
@@ -387,7 +399,7 @@ if __name__ == "__main__":
             df,
             n_layers,
             args.folder
-            + f"{args.model.split('/')[1]}_probe_results_{args.agg_method}{'_balanced' if args.balanced else ''}.{'_rebalance' if args.rebalance else ''}pkl",
+            + f"{args.model.split('/')[1]}_probe_results_{args.agg_method}{'_balanced' if args.balanced else ''}{'_rebalance' if args.rebalance else ''}.pkl",
             demographic_cols,
             save=False,
             balanced=args.balanced,
