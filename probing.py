@@ -17,6 +17,79 @@ chat_templates = {
 }
 
 
+def balanced_subsample(df, col):
+    vals = {
+        "age": [],
+        "gender": [],
+        "religion": ["No Affiliation", "Christian"],
+        "ethnicity": ["White"],
+        "employment_status": ["Working full-time"],
+        "education": ["University Bachelors Degree"],
+        "birth_region": ["Europe", "Americas"],
+        "reside_region": ["Europe", "Americas"],
+        "marital_status": ["Never been married", "Married"],
+        "english_proficiency": ["Native speaker", "Fluent"],
+    }
+
+    if not len(vals[col]):
+        return df
+
+    val_counts = df[col].value_counts()
+    for i, key in enumerate(val_counts.keys()):
+        if key not in vals[col]:
+            max_amount = val_counts[i]
+            break
+
+    indices_to_drop = []
+    for val in vals[col]:
+        samples = df[df[col] == val].index.values
+        index_range = range(samples.shape[0])
+        indexes = np.random.choice(index_range, size=max_amount, replace=False)
+        indices_to_drop += [idx for idx in samples if idx not in indexes]
+
+    return df.drop(index=indices_to_drop)
+
+
+def rebalance(df):
+    df["age"] = df["age"].replace(
+        {
+            "35-44 years old": "35-54 years old",
+            "45-54 years old": "35-54 years old",
+            "55-64 years old": "55+ years old",
+            "65+ years old": "55+ years old",
+        }
+    )
+    df["employment_status"] = df["employment_status"].replace(
+        {
+            "Unemployed, not seeking work": "Non-Working",
+            "Unemployed, not seeking work": "Non-Working",
+            "Homemaker / Stay-at-home parent": "Non-Working",
+            "Retired": "Non-Working",
+        }
+    )
+    df["education"] = df["education"].replace(
+        {
+            "Some Secondary": "Did Not Complete Secondary School",
+            "Completed Primary School": "Did Not Complete Secondary School",
+            "Some Primary": "Did Not Complete Secondary School",
+        }
+    )
+    df["marital_status"] = df["marital_status"].replace(
+        {
+            "Divorced / Separated": "Divorced / Widowed",
+            "Widowed": "Divorced / Widowed",
+        }
+    )
+    df["english_proficiency"] = df["english_proficiency"].replace(
+        {
+            "Advanced": "Non-Fluent",
+            "Intermediate": "Non-Fluent",
+            "Basic": "Non-Fluent",
+        }
+    )
+    return df
+
+
 def get_repr(df, model, tokenizer, device, agg_method, questions):
     convos = [
         [
@@ -99,6 +172,7 @@ def train_probe(
     demographic_cols,
     save=False,
     balanced=False,
+    rebalance=False,
     save_file="",
 ):
     results = {}
@@ -109,6 +183,8 @@ def train_probe(
         "roc_auc_ovr_weighted": "roc_auc_ovr_weighted",
     }
     for demographic_col in tqdm(demographic_cols):
+        if rebalance:
+            df = balanced_subsample(df, demographic_col)
         results[demographic_col] = []
         for l in tqdm(range(n_layers)):
             X = np.array([rep[l] for rep in df["representations"].tolist()])
@@ -192,6 +268,11 @@ if __name__ == "__main__":
         "--balanced",
         action="store_true",
         help="Whether probe class weight is balanced",
+    )
+    parser.add_argument(
+        "--rebalance",
+        action="store_true",
+        help="Whether classes should be manually rebalanced",
     )
     args = parser.parse_args()
     if args.mode == "representations":
@@ -297,17 +378,22 @@ if __name__ == "__main__":
         "english_proficiency",  # not in facts paper
     ]
     n_layers = len(df.iloc[0]["representations"])
+
+    if args.rebalance:
+        df = rebalance(df)
+
     if args.mode == "probe_cv":
         train_probe(
             df,
             n_layers,
             args.folder
-            + f"{args.model.split('/')[1]}_probe_results_{args.agg_method}{'_balanced' if args.balanced else ''}.pkl",
+            + f"{args.model.split('/')[1]}_probe_results_{args.agg_method}{'_balanced' if args.balanced else ''}.{'_rebalance' if args.rebalance else ''}pkl",
             demographic_cols,
             save=False,
             balanced=args.balanced,
+            rebalance=args.rebalance,
             save_file=args.folder
-            + f"{args.model.split('/')[1]}{'_balanced' if args.balanced else ''}_probe",
+            + f"{args.model.split('/')[1]}{'_balanced' if args.balanced else ''}{'_rebalance' if args.rebalance else ''}_probe",
         )
 
     elif args.mode == "probe_save":
@@ -315,10 +401,11 @@ if __name__ == "__main__":
             df,
             n_layers,
             args.folder
-            + f"{args.model.split('/')[1]}_probe_results_{args.agg_method}{'_balanced' if args.balanced else ''}.pkl",
+            + f"{args.model.split('/')[1]}_probe_results_{args.agg_method}{'_balanced' if args.balanced else ''}{'_rebalance' if args.rebalance else ''}.pkl",
             demographic_cols,
             save=True,
             balanced=args.balanced,
+            rebalance=args.rebalance,
             save_file=args.folder
-            + f"{args.model.split('/')[1]}{'_balanced' if args.balanced else ''}_probe",
+            + f"{args.model.split('/')[1]}{'_balanced' if args.balanced else ''}{'_rebalance' if args.rebalance else ''}_probe",
         )
