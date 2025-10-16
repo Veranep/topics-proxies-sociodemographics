@@ -7,7 +7,7 @@ import pickle
 import torch
 import torch.nn.functional as F
 from tqdm import tqdm
-from transformers import AutoModelForCausalLM
+from transformers import AutoModelForCausalLM, AutoTokenizer
 from transformer_lens import HookedTransformer
 from transformer_lens import utils
 
@@ -305,14 +305,23 @@ if __name__ == "__main__":
                     pickle.dump(neuron_activations, outfile)
 
     if args.mode == "vocab":
+        if os.path.isfile(
+            args.results_dir + f"/{args.model.split('/')[1]}_vocab.pkl"
+        ):
+            with open(
+                args.results_dir + f"/{args.model.split('/')[1]}_vocab.pkl",
+                "rb",
+            ) as infile:
+                vocab = pickle.load(infile)
+
+        else:
+            vocab = {}
         model = AutoModelForCausalLM.from_pretrained(
             args.model,
             torch_dtype=torch.bfloat16,
         ).to(device)
         tokenizer = AutoTokenizer.from_pretrained(args.model)
         unembed = model.lm_head.weight
-
-        vocab = {}
 
         with open(
             args.results_dir + f"/{args.model.split('/')[1]}_neurons.pkl", "rb"
@@ -326,18 +335,22 @@ if __name__ == "__main__":
             neuron_activations = pickle.load(infile)
 
         for demographic_col in tqdm(neurons):
-            vocab[demographic_col] = {}
+            if demographic_col not in vocab:
+                vocab[demographic_col] = {}
             for group in tqdm(neurons[demographic_col]):
-                vocab[demographic_col][group] = {}
+                if group not in vocab[demographic_col]:
+                    vocab[demographic_col][group] = {}
                 filtered_neurons = [
                     n
                     for n in neurons[demographic_col][group]
-                    if neuron_activations[demographic_col][group] > 0
+                    if neuron_activations[demographic_col][group][n] > 0
                 ]
                 for layer_id, neuron_id in filtered_neurons:
-                    down_column = model.transformer.h[
+                    if (layer_id, neuron_id) in vocab[demographic_col][group]:
+                        continue
+                    down_column = model.model.layers[
                         layer_id
-                    ].mlp.down_proj.weight[neuron_id]
+                    ].mlp.down_proj.weight.T[neuron_id]
                     assert unembed.size(1) == down_column.size(0)
 
                     projection = unembed @ down_column
@@ -349,8 +362,10 @@ if __name__ == "__main__":
                     vocab[demographic_col][group][
                         (layer_id, neuron_id)
                     ] = interp
-        with open(
-            args.results_dir + f"/{args.model.split('/')[1]}_vocab.pkl",
-            "wb",
-        ) as outfile:
-            pickle.dump(vocab, outfile)
+                print(vocab)
+                with open(
+                    args.results_dir
+                    + f"/{args.model.split('/')[1]}_vocab.pkl",
+                    "wb",
+                ) as outfile:
+                    pickle.dump(vocab, outfile)
