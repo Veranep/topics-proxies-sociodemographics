@@ -63,7 +63,7 @@ def rebalance(df):
     df["employment_status"] = df["employment_status"].replace(
         {
             "Unemployed, not seeking work": "Non-Working",
-            "Unemployed, not seeking work": "Non-Working",
+            "Unemployed, seeking work": "Non-Working",
             "Homemaker / Stay-at-home parent": "Non-Working",
             "Retired": "Non-Working",
         }
