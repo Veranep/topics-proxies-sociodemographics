@@ -107,6 +107,13 @@ if __name__ == "__main__":
         help="Model to evaluate",
     )
     parser.add_argument(
+        "-d",
+        "--dataset",
+        type=str,
+        default="",
+        help="Question dataset to evaluate model on",
+    )
+    parser.add_argument(
         "--data_dir",
         type=str,
         default="",  # "/scratch/vneplen/sociodemographics-interpretability-mitigation/"
@@ -191,11 +198,11 @@ if __name__ == "__main__":
             neurons = pickle.load(infile)
         if os.path.isfile(
             args.results_dir
-            + f"/{args.model.split('/')[1]}_neuron_activations.pkl"
+            + f"/{args.model.split('/')[1]}{'_'+args.dataset if args.dataset else ''}_neuron_activations.pkl"
         ):
             with open(
                 args.results_dir
-                + f"/{args.model.split('/')[1]}_neuron_activations.pkl",
+                + f"/{args.model.split('/')[1]}{'_'+args.dataset if args.dataset else ''}_neuron_activations.pkl",
                 "rb",
             ) as infile:
                 neuron_activations = pickle.load(infile)
@@ -222,10 +229,17 @@ if __name__ == "__main__":
         special_model.tokenizer.pad_token_id = (
             special_model.tokenizer.eos_token_id
         )
-        df = pd.read_pickle(
-            args.data_dir + "prism_preprocessed.gz",
-            compression="gzip",
-        )
+        if args.dataset:
+            df = pd.read_pickle(
+                args.data_dir + "prism_questions_{args.dataset}.gz",
+                compression="gzip",
+            )
+            df = df[df["age"] != ""]
+        else:
+            df = pd.read_pickle(
+                args.data_dir + "prism_preprocessed.gz",
+                compression="gzip",
+            )
         for demographic_col in tqdm(neurons):
             if demographic_col not in neuron_activations:
                 neuron_activations[demographic_col] = {}
@@ -236,14 +250,32 @@ if __name__ == "__main__":
                 neurons_group = neurons[demographic_col][group]
                 df_group = df[df[demographic_col] == group]
                 convos = [
-                    [
-                        {
-                            "role": turn["role"].replace("model", "assistant"),
-                            "content": turn["content"],
-                        }
-                        for turn in convo
-                        if turn["role"] == "user" or turn["if_chosen"] == True
-                    ]
+                    (
+                        [
+                            {
+                                "role": turn["role"].replace(
+                                    "model", "assistant"
+                                ),
+                                "content": turn["content"],
+                            }
+                            for turn in df.iloc[i]["conversation_history"]
+                            if turn["role"] == "user"
+                            or turn["if_chosen"] == True
+                        ]
+                        + [{"role": "user", "content": df.iloc[i]["question"]}]
+                        if args.dataset
+                        else [
+                            {
+                                "role": turn["role"].replace(
+                                    "model", "assistant"
+                                ),
+                                "content": turn["content"],
+                            }
+                            for turn in convo
+                            if turn["role"] == "user"
+                            or turn["if_chosen"] == True
+                        ]
+                    )
                     for convo in df_group["conversation_history"].tolist()
                 ]
                 for convo in convos:
@@ -299,17 +331,19 @@ if __name__ == "__main__":
                 print(neuron_activations)
                 with open(
                     args.results_dir
-                    + f"/{args.model.split('/')[1]}_neuron_activations.pkl",
+                    + f"/{args.model.split('/')[1]}{'_'+args.dataset if args.dataset else ''}_neuron_activations.pkl",
                     "wb",
                 ) as outfile:
                     pickle.dump(neuron_activations, outfile)
 
     if args.mode == "vocab":
         if os.path.isfile(
-            args.results_dir + f"/{args.model.split('/')[1]}_vocab.pkl"
+            args.results_dir
+            + f"/{args.model.split('/')[1]}{'_'+args.dataset if args.dataset else ''}_vocab.pkl"
         ):
             with open(
-                args.results_dir + f"/{args.model.split('/')[1]}_vocab.pkl",
+                args.results_dir
+                + f"/{args.model.split('/')[1]}{'_'+args.dataset if args.dataset else ''}_vocab.pkl",
                 "rb",
             ) as infile:
                 vocab = pickle.load(infile)
@@ -329,7 +363,7 @@ if __name__ == "__main__":
             neurons = pickle.load(infile)
         with open(
             args.results_dir
-            + f"/{args.model.split('/')[1]}_neuron_activations.pkl",
+            + f"/{args.model.split('/')[1]}{'_'+args.dataset if args.dataset else ''}_neuron_activations.pkl",
             "rb",
         ) as infile:
             neuron_activations = pickle.load(infile)
@@ -365,7 +399,7 @@ if __name__ == "__main__":
                 print(vocab)
                 with open(
                     args.results_dir
-                    + f"/{args.model.split('/')[1]}_vocab.pkl",
+                    + f"/{args.model.split('/')[1]}{'_'+args.dataset if args.dataset else ''}_vocab.pkl",
                     "wb",
                 ) as outfile:
                     pickle.dump(vocab, outfile)
