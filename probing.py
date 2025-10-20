@@ -134,33 +134,61 @@ def get_repr(df, dataset, model, tokenizer, device, agg_method, questions):
                 for convo in convos
             ]
     elif dataset == "trustpilot":
-        inputs = tokenizer(df["text"].tolist(), return_tensors="pt")
+        inputs = [
+            tokenizer(inp, return_tensors="pt") for inp in df["text"].tolist()
+        ]
     if agg_method == "last":
         representations = [
-            [
-                rep[-1, -1, :].detach().cpu().clone().to(torch.float)
-                for rep in model(
-                    inp.to(device),
-                    output_hidden_states=True,
-                    max_new_tokens=1,
-                    return_dict=True,
-                )["hidden_states"]
-            ]
+            (
+                [
+                    rep[-1, -1, :].detach().cpu().clone().to(torch.float)
+                    for rep in model(
+                        inp.to(device),
+                        output_hidden_states=True,
+                        max_new_tokens=1,
+                        return_dict=True,
+                    )["hidden_states"]
+                ]
+                if dataset == "prism"
+                else [
+                    rep[-1, -1, :].detach().cpu().clone().to(torch.float)
+                    for rep in model(
+                        **inp.to(device),
+                        output_hidden_states=True,
+                        max_new_tokens=1,
+                        return_dict=True,
+                    )["hidden_states"]
+                ]
+            )
             for inp in tqdm(inputs)
         ]
     elif agg_method == "mean":
         representations = [
-            [
-                torch.mean(
-                    rep[-1, :, :].detach().cpu().clone().to(torch.float), 0
-                )
-                for rep in model(
-                    inp.to(device),
-                    output_hidden_states=True,
-                    max_new_tokens=1,
-                    return_dict=True,
-                )["hidden_states"]
-            ]
+            (
+                [
+                    torch.mean(
+                        rep[-1, :, :].detach().cpu().clone().to(torch.float), 0
+                    )
+                    for rep in model(
+                        inp.to(device),
+                        output_hidden_states=True,
+                        max_new_tokens=1,
+                        return_dict=True,
+                    )["hidden_states"]
+                ]
+                if dataset == "prism"
+                else [
+                    torch.mean(
+                        rep[-1, :, :].detach().cpu().clone().to(torch.float), 0
+                    )
+                    for rep in model(
+                        **inp.to(device),
+                        output_hidden_states=True,
+                        max_new_tokens=1,
+                        return_dict=True,
+                    )["hidden_states"]
+                ]
+            )
             for inp in tqdm(inputs)
         ]
 
@@ -233,7 +261,9 @@ def train_probe(
                     ]
                 )
                 y_train = np.array(
-                    dfdf[df["label"] == "train"][demographic_col].tolist()
+                    df[df["label"] == "train"][demographic_col]
+                    .replace({"F": 1, "M": 0, "young": 1, "old": 0})
+                    .tolist()
                 )
                 X_test = np.array(
                     [
@@ -244,7 +274,9 @@ def train_probe(
                     ]
                 )
                 y_test = np.array(
-                    dfdf[df["label"] == "test"][demographic_col].tolist()
+                    df[df["label"] == "test"][demographic_col]
+                    .replace({"F": 1, "M": 0, "young": 1, "old": 0})
+                    .tolist()
                 )
 
             clf = LogisticRegression(
@@ -401,11 +433,13 @@ if __name__ == "__main__":
                     [
                         pd.read_excel("data/en_us_TRAIN.xlsx"),
                         pd.read_excel("data/en_us_TEST.xlsx"),
-                    ]
+                    ],
+                    ignore_index=True,
                 ).drop(columns=["Unnamed: 0", "age_cat"])
+                df = df[~pd.isna(df["text"])]
             df = get_repr(
                 df,
-                dataset,
+                args.dataset,
                 model,
                 tokenizer,
                 device,
@@ -457,7 +491,7 @@ if __name__ == "__main__":
     if args.mode == "probe_cv":
         train_probe(
             df,
-            dataset,
+            args.dataset,
             n_layers,
             args.folder
             + f"{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}_probe_results_{args.agg_method}{'_balanced' if args.balanced else ''}{'_rebalance' if args.rebalance else ''}.pkl",
@@ -472,7 +506,7 @@ if __name__ == "__main__":
     elif args.mode == "probe_save":
         train_probe(
             df,
-            dataset,
+            args.dataset,
             n_layers,
             args.folder
             + f"{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}_probe_results_{args.agg_method}{'_balanced' if args.balanced else ''}{'_rebalance' if args.rebalance else ''}.pkl",

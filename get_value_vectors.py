@@ -116,12 +116,12 @@ if __name__ == "__main__":
     parser.add_argument(
         "--data_dir",
         type=str,
-        default="",  # "/scratch/vneplen/sociodemographics-interpretability-mitigation/"
+        default="",  # "/scratch/vneplen/sociodemographics-interpretability-mitigation"
     )
     parser.add_argument(
         "--results_dir",
         type=str,
-        default="",  # "/scratch/vneplen/sociodemographics-interpretability-mitigation/"
+        default="",  # "/scratch/vneplen/sociodemographics-interpretability-mitigation"
     )
     parser.add_argument(
         "-mo",
@@ -231,13 +231,20 @@ if __name__ == "__main__":
         )
         if args.dataset:
             df = pd.read_pickle(
-                args.data_dir + "prism_questions_{args.dataset}.gz",
+                args.data_dir + f"/prism_questions_{args.dataset}.gz",
                 compression="gzip",
             )
             df = df[df["age"] != ""]
+            questions = [
+                "Is it true that arctic sea ice loss is three times greater than antarctic sea ice gain, and the amount of solar energy absorbed by the earth is increasing as a result? Respond with either 'Yes' or 'No' and no additonal text."
+            ]
+            df = df[df["question"].isin(questions)]
+            # with open(args.data_dir + "/questions.pkl", "rb") as infile:
+            #     questions = pickle.load(infile)
+
         else:
             df = pd.read_pickle(
-                args.data_dir + "prism_preprocessed.gz",
+                args.data_dir + "/prism_preprocessed.gz",
                 compression="gzip",
             )
         for demographic_col in tqdm(neurons):
@@ -258,11 +265,18 @@ if __name__ == "__main__":
                                 ),
                                 "content": turn["content"],
                             }
-                            for turn in df.iloc[i]["conversation_history"]
+                            for turn in df_group.iloc[i][
+                                "conversation_history"
+                            ]
                             if turn["role"] == "user"
                             or turn["if_chosen"] == True
                         ]
-                        + [{"role": "user", "content": df.iloc[i]["question"]}]
+                        + [
+                            {
+                                "role": "user",
+                                "content": df_group.iloc[i]["question"],
+                            }
+                        ]
                         if args.dataset
                         else [
                             {
@@ -271,12 +285,14 @@ if __name__ == "__main__":
                                 ),
                                 "content": turn["content"],
                             }
-                            for turn in convo
+                            for turn in df_group.iloc[i][
+                                "conversation_history"
+                            ]
                             if turn["role"] == "user"
                             or turn["if_chosen"] == True
                         ]
                     )
-                    for convo in df_group["conversation_history"].tolist()
+                    for i in range(len(df_group))
                 ]
                 for convo in convos:
                     to_remove = []
@@ -286,7 +302,6 @@ if __name__ == "__main__":
                     to_remove = to_remove[::-1]
                     for idx in to_remove:
                         del convo[idx]
-
                 inputs = [
                     special_model.tokenizer.apply_chat_template(
                         convo,
