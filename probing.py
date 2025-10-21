@@ -44,11 +44,66 @@ def balanced_subsample(df, col):
     indices_to_drop = []
     for val in vals[col]:
         samples = df[df[col] == val].index.values
-        index_range = range(samples.shape[0])
-        indexes = np.random.choice(index_range, size=max_amount, replace=False)
+        indexes = np.random.choice(samples, size=max_amount, replace=False)
         indices_to_drop += [idx for idx in samples if idx not in indexes]
 
     return df.drop(index=indices_to_drop)
+
+
+def select_twoclasses(df, col):
+    if col == "age":
+        df.loc[df[col] == "18-24 years old", col] = 0
+        df.loc[df[col] == "55-64 years old", col] = 1
+        df.loc[df[col] == "65+ years old", col] = 1
+    elif col == "gender":
+        df.loc[df[col] == "Male", col] = 0
+        df.loc[df[col] == "Female", col] = 1
+    elif col == "religion":
+        df.loc[df[col] == "No Affiliation", col] = 0
+        df.loc[df[col] == "Christian", col] = 1
+    elif col == "ethnicity":
+        df.loc[df[col] == "White", col] = 0
+        df.loc[df[col] == "Hispanic", col] = 1
+        df.loc[df[col] == "Black", col] = 1
+        df.loc[df[col] == "Asian", col] = 1
+        df.loc[df[col] == "Mixed", col] = 1
+    elif col == "education":
+        df.loc[df[col] == "Some Primary", col] = 0
+        df.loc[df[col] == "Completed Primary School", col] = 0
+        df.loc[df[col] == "Some Secondary", col] = 0
+        df.loc[df[col] == "Completed Secondary School", col] = 0
+        df.loc[df[col] == "Graduate / Professional degree", col] = 1
+    elif col == "employment_status":
+        df.loc[df[col] == "Student", col] = 0
+        df.loc[df[col] == "Unemployed, seeking work", col] = 0
+        df.loc[df[col] == "Unemployed, not seeking work", col] = 0
+        df.loc[df[col] == "Retired", col] = 0
+        df.loc[df[col] == "Homemaker / Stay-at-home parent", col] = 0
+        df.loc[df[col] == "Working full-time", col] = 1
+    elif col == "birth_region":
+        df.loc[df[col] == "Europe", col] = 0
+        df.loc[df[col] == "Americas", col] = 1
+    elif col == "reside_region":
+        df.loc[df[col] == "Europe", col] = 0
+        df.loc[df[col] == "Americas", col] = 1
+    elif col == "marital_status":
+        df.loc[df[col] == "Never been married", col] = 0
+        df.loc[df[col] == "Married", col] = 1
+    elif col == "english_proficiency":
+        df.loc[df[col] == "Native speaker", col] = 0
+        df.loc[df[col] == "Advanced", col] = 1
+        df.loc[df[col] == "Intermediate", col] = 1
+        df.loc[df[col] == "Basic", col] = 1
+    selected_df = df[df[col].isin([0, 1])].reset_index(drop=True)
+    max_amount = list(selected_df[col].value_counts())[-1]
+
+    indices_to_drop = []
+    for val in [0, 1]:
+        samples = selected_df[selected_df[col] == val].index.values
+        indexes = np.random.choice(samples, size=max_amount, replace=False)
+        indices_to_drop += [idx for idx in samples if idx not in indexes]
+
+    return selected_df.drop(index=indices_to_drop)
 
 
 def rebalance(df):
@@ -206,6 +261,7 @@ def train_probe(
     save=False,
     balanced=False,
     rebalance=False,
+    twoclasses=False,
     save_file="",
 ):
     results = {}
@@ -221,6 +277,8 @@ def train_probe(
             df["age"] = np.where(df["age"] < 35, "young", "old")
         if rebalance:
             rebalance_df = balanced_subsample(df, demographic_col)
+        elif twoclasses:
+            twoclasses_df = select_twoclasses(df, demographic_col)
         results[demographic_col] = []
         for l in tqdm(range(n_layers)):
             if dataset == "prism":
@@ -232,6 +290,16 @@ def train_probe(
                         ]
                     )
                     y = np.array(rebalance_df[demographic_col].tolist())
+                elif twoclasses:
+                    X = np.array(
+                        [
+                            rep[l]
+                            for rep in twoclasses_df[
+                                "representations"
+                            ].tolist()
+                        ]
+                    )
+                    y = np.array(twoclasses_df[demographic_col].tolist())
                 else:
                     X = np.array(
                         [rep[l] for rep in df["representations"].tolist()]
@@ -240,16 +308,19 @@ def train_probe(
                 keep_idx = np.where(y != "Prefer not to say")[0]
                 y = y[keep_idx]
                 X = X[keep_idx]
-                demo_scoring = {
-                    f"f1_{group}": make_scorer(
-                        f1_score,
-                        average="weighted",
-                        labels=[group],
-                        pos_label=None,
-                    )
-                    for group in np.unique(y)
-                }
-                demo_scoring.update(standard_scoring)
+                if not twoclasses:
+                    demo_scoring = {
+                        f"f1_{group}": make_scorer(
+                            f1_score,
+                            average="weighted",
+                            labels=[group],
+                            pos_label=None,
+                        )
+                        for group in np.unique(y)
+                    }
+                    demo_scoring.update(standard_scoring)
+                else:
+                    demo_scoring = ["f1"]
 
             elif dataset == "trustpilot":
                 X_train = np.array(
@@ -365,6 +436,11 @@ if __name__ == "__main__":
         "--rebalance",
         action="store_true",
         help="Whether classes should be manually rebalanced",
+    )
+    parser.add_argument(
+        "--twoclasses",
+        action="store_true",
+        help="Whether probe should only be trained for two large classes",
     )
     args = parser.parse_args()
     if args.mode == "representations":
@@ -494,13 +570,14 @@ if __name__ == "__main__":
             args.dataset,
             n_layers,
             args.folder
-            + f"{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}_probe_results_{args.agg_method}{'_balanced' if args.balanced else ''}{'_rebalance' if args.rebalance else ''}.pkl",
+            + f"{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}_probe_results_{args.agg_method}{'_balanced' if args.balanced else ''}{'_rebalance' if args.rebalance else ''}{'_twoclasses' if args.twoclasses else ''}.pkl",
             demographic_cols,
             save=False,
             balanced=args.balanced,
             rebalance=args.rebalance,
+            twoclasses=args.twoclasses,
             save_file=args.folder
-            + f"{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}{'_balanced' if args.balanced else ''}{'_rebalance' if args.rebalance else ''}_probe",
+            + f"{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}{'_balanced' if args.balanced else ''}{'_rebalance' if args.rebalance else ''}{'_twoclasses' if args.twoclasses else ''}_probe",
         )
 
     elif args.mode == "probe_save":
@@ -509,11 +586,12 @@ if __name__ == "__main__":
             args.dataset,
             n_layers,
             args.folder
-            + f"{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}_probe_results_{args.agg_method}{'_balanced' if args.balanced else ''}{'_rebalance' if args.rebalance else ''}.pkl",
+            + f"{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}_probe_results_{args.agg_method}{'_balanced' if args.balanced else ''}{'_rebalance' if args.rebalance else ''}{'_twoclasses' if args.twoclasses else ''}.pkl",
             demographic_cols,
             save=True,
             balanced=args.balanced,
             rebalance=args.rebalance,
+            twoclasses=args.twoclasses,
             save_file=args.folder
-            + f"{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}{'_balanced' if args.balanced else ''}{'_rebalance' if args.rebalance else ''}_probe",
+            + f"{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}{'_balanced' if args.balanced else ''}{'_rebalance' if args.rebalance else ''}{'_twoclasses' if args.twoclasses else ''}_probe",
         )
