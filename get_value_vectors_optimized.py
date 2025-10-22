@@ -116,7 +116,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--data_dir",
         type=str,
-        default="",  # "/scratch/vneplen/sociodemographics-interpretability-mitigation"
+        default=".",  # "/scratch/vneplen/sociodemographics-interpretability-mitigation"
     )
     parser.add_argument(
         "--results_dir",

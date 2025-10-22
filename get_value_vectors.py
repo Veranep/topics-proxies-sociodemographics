@@ -116,7 +116,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--data_dir",
         type=str,
-        default="",  # "/scratch/vneplen/sociodemographics-interpretability-mitigation"
+        default=".",  # "/scratch/vneplen/sociodemographics-interpretability-mitigation"
     )
     parser.add_argument(
         "--results_dir",
@@ -306,7 +306,7 @@ if __name__ == "__main__":
                     special_model.tokenizer.apply_chat_template(
                         convo,
                         tokenize=False,
-                        add_generation_prompt=True,
+                        add_generation_prompt=True if args.dataset else False,
                     )
                     for convo in convos
                 ]
