@@ -59,10 +59,6 @@ def select_twoclasses(df, col):
         df.loc[df[col] == "Male", col] = 0
         df.loc[df[col] == "Female", col] = 1
     elif col == "religion":
-        # Original
-        # df.loc[df[col] == "No Affiliation", col] = 0
-        # df.loc[df[col] == "Christian", col] = 1
-        # New
         df.loc[df[col] == "No Affiliation", col] = 0
         df.loc[df[col] == "Christian", col] = 1
         df.loc[df[col] == "Jewish", col] = 1
@@ -74,10 +70,8 @@ def select_twoclasses(df, col):
         df.loc[df[col] == "Asian", col] = 1
         df.loc[df[col] == "Mixed", col] = 1
     elif col == "employment_status":
-        # df.loc[df[col] == "Student", col] = 0 Original
         df.loc[df[col] == "Unemployed, seeking work", col] = 0
         df.loc[df[col] == "Unemployed, not seeking work", col] = 0
-        # df.loc[df[col] == "Retired", col] = 0 Original
         df.loc[df[col] == "Homemaker / Stay-at-home parent", col] = 0
         df.loc[df[col] == "Working full-time", col] = 1
     elif col == "education":
