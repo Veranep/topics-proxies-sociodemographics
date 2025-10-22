@@ -59,27 +59,33 @@ def select_twoclasses(df, col):
         df.loc[df[col] == "Male", col] = 0
         df.loc[df[col] == "Female", col] = 1
     elif col == "religion":
+        # Original
+        # df.loc[df[col] == "No Affiliation", col] = 0
+        # df.loc[df[col] == "Christian", col] = 1
+        # New
         df.loc[df[col] == "No Affiliation", col] = 0
         df.loc[df[col] == "Christian", col] = 1
+        df.loc[df[col] == "Jewish", col] = 1
+        df.loc[df[col] == "Muslim", col] = 1
     elif col == "ethnicity":
         df.loc[df[col] == "White", col] = 0
         df.loc[df[col] == "Hispanic", col] = 1
         df.loc[df[col] == "Black", col] = 1
         df.loc[df[col] == "Asian", col] = 1
         df.loc[df[col] == "Mixed", col] = 1
+    elif col == "employment_status":
+        # df.loc[df[col] == "Student", col] = 0 Original
+        df.loc[df[col] == "Unemployed, seeking work", col] = 0
+        df.loc[df[col] == "Unemployed, not seeking work", col] = 0
+        # df.loc[df[col] == "Retired", col] = 0 Original
+        df.loc[df[col] == "Homemaker / Stay-at-home parent", col] = 0
+        df.loc[df[col] == "Working full-time", col] = 1
     elif col == "education":
         df.loc[df[col] == "Some Primary", col] = 0
         df.loc[df[col] == "Completed Primary School", col] = 0
         df.loc[df[col] == "Some Secondary", col] = 0
         df.loc[df[col] == "Completed Secondary School", col] = 0
         df.loc[df[col] == "Graduate / Professional degree", col] = 1
-    elif col == "employment_status":
-        df.loc[df[col] == "Student", col] = 0
-        df.loc[df[col] == "Unemployed, seeking work", col] = 0
-        df.loc[df[col] == "Unemployed, not seeking work", col] = 0
-        df.loc[df[col] == "Retired", col] = 0
-        df.loc[df[col] == "Homemaker / Stay-at-home parent", col] = 0
-        df.loc[df[col] == "Working full-time", col] = 1
     elif col == "birth_region":
         df.loc[df[col] == "Europe", col] = 0
         df.loc[df[col] == "Americas", col] = 1
@@ -183,7 +189,7 @@ def get_repr(df, dataset, model, tokenizer, device, agg_method, questions):
                 tokenizer.apply_chat_template(
                     convo,
                     tokenize=True,
-                    add_generation_prompt=True,
+                    add_generation_prompt=False,
                     return_tensors="pt",
                 )
                 for convo in convos
