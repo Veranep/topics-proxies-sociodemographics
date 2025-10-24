@@ -315,5 +315,5 @@ if __name__ == "__main__":
     df["answer"] = answers
 
     df.to_pickle(
-        f"/scratch/vneplen/sociodemographics-interpretability-mitigation/{args.model.split('/')[1]}_answers_{args.dataset}.gz"
+        f"/scratch/vneplen/sociodemographics-interpretability-mitigation/{args.model.split('/')[1]}_answers_{args.dataset}{'_' + args.mitigation if args.mitigation else ''}.gz"
     )
