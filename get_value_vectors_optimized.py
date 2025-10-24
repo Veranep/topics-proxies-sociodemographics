@@ -307,7 +307,6 @@ if __name__ == "__main__":
         layers_filter = lambda name: name in [
             utils.get_act_name("mlp_post", l) for l in layers_of_interest
         ]
-        print(prompt_tokens.shape)
         for idx in tqdm(range(0, prompt_tokens.shape[0], args.batch_size)):
 
             batch = prompt_tokens[idx : idx + args.batch_size]
@@ -315,8 +314,9 @@ if __name__ == "__main__":
                 logits, cache = special_model.run_with_cache(
                     batch, names_filter=layers_filter
                 )
-                print(cache.shape)
             for idxx in tqdm(range(idx, idx + args.batch_size)):
+                if idxx >= prompt_tokens.shape[0]:
+                    continue
                 vals = {
                     demographic_col: df.loc[idxx, demographic_col]
                     for demographic_col in neurons
@@ -325,16 +325,18 @@ if __name__ == "__main__":
                     if demographic_col not in neuron_activations:
                         neuron_activations[demographic_col] = {}
                         group = vals[demographic_col]
+                        if group not in neurons[demographic_col]:
+                            continue
                         if group not in neuron_activations[demographic_col]:
                             neuron_activations[demographic_col][group] = {
                                 n: [] for n in neurons[demographic_col][group]
                             }
-                        for layer, idx in neurons[demographic_col][group]:
+                        for layer, idxxx in neurons[demographic_col][group]:
                             neuron_activations[demographic_col][group][
-                                (layer, idx)
+                                (layer, idxxx)
                             ].append(
                                 cache[utils.get_act_name("mlp_post", layer)][
-                                    idxx - idx, -1, idx
+                                    idxx - idx, -1, idxxx
                                 ]
                             )
 
@@ -343,11 +345,15 @@ if __name__ == "__main__":
                 for neuron in neuron_activations[demographic_col][group]:
                     neuron_activations[demographic_col][group][neuron] = (
                         np.mean(
-                            neuron_activations[demographic_col][group][neuron]
+                            [
+                                n.cpu().float().numpy()
+                                for n in neuron_activations[demographic_col][
+                                    group
+                                ][neuron]
+                            ]
                         )
                     )
 
-        print(neuron_activations)
         with open(
             args.results_dir
             + f"/{args.model.split('/')[1]}{'_'+args.dataset if args.dataset else ''}_neuron_activations.pkl",
