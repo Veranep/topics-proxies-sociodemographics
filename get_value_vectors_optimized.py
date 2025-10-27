@@ -324,21 +324,23 @@ if __name__ == "__main__":
                 for demographic_col in neurons:
                     if demographic_col not in neuron_activations:
                         neuron_activations[demographic_col] = {}
-                        group = vals[demographic_col]
-                        if group not in neurons[demographic_col]:
-                            continue
-                        if group not in neuron_activations[demographic_col]:
-                            neuron_activations[demographic_col][group] = {
-                                n: [] for n in neurons[demographic_col][group]
-                            }
-                        for layer, idxxx in neurons[demographic_col][group]:
-                            neuron_activations[demographic_col][group][
-                                (layer, idxxx)
-                            ].append(
-                                cache[utils.get_act_name("mlp_post", layer)][
-                                    idxx - idx, -1, idxxx
-                                ]
-                            )
+                    group = vals[demographic_col]
+                    if group not in neurons[demographic_col]:
+                        continue
+                    if group not in neuron_activations[demographic_col]:
+                        neuron_activations[demographic_col][group] = {
+                            n: [] for n in neurons[demographic_col][group]
+                        }
+                    for layer, idxxx in neurons[demographic_col][group]:
+                        neuron_activations[demographic_col][group][
+                            (layer, idxxx)
+                        ].append(
+                            cache[utils.get_act_name("mlp_post", layer)][
+                                idxx - idx, -1, idxxx
+                            ]
+                        )
+            if idx % 200 == 0:
+                print(neuron_activations)
 
         for demographic_col in neuron_activations:
             for group in neuron_activations[demographic_col]:
