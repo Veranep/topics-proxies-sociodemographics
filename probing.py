@@ -415,6 +415,7 @@ if __name__ == "__main__":
         help="Method for aggregating representations across a conversation",
     )
     parser.add_argument(
+        "-f",
         "--folder",
         type=str,
         default="",  # "/scratch/vneplen/sociodemographics-interpretability-mitigation/"
