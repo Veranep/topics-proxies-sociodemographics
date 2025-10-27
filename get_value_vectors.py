@@ -97,6 +97,221 @@ groups = {
     ],
 }
 
+interesting_neurons = {
+    "age": {
+        "18-24 years old": [(15, 10570)],
+        "25-34 years old": [],
+        "35-44 years old": [(1, 4798), (9, 3315)],
+        "45-54 years old": [(14, 3824), (13, 12242)],
+        "55-64 years old": [(16, 9473)],
+        "65+ years old": [(16, 9473), (15, 5335), (14, 3824)],
+    },
+    "gender": {
+        "Female": [
+            (15, 5337),
+            (7, 6142),
+            (13, 12372),
+            (19, 13069),
+            (9, 9353),
+            (3, 10189),
+            (6, 12345),
+        ],
+        "Male": [
+            (15, 4128),
+            (14, 4248),
+        ],  # there are many more 'herself' neurons than 'himself' neurons
+        "Non-binary / third gender": [],
+    },
+    "religion": {
+        "Christian": [],
+        "Jewish": [(25, 3), (12, 10121), (26, 7736), (24, 7768)],
+        "Muslim": [(27, 11207)],
+        "No Affiliation": [],
+        "Other": [(19, 14223)],
+    },
+    "ethnicity": {
+        "Asian": [
+            (19, 2676),
+        ],
+        "Black": [
+            (13, 8247),
+            (20, 3022),
+            (15, 7906),
+            (6, 1949),
+            (27, 9625),
+            (22, 4804),
+            (6, 1949),
+        ],
+        "Hispanic": [(16, 5887)],
+        "Mixed": [(31, 12111)],
+        "Other": [(16, 290), (26, 4102), (4, 8338)],
+        "White": [
+            (18, 1513),
+            (7, 13098),
+            (14, 1663),
+            (7, 5240),
+            (12, 9907),
+        ],
+    },
+    "employment_status": {
+        "Homemaker / Stay-at-home parent": [
+            (15, 5337),
+            (15, 4030),
+            (16, 10635),
+            (7, 11311),
+            (14, 3824),
+        ],
+        "Retired": [(16, 9473), (12, 6809), (14, 3824)],
+        "Student": [(20, 4110), (15, 10570), (20, 6742)],
+        "Unemployed, not seeking work": [
+            (2, 5887),
+        ],
+        "Unemployed, seeking work": [
+            (31, 3252),
+        ],
+        "Working full-time": [
+            (1, 12521),
+            (16, 12729),
+            (14, 9098),
+            (24, 4294),
+            (18, 4513),
+        ],
+        "Working part-time": [
+            (22, 7385),
+        ],
+    },
+    "education": {
+        "Completed Primary School": [
+            (19, 10255),
+            (21, 1781),
+            (20, 6742),
+            (20, 7158),
+            (16, 4945),
+            (21, 9396),
+        ],
+        "Completed Secondary School": [
+            (16, 1633),
+            (18, 1513),
+        ],
+        "Graduate / Professional degree": [(1, 14096)],
+        "Some Primary": [(9, 4594)],
+        "Some Secondary": [
+            (9, 11428),
+            (22, 7971),
+            (11, 14254),
+            (16, 9087),
+            (17, 2782),
+        ],
+        "Some University but no degree": [
+            (13, 9633),
+            (14, 3718),
+            (14, 9825),
+        ],
+        "University Bachelors Degree": [
+            (4, 8065),
+            (25, 9825),
+            (16, 14122),
+        ],
+        "Vocational": [
+            (22, 1465),
+            (20, 12891),
+            (12, 12395),
+            (12, 9907),
+            (31, 357),
+            (14, 1663),
+        ],
+    },
+    "birth_region": {
+        "Africa": [
+            (21, 10771),
+            (18, 10493),
+            (13, 8247),
+            (28, 13863),
+            (15, 7906),
+            (6, 1949),
+            (27, 9625),
+        ],
+        "Americas": [
+            (20, 6742),
+            (14, 3718),
+            (19, 10255),
+            (9, 5768),
+            (10, 4139),
+            (16, 8310),
+            (18, 10761),
+        ],  # many american spelling
+        "Asia": [(19, 2676)],
+        "Europe": [
+            (18, 1513),
+            (16, 13518),
+            (16, 11662),
+            (16, 11662),
+            (7, 13098),
+            (17, 12173),
+        ],
+        "Oceania": [
+            (7, 3427),
+            (29, 9632),
+            (6, 12193),
+            (31, 11553),
+            (16, 290),
+            (9, 5716),
+        ],
+    },
+    "reside_region": {
+        "Africa": [
+            (18, 10493),
+            (20, 3022),
+        ],  # have not listed all of them, but very similar to birth region
+        "Americas": [
+            (13, 9633),
+            (10, 4139),
+            (20, 6742),
+            (16, 4945),
+            (19, 10255),
+        ],
+        "Asia": [(19, 2676), (25, 3), (24, 8135)],
+        "Europe": [
+            (18, 1513),
+            (16, 13518),
+            (11, 4190),
+            (29, 2852),
+        ],
+        "Oceania": [
+            (23, 9359),
+            (5, 13524),
+            (31, 11553),
+            (29, 9632),
+        ],
+    },
+    "marital_status": {
+        "Divorced / Separated": [(7, 578)],
+        "Married": [(1, 4798), (14, 3824), (19, 6460), (19, 6460)],
+        "Never been married": [(0, 3521)],
+        "Widowed": [(1, 4798)],
+    },
+    "english_proficiency": {
+        "Advanced": [
+            (17, 12173),
+            (5, 10888),
+            (14, 10950),
+            (20, 6742),
+        ],
+        "Basic": [(2, 4190)],
+        "Fluent": [(13, 1626), (9, 5768)],
+        "Intermediate": [(2, 4190), (17, 12173), (1, 198)],
+        "Native speaker": [
+            (17, 10962),
+            (9, 533),
+            (20, 12891),
+            (11, 4190),
+            (16, 9473),
+            (13, 11171),
+        ],
+    },
+}
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -127,7 +342,7 @@ if __name__ == "__main__":
         "-mo",
         "--mode",
         type=str,
-        choices=["neurons", "activations", "vocab"],
+        choices=["neurons", "activations", "cross_check_activations", "vocab"],
     )
     parser.add_argument(
         "-bs",
@@ -191,24 +406,43 @@ if __name__ == "__main__":
         ) as outfile:
             pickle.dump(neurons, outfile)
 
-    if args.mode == "activations":
-        with open(
-            args.results_dir + f"/{args.model.split('/')[1]}_neurons.pkl", "rb"
-        ) as infile:
-            neurons = pickle.load(infile)
-        if os.path.isfile(
-            args.results_dir
-            + f"/{args.model.split('/')[1]}{'_'+args.dataset if args.dataset else ''}_neuron_activations.pkl"
-        ):
+    if args.mode == "activations" or args.mode == "cross_check_activations":
+        if args.mode == "activations":
             with open(
-                args.results_dir
-                + f"/{args.model.split('/')[1]}{'_'+args.dataset if args.dataset else ''}_neuron_activations.pkl",
+                args.results_dir + f"/{args.model.split('/')[1]}_neurons.pkl",
                 "rb",
             ) as infile:
-                neuron_activations = pickle.load(infile)
+                neurons = pickle.load(infile)
+            if os.path.isfile(
+                args.results_dir
+                + f"/{args.model.split('/')[1]}{'_'+args.dataset if args.dataset else ''}_neuron_activations.pkl"
+            ):
+                with open(
+                    args.results_dir
+                    + f"/{args.model.split('/')[1]}{'_'+args.dataset if args.dataset else ''}_neuron_activations.pkl",
+                    "rb",
+                ) as infile:
+                    neuron_activations = pickle.load(infile)
 
+            else:
+                neuron_activations = {}
         else:
             neuron_activations = {}
+
+            neurons = {
+                demo: {
+                    groups[demo][i][0]: [] for i in range(len(groups[demo]))
+                }
+                for demo in groups
+            }
+
+            for demo in interesting_neurons:
+                for group1 in interesting_neurons[demo]:
+                    for group2 in neurons[demo]:
+                        if group1 != group2:
+                            for neuron in interesting_neurons[demo][group1]:
+                                neurons[demo][group2].append(neuron)
+            print(neurons)
 
         try:
             special_model = HookedTransformer.from_pretrained(
@@ -346,7 +580,7 @@ if __name__ == "__main__":
                 print(neuron_activations)
                 with open(
                     args.results_dir
-                    + f"/{args.model.split('/')[1]}{'_'+args.dataset if args.dataset else ''}_neuron_activations.pkl",
+                    + f"/{args.model.split('/')[1]}{'_'+args.dataset if args.dataset else ''}_neuron_activations{'_cross_check' if args.mode == 'cross_check_activations' else ''}.pkl",
                     "wb",
                 ) as outfile:
                     pickle.dump(neuron_activations, outfile)
