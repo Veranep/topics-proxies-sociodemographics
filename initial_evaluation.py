@@ -11,6 +11,8 @@ import pandas as pd
 import itertools
 import xml.etree.ElementTree as ET
 
+from mitigate import get_layer_names, modified_model
+
 
 def get_convo(row, mitigation):
 
@@ -106,7 +108,13 @@ if __name__ == "__main__":
         "--mitigation",
         type=str,
         default=None,
-        choices=[None, "system_general", "system_ethnicity", "user_specific"],
+        choices=[
+            None,
+            "system_general",
+            "system_ethnicity",
+            "user_specific",
+            "probe_ethnicity",
+        ],
     )
     args = parser.parse_args()
     np.random.seed(42)
@@ -273,37 +281,105 @@ if __name__ == "__main__":
     #     ]
 
     # else:
-    convos = [get_convo(df.iloc[i], args.mitigation) for i in range(len(df))]
-    for convo in convos:
-        to_remove = []
-        for i in range(len(convo)):
-            if i > 0 and convo[i]["role"] == convo[i - 1]["role"]:
-                to_remove.append(i)
-        to_remove = to_remove[::-1]
-        for idx in to_remove:
-            del convo[idx]
 
-    conversations_with_questions = [
-        tokenizer.apply_chat_template(
-            convo,
-            tokenize=False,
-            add_generation_prompt=True,
+    # TODO load probes
+    if args.mitigation == "probe_ethnicity":
+        probes = {
+            n: pickle.load(
+                open(
+                    save_file
+                    + f"/scratch/vneplen/sociodemographics-interpretability-mitigation/olmo_probe/{args.model.split('/')[1]}_twoclasses_probe.pkl_ethnicity_{n}.pkl",
+                    "rb",
+                )
+            )
+            for n in range(n_layers)
+        }
+        N = 2
+        modified_layer_names = get_layer_names(model.model)
+        df_0 = df[df["ethnicity"] == "White"].reset_index(drop=True)
+        df_1 = df[
+            df["ethnicity"].isin(["Hispanic", "Black", "Asian", "Mixed"])
+        ].reset_index(drop=True)
+        convos_0 = [
+            get_convo(df.iloc[i], args.mitigation) for i in range(len(df_0))
+        ]
+        convos_1 = [
+            get_convo(df.iloc[i], args.mitigation) for i in range(len(df_1))
+        ]
+        conversations_with_questions_0 = [
+            tokenizer.apply_chat_template(
+                convo,
+                tokenize=False,
+                add_generation_prompt=True,
+            )
+            for convo in convos_0
+        ]
+        conversations_with_questions_1 = [
+            tokenizer.apply_chat_template(
+                convo,
+                tokenize=False,
+                add_generation_prompt=True,
+            )
+            for convo in convos_1
+        ]
+        answers_0 = modified_model(
+            model,
+            probes,
+            modified_layer_names,
+            "ethnicity",
+            0,
+            args.batch_size,
+            conversations_with_questions_0,
+            N,
         )
-        for convo in convos
-    ]
-    answers = [
-        answer[0]["generated_text"].lower()
-        for answer in tqdm(
-            model(
-                ListDataset(conversations_with_questions),
-                batch_size=args.batch_size,
-                do_sample=False,
-                max_new_tokens=1,
-                return_full_text=False,
-            ),
-            total=len(conversations_with_questions),
+        answers_1 = modified_model(
+            model,
+            probes,
+            modified_layer_names,
+            "ethnicity",
+            1,
+            args.batch_size,
+            conversations_with_questions_1,
+            N,
         )
-    ]
+        df_0["answer"] = answers_0
+        df_1["answer"] = answers_1
+        df = pd.concat([df_0, df_1], ignore_index=True)
+    else:
+        convos = [
+            get_convo(df.iloc[i], args.mitigation) for i in range(len(df))
+        ]
+        for convo in convos:
+            to_remove = []
+            for i in range(len(convo)):
+                if i > 0 and convo[i]["role"] == convo[i - 1]["role"]:
+                    to_remove.append(i)
+            to_remove = to_remove[::-1]
+            for idx in to_remove:
+                del convo[idx]
+
+        conversations_with_questions = [
+            tokenizer.apply_chat_template(
+                convo,
+                tokenize=False,
+                add_generation_prompt=True,
+            )
+            for convo in convos
+        ]
+        answers = [
+            answer[0]["generated_text"].lower()
+            for answer in tqdm(
+                model(
+                    ListDataset(conversations_with_questions),
+                    batch_size=args.batch_size,
+                    do_sample=False,
+                    max_new_tokens=1,
+                    return_full_text=False,
+                ),
+                total=len(conversations_with_questions),
+            )
+        ]
+        df["answer"] = answers
 
     # if os.path.isfile(
     #     f"/scratch/vneplen/sociodemographics-interpretability-mitigation/{args.model.split('/')[1]}_answers_{args.dataset}.gz"
@@ -312,7 +388,6 @@ if __name__ == "__main__":
     #     question_only_df = pd.DataFrame(question_only)
     #     df = pd.concat([df, question_only_df], ignore_index=True)
     # else:
-    df["answer"] = answers
 
     df.to_pickle(
         f"/scratch/vneplen/sociodemographics-interpretability-mitigation/{args.model.split('/')[1]}_answers_{args.dataset}{'_' + args.mitigation if args.mitigation else ''}.gz"
