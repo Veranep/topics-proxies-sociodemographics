@@ -127,7 +127,7 @@ if __name__ == "__main__":
         "-mo",
         "--mode",
         type=str,
-        choices=["neurons", "activations", "vocab"],
+        choices=["neurons", "activations", "cross_check_activations", "vocab"],
     )
     parser.add_argument(
         "-bs",
@@ -212,18 +212,22 @@ if __name__ == "__main__":
 
         try:
             special_model = HookedTransformer.from_pretrained(
-                args.model, torch_dtype=torch.bfloat16, device=device
+                args.model,
+                torch_dtype=torch.bfloat16,
+                device=device,
+                n_devices=4,
             )
         except:
-            special_model_hf = AutoModelForCausalLM.from_pretrained(
+            special_model = AutoModelForCausalLM.from_pretrained(
                 args.model,
                 torch_dtype=torch.bfloat16,
             )
             special_model = HookedTransformer.from_pretrained(
                 args.model.split("/")[1],
-                hf_model=special_model_hf,
+                hf_model=special_model,
                 torch_dtype=torch.bfloat16,
                 device=device,
+                n_devices=4,
             )
         special_model.tokenizer.padding_side = "left"
         special_model.tokenizer.pad_token_id = (
@@ -338,6 +342,9 @@ if __name__ == "__main__":
                             cache[utils.get_act_name("mlp_post", layer)][
                                 idxx - idx, -1, idxxx
                             ]
+                            .cpu()
+                            .float()
+                            .numpy()
                         )
             if idx % 200 == 0:
                 print(neuron_activations)
@@ -347,12 +354,13 @@ if __name__ == "__main__":
                 for neuron in neuron_activations[demographic_col][group]:
                     neuron_activations[demographic_col][group][neuron] = (
                         np.mean(
-                            [
-                                n.cpu().float().numpy()
-                                for n in neuron_activations[demographic_col][
-                                    group
-                                ][neuron]
-                            ]
+                            neuron_activations[demographic_col][group][neuron]
+                            # [
+                            #     n.cpu().float().numpy()
+                            #     for n in neuron_activations[demographic_col][
+                            #         group
+                            #     ][neuron]
+                            # ]
                         )
                     )
 
@@ -362,6 +370,176 @@ if __name__ == "__main__":
             "wb",
         ) as outfile:
             pickle.dump(neuron_activations, outfile)
+
+    if args.mode == "cross_check_activations":
+        try:
+            special_model = HookedTransformer.from_pretrained(
+                args.model, torch_dtype=torch.bfloat16, device=device
+            )
+        except:
+            special_model_hf = AutoModelForCausalLM.from_pretrained(
+                args.model,
+                torch_dtype=torch.bfloat16,
+            )
+            special_model = HookedTransformer.from_pretrained(
+                args.model.split("/")[1],
+                hf_model=special_model_hf,
+                torch_dtype=torch.bfloat16,
+                device=device,
+            )
+        special_model.tokenizer.padding_side = "left"
+        special_model.tokenizer.pad_token_id = (
+            special_model.tokenizer.eos_token_id
+        )
+        if args.dataset:
+            df = pd.read_pickle(
+                args.data_dir + f"/prism_questions_{args.dataset}.gz",
+                compression="gzip",
+            )
+            df = df[df["age"] != ""]
+            questions = [
+                "Is it true that arctic sea ice loss is three times greater than antarctic sea ice gain, and the amount of solar energy absorbed by the earth is increasing as a result? Respond with either 'Yes' or 'No' and no additonal text."
+            ]
+            df = df[df["question"].isin(questions)]
+            # with open(args.data_dir + "/questions.pkl", "rb") as infile:
+            #     questions = pickle.load(infile)
+
+        else:
+            df = pd.read_pickle(
+                args.data_dir + "/prism_preprocessed.gz",
+                compression="gzip",
+            )
+
+        convos = [
+            (
+                [
+                    {
+                        "role": turn["role"].replace("model", "assistant"),
+                        "content": turn["content"],
+                    }
+                    for turn in df.iloc[i]["conversation_history"]
+                    if turn["role"] == "user" or turn["if_chosen"] == True
+                ]
+                + [
+                    {
+                        "role": "user",
+                        "content": df.iloc[i]["question"],
+                    }
+                ]
+                if args.dataset
+                else [
+                    {
+                        "role": turn["role"].replace("model", "assistant"),
+                        "content": turn["content"],
+                    }
+                    for turn in df.iloc[i]["conversation_history"]
+                    if turn["role"] == "user" or turn["if_chosen"] == True
+                ]
+            )
+            for i in range(len(df))
+        ]
+        for convo in convos:
+            to_remove = []
+            for i in range(len(convo)):
+                if i > 0 and convo[i]["role"] == convo[i - 1]["role"]:
+                    to_remove.append(i)
+            to_remove = to_remove[::-1]
+            for idx in to_remove:
+                del convo[idx]
+        inputs = [
+            special_model.tokenizer.apply_chat_template(
+                convo,
+                tokenize=False,
+                add_generation_prompt=True if args.dataset else False,
+            )
+            for convo in convos
+        ]
+        prompt_tokens = special_model.to_tokens(inputs).to(device)
+
+        with open(
+            args.results_dir
+            + f"/{args.model.split('/')[1]}{'_'+args.dataset if args.dataset else ''}_interesting_neurons.pkl",
+            "rb",
+        ) as infile:
+            interesting_neurons = pickle.load(infile)
+
+        activations_to_check = {
+            demo: {groups[demo][i][0]: {}}
+            for demo in groups
+            for i in range(len(groups[demo]))
+        }
+
+        for demo in interesting_neurons:
+            for group1 in interesting_neurons[demo]:
+                for group2 in activations_to_check[demo]:
+                    if group1 != group2:
+                        for neuron in interesting_neurons[demo][group1]:
+                            activations_to_check[demo][group2][neuron] = []
+
+        layers_of_interest = list(
+            set(
+                [
+                    n[0]
+                    for demographic_col in activations_to_check
+                    for group in activations_to_check[demographic_col]
+                    for n in activations_to_check[demographic_col][group]
+                ]
+            )
+        )
+        layers_filter = lambda name: name in [
+            utils.get_act_name("mlp_post", l) for l in layers_of_interest
+        ]
+        for idx in tqdm(range(0, prompt_tokens.shape[0], args.batch_size)):
+
+            batch = prompt_tokens[idx : idx + args.batch_size]
+            with torch.inference_mode():
+                logits, cache = special_model.run_with_cache(
+                    batch, names_filter=layers_filter
+                )
+            for idxx in tqdm(range(idx, idx + args.batch_size)):
+                if idxx >= prompt_tokens.shape[0]:
+                    continue
+                vals = {
+                    demographic_col: df.loc[idxx, demographic_col]
+                    for demographic_col in activations_to_check
+                }
+                for demographic_col in activations_to_check:
+                    group = vals[demographic_col]
+                    if group not in activations_to_check[demographic_col]:
+                        continue
+                    for layer, idxxx in activations_to_check[demographic_col][
+                        group
+                    ]:
+                        activations_to_check[demographic_col][group][
+                            (layer, idxxx)
+                        ].append(
+                            cache[utils.get_act_name("mlp_post", layer)][
+                                idxx - idx, -1, idxxx
+                            ]
+                        )
+            if idx % 200 == 0:
+                print(activations_to_check)
+
+        for demographic_col in activations_to_check:
+            for group in activations_to_check[demographic_col]:
+                for neuron in activations_to_check[demographic_col][group]:
+                    activations_to_check[demographic_col][group][neuron] = (
+                        np.mean(
+                            [
+                                n.cpu().float().numpy()
+                                for n in activations_to_check[demographic_col][
+                                    group
+                                ][neuron]
+                            ]
+                        )
+                    )
+
+        with open(
+            args.results_dir
+            + f"/{args.model.split('/')[1]}{'_'+args.dataset if args.dataset else ''}_neuron_activations_crosscheck.pkl",
+            "wb",
+        ) as outfile:
+            pickle.dump(activations_to_check, outfile)
 
     if args.mode == "vocab":
         if os.path.isfile(
