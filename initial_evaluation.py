@@ -284,6 +284,8 @@ if __name__ == "__main__":
 
     # TODO load probes
     if args.mitigation == "probe_ethnicity":
+        N = 2
+        n_layers = 33
         probes = {
             n: pickle.load(
                 open(
@@ -294,7 +296,6 @@ if __name__ == "__main__":
             )
             for n in range(n_layers)
         }
-        N = 2
         modified_layer_names = get_layer_names(model.model)
         df_0 = df[df["ethnicity"] == "White"].reset_index(drop=True)
         df_1 = df[
