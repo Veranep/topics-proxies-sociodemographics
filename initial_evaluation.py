@@ -290,8 +290,7 @@ if __name__ == "__main__":
         probes = {
             n: pickle.load(
                 open(
-                    save_file
-                    + f"/scratch/vneplen/sociodemographics-interpretability-mitigation/olmo_probe/{args.model.split('/')[1]}_twoclasses_probe.pkl_ethnicity_{n}.pkl",
+                    f"/scratch/vneplen/sociodemographics-interpretability-mitigation/olmo_probe/{args.model.split('/')[1]}_twoclasses_probe.pkl_ethnicity_{n}.pkl",
                     "rb",
                 )
             )
