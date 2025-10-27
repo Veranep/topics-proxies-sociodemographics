@@ -8,6 +8,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
 import numpy as np
 import os
 import pandas as pd
+import pickle
 import itertools
 import xml.etree.ElementTree as ET
 
