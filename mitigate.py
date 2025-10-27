@@ -1,8 +1,6 @@
 from baukit import TraceDict
-from utils import probe_targets
 import torch
 from torch import nn
-from train_probe import get_tokenized_chat
 from tqdm import tqdm
 
 
