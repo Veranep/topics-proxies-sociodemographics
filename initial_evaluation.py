@@ -285,7 +285,6 @@ if __name__ == "__main__":
 
     # TODO load probes
     if args.mitigation == "probe_ethnicity":
-        df = df.iloc[:100]
         N = 2
         n_layers = 33
         probes = {
