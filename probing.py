@@ -542,7 +542,7 @@ if __name__ == "__main__":
 
     df = pd.read_pickle(
         args.folder
-        + f"{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}_{args.agg_method}_representations.gz",
+        + f"/{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}_{args.agg_method}_representations.gz",
         compression="gzip",
     )
 
@@ -572,14 +572,14 @@ if __name__ == "__main__":
             args.dataset,
             n_layers,
             args.folder
-            + f"{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}_probe_results_{args.agg_method}{'_balanced' if args.balanced else ''}{'_rebalance' if args.rebalance else ''}{'_twoclasses' if args.twoclasses else ''}.pkl",
+            + f"/{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}_probe_results_{args.agg_method}{'_balanced' if args.balanced else ''}{'_rebalance' if args.rebalance else ''}{'_twoclasses' if args.twoclasses else ''}.pkl",
             demographic_cols,
             save=False,
             balanced=args.balanced,
             rebalance=args.rebalance,
             twoclasses=args.twoclasses,
             save_file=args.folder
-            + f"{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}{'_balanced' if args.balanced else ''}{'_rebalance' if args.rebalance else ''}{'_twoclasses' if args.twoclasses else ''}_probe",
+            + f"/{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}{'_balanced' if args.balanced else ''}{'_rebalance' if args.rebalance else ''}{'_twoclasses' if args.twoclasses else ''}_probe",
         )
 
     elif args.mode == "probe_save":
@@ -588,12 +588,12 @@ if __name__ == "__main__":
             args.dataset,
             n_layers,
             args.folder
-            + f"{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}_probe_results_{args.agg_method}{'_balanced' if args.balanced else ''}{'_rebalance' if args.rebalance else ''}{'_twoclasses' if args.twoclasses else ''}.pkl",
+            + f"/{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}_probe_results_{args.agg_method}{'_balanced' if args.balanced else ''}{'_rebalance' if args.rebalance else ''}{'_twoclasses' if args.twoclasses else ''}.pkl",
             demographic_cols,
             save=True,
             balanced=args.balanced,
             rebalance=args.rebalance,
             twoclasses=args.twoclasses,
             save_file=args.folder
-            + f"{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}{'_balanced' if args.balanced else ''}{'_rebalance' if args.rebalance else ''}{'_twoclasses' if args.twoclasses else ''}_probe",
+            + f"/{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}{'_balanced' if args.balanced else ''}{'_rebalance' if args.rebalance else ''}{'_twoclasses' if args.twoclasses else ''}_probe",
         )

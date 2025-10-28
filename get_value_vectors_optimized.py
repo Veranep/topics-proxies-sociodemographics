@@ -346,8 +346,8 @@ if __name__ == "__main__":
                             .float()
                             .numpy()
                         )
-            if idx % 200 == 0:
-                print(neuron_activations)
+            # if idx % 200 == 0:
+            #     print(neuron_activations)
 
         for demographic_col in neuron_activations:
             for group in neuron_activations[demographic_col]:
@@ -517,8 +517,8 @@ if __name__ == "__main__":
                                 idxx - idx, -1, idxxx
                             ]
                         )
-            if idx % 200 == 0:
-                print(activations_to_check)
+            # if idx % 200 == 0:
+            #     print(activations_to_check)
 
         for demographic_col in activations_to_check:
             for group in activations_to_check[demographic_col]:
