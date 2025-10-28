@@ -285,7 +285,8 @@ if __name__ == "__main__":
 
     # TODO load probes
     if args.mitigation == "probe_ethnicity":
-        N = 2
+        df = df.iloc[:100]
+        N = 1
         n_layers = 33
         probes = {
             n: pickle.load(
