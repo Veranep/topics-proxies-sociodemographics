@@ -82,13 +82,14 @@ def modified_model(
         edit_output=edit_inter_rep_multi_layers,
     ) as ret:
         model_answer = [
-            answer[0]["generated_text"][-1]["content"]
+            answer[0]["generated_text"].lower()
             for answer in tqdm(
                 model(
                     question_convos,
                     batch_size=batch_size,
                     do_sample=False,
-                    max_new_tokens=100,
+                    max_new_tokens=1,
+                    return_full_text=False,
                 ),
                 total=len(question_convos),
             )
