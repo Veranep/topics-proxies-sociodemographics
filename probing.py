@@ -232,6 +232,7 @@ def get_repr(
                     )["hidden_states"]
                 ]
                 if dataset == "prism"
+                and (not first or tokenizer.chat_template)
                 else [
                     rep[-1, -1, :].detach().cpu().clone().to(torch.float)
                     for rep in model(
@@ -259,6 +260,7 @@ def get_repr(
                     )["hidden_states"]
                 ]
                 if dataset == "prism"
+                and (not first or tokenizer.chat_template)
                 else [
                     torch.mean(
                         rep[-1, :, :].detach().cpu().clone().to(torch.float), 0
