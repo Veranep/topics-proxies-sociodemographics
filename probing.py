@@ -147,48 +147,74 @@ def rebalance(df):
     return df
 
 
-def get_repr(df, dataset, model, tokenizer, device, agg_method, questions):
+def get_repr(
+    df, dataset, model, tokenizer, device, agg_method, questions, first
+):
     if dataset == "prism":
-        convos = [
-            [
-                {
-                    "role": turn["role"].replace("model", "assistant"),
-                    "content": turn["content"],
-                }
-                for turn in convo
-                if turn["role"] == "user" or turn["if_chosen"] == True
-            ]
-            for convo in df["conversation_history"].tolist()
-        ]
-        for convo in convos:
-            to_remove = []
-            for i in range(len(convo)):
-                if i > 0 and convo[i]["role"] == convo[i - 1]["role"]:
-                    to_remove.append(i)
-            to_remove = to_remove[::-1]
-            for idx in to_remove:
-                del convo[idx]
-        if questions:
-            inputs = [
-                tokenizer.apply_chat_template(
-                    convo + [{"role": "user", "content": question}],
-                    tokenize=True,
-                    add_generation_prompt=True,
-                    return_tensors="pt",
+        if first:
+            convos = [
+                (
+                    [{"role": "user", "content": op}]
+                    if tokenizer.chat_template
+                    else op
                 )
-                for question in questions
-                for convo in convos
+                for op in df["opening_prompt"].tolist()
             ]
+            if tokenizer.chat_template:
+                inputs = [
+                    tokenizer.apply_chat_template(
+                        convo,
+                        tokenize=True,
+                        add_generation_prompt=False,
+                        return_tensors="pt",
+                    )
+                    for convo in convos
+                ]
+            else:
+                inputs = [
+                    tokenizer(inp, return_tensors="pt") for inp in convos
+                ]
         else:
-            inputs = [
-                tokenizer.apply_chat_template(
-                    convo,
-                    tokenize=True,
-                    add_generation_prompt=False,
-                    return_tensors="pt",
-                )
-                for convo in convos
+            convos = [
+                [
+                    {
+                        "role": turn["role"].replace("model", "assistant"),
+                        "content": turn["content"],
+                    }
+                    for turn in convo
+                    if turn["role"] == "user" or turn["if_chosen"] == True
+                ]
+                for convo in df["conversation_history"].tolist()
             ]
+            for convo in convos:
+                to_remove = []
+                for i in range(len(convo)):
+                    if i > 0 and convo[i]["role"] == convo[i - 1]["role"]:
+                        to_remove.append(i)
+                to_remove = to_remove[::-1]
+                for idx in to_remove:
+                    del convo[idx]
+            if questions:
+                inputs = [
+                    tokenizer.apply_chat_template(
+                        convo + [{"role": "user", "content": question}],
+                        tokenize=True,
+                        add_generation_prompt=True,
+                        return_tensors="pt",
+                    )
+                    for question in questions
+                    for convo in convos
+                ]
+            else:
+                inputs = [
+                    tokenizer.apply_chat_template(
+                        convo,
+                        tokenize=True,
+                        add_generation_prompt=False,
+                        return_tensors="pt",
+                    )
+                    for convo in convos
+                ]
     elif dataset == "trustpilot":
         inputs = [
             tokenizer(inp, return_tensors="pt") for inp in df["text"].tolist()
@@ -260,6 +286,7 @@ def train_probe(
     results_file,
     demographic_cols,
     save=False,
+    data_subset="all",
     balanced=False,
     rebalance=False,
     twoclasses=False,
@@ -279,7 +306,11 @@ def train_probe(
         if rebalance:
             rebalance_df = balanced_subsample(df, demographic_col)
         elif twoclasses:
-            twoclasses_df = select_twoclasses(df, demographic_col)
+            if data_subset != "all":
+                twoclasses_df = df[df["conversation_type"] == data_subset]
+            else:
+                twoclasses_df = df
+            twoclasses_df = select_twoclasses(two_classes_df, demographic_col)
         results[demographic_col] = []
         for l in tqdm(range(n_layers)):
             if dataset == "prism":
@@ -430,6 +461,11 @@ if __name__ == "__main__":
         "--add_questions", action="store_true", help="Probe after question"
     )
     parser.add_argument(
+        "--first",
+        action="store_true",
+        help="Whether to only use the first user turn for probing",
+    )
+    parser.add_argument(
         "--balanced",
         action="store_true",
         help="Whether probe class weight is balanced",
@@ -448,7 +484,7 @@ if __name__ == "__main__":
     if args.mode == "representations":
         device = "cuda" if torch.cuda.is_available() else "cpu"
         tokenizer = AutoTokenizer.from_pretrained(args.model)
-        if not tokenizer.chat_template:
+        if not tokenizer.chat_template and not first:
             tokenizer.chat_template = chat_templates[args.model]
         model = AutoModelForCausalLM.from_pretrained(
             args.model,
@@ -458,11 +494,11 @@ if __name__ == "__main__":
 
         if os.path.isfile(
             args.folder
-            + f"{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}_{args.agg_method}_representations.gz"
+            + f"{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}_{args.agg_method}{'_first' if args.first else ''}_representations.gz"
         ):
             df = pd.read_pickle(
                 args.folder
-                + f"{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}_{args.agg_method}_representations.gz",
+                + f"{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}_{args.agg_method}{'_first' if args.first else ''}_representations.gz",
                 compression="gzip",
             )
         else:
@@ -523,10 +559,11 @@ if __name__ == "__main__":
                 device,
                 args.agg_method,
                 questions=questions if args.add_questions else None,
+                first=args.first,
             )
             df.to_pickle(
                 args.folder
-                + f"{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}_{args.agg_method}_representations.gz"
+                + f"{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}_{args.agg_method}{'_first' if args.first else ''}_representations.gz"
             )
 
             # questions = list(
@@ -542,7 +579,7 @@ if __name__ == "__main__":
 
     df = pd.read_pickle(
         args.folder
-        + f"/{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}_{args.agg_method}_representations.gz",
+        + f"/{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}_{args.agg_method}{'_first' if args.first else ''}_representations.gz",
         compression="gzip",
     )
 
@@ -567,20 +604,27 @@ if __name__ == "__main__":
         df = rebalance(df)
 
     if args.mode == "probe_cv":
-        train_probe(
-            df,
-            args.dataset,
-            n_layers,
-            args.folder
-            + f"/{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}_probe_results_{args.agg_method}{'_balanced' if args.balanced else ''}{'_rebalance' if args.rebalance else ''}{'_twoclasses' if args.twoclasses else ''}.pkl",
-            demographic_cols,
-            save=False,
-            balanced=args.balanced,
-            rebalance=args.rebalance,
-            twoclasses=args.twoclasses,
-            save_file=args.folder
-            + f"/{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}{'_balanced' if args.balanced else ''}{'_rebalance' if args.rebalance else ''}{'_twoclasses' if args.twoclasses else ''}_probe",
-        )
+        for data_subset in [
+            "unguided",
+            "controversy guided",
+            "values guided",
+            "all",
+        ]:
+            train_probe(
+                df,
+                args.dataset,
+                n_layers,
+                args.folder
+                + f"/{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}_probe_results_{args.agg_method}{'_first' if args.first else ''}{'_'+data_subset if data_subset!='all' else ''}{'_balanced' if args.balanced else ''}{'_rebalance' if args.rebalance else ''}{'_twoclasses' if args.twoclasses else ''}.pkl",
+                demographic_cols,
+                save=False,
+                data_subset=data_subset,
+                balanced=args.balanced,
+                rebalance=args.rebalance,
+                twoclasses=args.twoclasses,
+                save_file=args.folder
+                + f"/{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}{'_first' if args.first else ''}{'_'+data_subset if data_subset!='all' else ''}{'_balanced' if args.balanced else ''}{'_rebalance' if args.rebalance else ''}{'_twoclasses' if args.twoclasses else ''}_probe",
+            )
 
     elif args.mode == "probe_save":
         train_probe(
@@ -588,12 +632,12 @@ if __name__ == "__main__":
             args.dataset,
             n_layers,
             args.folder
-            + f"/{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}_probe_results_{args.agg_method}{'_balanced' if args.balanced else ''}{'_rebalance' if args.rebalance else ''}{'_twoclasses' if args.twoclasses else ''}.pkl",
+            + f"/{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}_probe_results_{args.agg_method}{'_first' if args.first else ''}{'_balanced' if args.balanced else ''}{'_rebalance' if args.rebalance else ''}{'_twoclasses' if args.twoclasses else ''}.pkl",
             demographic_cols,
             save=True,
             balanced=args.balanced,
             rebalance=args.rebalance,
             twoclasses=args.twoclasses,
             save_file=args.folder
-            + f"/{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}{'_balanced' if args.balanced else ''}{'_rebalance' if args.rebalance else ''}{'_twoclasses' if args.twoclasses else ''}_probe",
+            + f"/{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}{'_first' if args.first else ''}{'_balanced' if args.balanced else ''}{'_rebalance' if args.rebalance else ''}{'_twoclasses' if args.twoclasses else ''}_probe",
         )
