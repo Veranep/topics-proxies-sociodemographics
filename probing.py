@@ -484,7 +484,7 @@ if __name__ == "__main__":
     if args.mode == "representations":
         device = "cuda" if torch.cuda.is_available() else "cpu"
         tokenizer = AutoTokenizer.from_pretrained(args.model)
-        if not tokenizer.chat_template and not first:
+        if not tokenizer.chat_template and not args.first:
             tokenizer.chat_template = chat_templates[args.model]
         model = AutoModelForCausalLM.from_pretrained(
             args.model,
