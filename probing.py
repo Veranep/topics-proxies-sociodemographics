@@ -494,18 +494,18 @@ if __name__ == "__main__":
 
         if os.path.isfile(
             args.folder
-            + f"{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}_{args.agg_method}{'_first' if args.first else ''}_representations.gz"
+            + f"/{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}_{args.agg_method}{'_first' if args.first else ''}_representations.gz"
         ):
             df = pd.read_pickle(
                 args.folder
-                + f"{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}_{args.agg_method}{'_first' if args.first else ''}_representations.gz",
+                + f"/{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}_{args.agg_method}{'_first' if args.first else ''}_representations.gz",
                 compression="gzip",
             )
         else:
             if args.dataset == "prism":
-                if os.path.isfile(args.folder + "prism_preprocessed.gz"):
+                if os.path.isfile("prism_preprocessed.gz"):
                     df = pd.read_pickle(
-                        args.folder + "prism_preprocessed.gz",
+                        "prism_preprocessed.gz",
                         compression="gzip",
                     )
                 else:
@@ -540,7 +540,7 @@ if __name__ == "__main__":
                             )
                         )
 
-                    df.to_pickle(args.folder + "prism_preprocessed.gz")
+                    df.to_pickle("prism_preprocessed.gz")
 
             elif args.dataset == "trustpilot":
                 df = pd.concat(
@@ -563,7 +563,7 @@ if __name__ == "__main__":
             )
             df.to_pickle(
                 args.folder
-                + f"{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}_{args.agg_method}{'_first' if args.first else ''}_representations.gz"
+                + f"/{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}_{args.agg_method}{'_first' if args.first else ''}_representations.gz"
             )
 
             # questions = list(
