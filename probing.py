@@ -312,7 +312,7 @@ def train_probe(
                 twoclasses_df = df[df["conversation_type"] == data_subset]
             else:
                 twoclasses_df = df
-            twoclasses_df = select_twoclasses(two_classes_df, demographic_col)
+            twoclasses_df = select_twoclasses(twoclasses_df, demographic_col)
         results[demographic_col] = []
         for l in tqdm(range(n_layers)):
             if dataset == "prism":
