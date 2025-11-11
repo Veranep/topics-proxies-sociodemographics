@@ -28,13 +28,14 @@ def optimize_one_inter_rep(
 
     # cur_input_tensor = rep_f().clone().detach()
 
+    # + made differences worse
     if normalized:
         cur_input_tensor = (
-            rep_f() + probe_weights * mult * 100 / rep_f().norm()
+            rep_f() - probe_weights * mult * 100 / rep_f().norm()
         )
 
     else:
-        cur_input_tensor = rep_f() + probe_weights * mult
+        cur_input_tensor = rep_f() - probe_weights * mult
 
     return cur_input_tensor.clone()
 
