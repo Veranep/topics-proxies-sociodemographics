@@ -386,10 +386,12 @@ if __name__ == "__main__":
                 convo,
                 tokenize=True,
                 add_generation_prompt=True,
+                return_tensors="pt",
             )
             for convo in convos
         ]
         inp = conversations_with_questions_tokenized[0]
+        print(inp)
         print(
             model.generate(
                 **inp.to(device),
