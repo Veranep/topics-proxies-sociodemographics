@@ -28,6 +28,27 @@ which_probe = {
 }
 
 
+def process_output(output, tokenizer, probes):
+    answer = tokenizer.decode(output["sequences"][0][-1])
+    probs = {
+        n: {
+            demo: probes[n][demo].predict_proba(
+                torch.mean(
+                    output["hidden_states"][n][-1, :, :]
+                    .detach()
+                    .cpu()
+                    .clone()
+                    .to(torch.float),
+                    0,
+                )
+            )
+            for demo in probes[n]
+        }
+        for n in probes
+    }
+    return answer, probs
+
+
 def get_convo(row, mitigation):
 
     convo = [
@@ -147,6 +168,7 @@ if __name__ == "__main__":
             torch_dtype=torch.bfloat16,
             device_map="auto",
         )
+        n_layers = 33
     # model = pipeline(
     #     "text-generation",
     #     model=model,
@@ -156,8 +178,22 @@ if __name__ == "__main__":
     # )
     # if not model.tokenizer.pad_token_id:
     #     model.tokenizer.pad_token_id = model.tokenizer.eos_token_id
+
     if not tokenizer.pad_token_id:
         tokenizer.pad_token_id = tokenizer.eos_token_id
+
+    probes = {
+        n: {
+            demo: pickle.load(
+                open(
+                    f"/scratch/vneplen/sociodemographics-interpretability-mitigation/olmo_probe/{args.model.split('/')[1]}_first{'_' + which_probe[demo] if which_probe[demo] else ''}_probe_{demo}_{n}.pkl",
+                    "rb",
+                )
+            )
+            for demo in which_probe
+        }
+        for n in range(n_layers)
+    }
 
     if os.path.isfile(
         f"/scratch/vneplen/sociodemographics-interpretability-mitigation/prism_questions_{args.dataset}.gz"
@@ -300,16 +336,7 @@ if __name__ == "__main__":
     # TODO load probes
     if args.mitigation == "probe_ethnicity":
         N = 1
-        n_layers = 33
-        probes = {
-            n: pickle.load(
-                open(
-                    f"/scratch/vneplen/sociodemographics-interpretability-mitigation/olmo_probe/{args.model.split('/')[1]}_twoclasses_probe.pkl_ethnicity_{n}.pkl",
-                    "rb",
-                )
-            )
-            for n in range(n_layers)
-        }
+        probes = {n: probes[n]["ethnicity"] for n in range(n_layers)}
         modified_layer_names = get_layer_names(model.model)
         df_0 = df[df["ethnicity"] == "White"].reset_index(drop=True)
         df_1 = df[
@@ -399,30 +426,34 @@ if __name__ == "__main__":
                 max_new_tokens=1,
                 return_dict_in_generate=True,
                 do_sample=False,
-            )
-        )
-        representations_and_answers = [
-            (
-                torch.mean(
-                    rep["hidden_states"][-1, :, :]
-                    .detach()
-                    .cpu()
-                    .clone()
-                    .to(torch.float),
-                    0,
+            ),
+            process_output(
+                model.generate(
+                    inp.to(device),
+                    output_hidden_states=True,
+                    max_new_tokens=1,
+                    return_dict_in_generate=True,
+                    do_sample=False,
                 ),
-                rep["sequences"][0],
-            )
-            for rep in model.generate(
-                inp.to(device),
-                output_hidden_states=True,
-                max_new_tokens=1,
-                return_dict_in_generate=True,
-                do_sample=False,
+                tokenizer,
+                probes,
+            ),
+        )
+        probs_and_answers = [
+            process_output(
+                model.generate(
+                    inp.to(device),
+                    output_hidden_states=True,
+                    max_new_tokens=1,
+                    return_dict_in_generate=True,
+                    do_sample=False,
+                ),
+                tokenizer,
+                probes,
             )
             for inp in tqdm(conversations_with_questions_tokenized)
         ]
-        representations = [t[0] for t in representations_and_answers]
+        probs = [t[0] for t in representations_and_answers]
         answers = [t[1] for t in representations_and_answers]
         # answers = [
         #     answer[0]["generated_text"].lower()
@@ -437,6 +468,7 @@ if __name__ == "__main__":
         #         total=len(conversations_with_questions),
         #     )
         # ]
+        df["probs"] = probs
         df["answer"] = answers
 
     # if os.path.isfile(
