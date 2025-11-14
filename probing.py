@@ -381,11 +381,11 @@ if __name__ == "__main__":
 
         if os.path.isfile(
             args.folder
-            + f"/{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}_{'_first' if args.first else ''}_representations.gz"
+            + f"/{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}{'_first' if args.first else ''}_representations.gz"
         ):
             df = pd.read_pickle(
                 args.folder
-                + f"/{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}_{'_first' if args.first else ''}_representations.gz",
+                + f"/{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}{'_first' if args.first else ''}_representations.gz",
                 compression="gzip",
             )
         else:
@@ -450,7 +450,7 @@ if __name__ == "__main__":
             )
             df.to_pickle(
                 args.folder
-                + f"/{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}_{'_first' if args.first else ''}_representations.gz"
+                + f"/{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}{'_first' if args.first else ''}_representations.gz"
             )
 
             # questions = list(
@@ -466,7 +466,7 @@ if __name__ == "__main__":
 
     df = pd.read_pickle(
         args.folder
-        + f"/{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}_{'_first' if args.first else ''}_representations.gz",
+        + f"/{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}{'_first' if args.first else ''}_representations.gz",
         compression="gzip",
     )
 
