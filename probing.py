@@ -18,39 +18,6 @@ chat_templates = {
 }
 
 
-def balanced_subsample(df, col):
-    vals = {
-        "age": [],
-        "gender": [],
-        "religion": ["No Affiliation", "Christian"],
-        "ethnicity": ["White"],
-        "employment_status": ["Working full-time"],
-        "education": ["University Bachelors Degree"],
-        "birth_region": ["Europe", "Americas"],
-        "reside_region": ["Europe", "Americas"],
-        "marital_status": ["Never been married", "Married"],
-        "english_proficiency": ["Native speaker", "Fluent"],
-    }
-
-    if not len(vals[col]):
-        return df
-
-    val_counts = df[col].value_counts()
-    for i, key in enumerate(val_counts.keys()):
-        if key not in vals[col]:
-            max_amount = val_counts[i]
-            break
-    print(val_counts, max_amount)
-
-    indices_to_drop = []
-    for val in vals[col]:
-        samples = df[df[col] == val].index.values
-        indexes = np.random.choice(samples, size=max_amount, replace=False)
-        indices_to_drop += [idx for idx in samples if idx not in indexes]
-
-    return df.drop(index=indices_to_drop)
-
-
 def select_twoclasses(df, col):
     if col == "age":
         df.loc[df[col] == "18-24 years old", col] = 0
@@ -107,49 +74,7 @@ def select_twoclasses(df, col):
     return selected_df.drop(index=indices_to_drop)
 
 
-def rebalance(df):
-    df["age"] = df["age"].replace(
-        {
-            "35-44 years old": "35-54 years old",
-            "45-54 years old": "35-54 years old",
-            "55-64 years old": "55+ years old",
-            "65+ years old": "55+ years old",
-        }
-    )
-    df["employment_status"] = df["employment_status"].replace(
-        {
-            "Unemployed, not seeking work": "Non-Working",
-            "Unemployed, seeking work": "Non-Working",
-            "Homemaker / Stay-at-home parent": "Non-Working",
-            "Retired": "Non-Working",
-        }
-    )
-    df["education"] = df["education"].replace(
-        {
-            "Some Secondary": "Did Not Complete Secondary School",
-            "Completed Primary School": "Did Not Complete Secondary School",
-            "Some Primary": "Did Not Complete Secondary School",
-        }
-    )
-    df["marital_status"] = df["marital_status"].replace(
-        {
-            "Divorced / Separated": "Divorced / Widowed",
-            "Widowed": "Divorced / Widowed",
-        }
-    )
-    df["english_proficiency"] = df["english_proficiency"].replace(
-        {
-            "Advanced": "Non-Fluent",
-            "Intermediate": "Non-Fluent",
-            "Basic": "Non-Fluent",
-        }
-    )
-    return df
-
-
-def get_repr(
-    df, dataset, model, tokenizer, device, agg_method, questions, first
-):
+def get_repr(df, dataset, model, tokenizer, device, questions, first):
     if dataset == "prism":
         if first:
             convos = [
@@ -219,62 +144,63 @@ def get_repr(
         inputs = [
             tokenizer(inp, return_tensors="pt") for inp in df["text"].tolist()
         ]
-    if agg_method == "last":
-        representations = [
-            (
-                [
-                    rep[-1, -1, :].detach().cpu().clone().to(torch.float)
-                    for rep in model(
-                        inp.to(device),
-                        output_hidden_states=True,
-                        max_new_tokens=1,
-                        return_dict=True,
-                    )["hidden_states"]
-                ]
-                if dataset == "prism"
-                and (not first or tokenizer.chat_template)
-                else [
-                    rep[-1, -1, :].detach().cpu().clone().to(torch.float)
-                    for rep in model(
-                        **inp.to(device),
-                        output_hidden_states=True,
-                        max_new_tokens=1,
-                        return_dict=True,
-                    )["hidden_states"]
-                ]
-            )
-            for inp in tqdm(inputs)
-        ]
-    elif agg_method == "mean":
-        representations = [
-            (
-                [
-                    torch.mean(
-                        rep[-1, :, :].detach().cpu().clone().to(torch.float), 0
-                    )
-                    for rep in model(
-                        inp.to(device),
-                        output_hidden_states=True,
-                        max_new_tokens=1,
-                        return_dict=True,
-                    )["hidden_states"]
-                ]
-                if dataset == "prism"
-                and (not first or tokenizer.chat_template)
-                else [
-                    torch.mean(
-                        rep[-1, :, :].detach().cpu().clone().to(torch.float), 0
-                    )
-                    for rep in model(
-                        **inp.to(device),
-                        output_hidden_states=True,
-                        max_new_tokens=1,
-                        return_dict=True,
-                    )["hidden_states"]
-                ]
-            )
-            for inp in tqdm(inputs)
-        ]
+    # if agg_method == "last":
+    #     representations = [
+    #         (
+    #             [
+    #                 rep[-1, -1, :].detach().cpu().clone().to(torch.float)
+    #                 for rep in model(
+    #                     inp.to(device),
+    #                     output_hidden_states=True,
+    #                     max_new_tokens=1,
+    #                     return_dict=True,
+    #                 )["hidden_states"]
+    #             ]
+    #             if dataset == "prism"
+    #             and (not first or tokenizer.chat_template)
+    #             else [
+    #                 rep[-1, -1, :].detach().cpu().clone().to(torch.float)
+    #                 for rep in model(
+    #                     **inp.to(device),
+    #                     output_hidden_states=True,
+    #                     max_new_tokens=1,
+    #                     return_dict=True,
+    #                 )["hidden_states"]
+    #             ]
+    #         )
+    #         for inp in tqdm(inputs)
+    #     ]
+    # elif agg_method == "mean":
+    representations = [
+        (
+            [
+                torch.mean(
+                    rep[-1, :, :].detach().cpu().clone().to(torch.float), 0
+                )
+                for rep in model(
+                    inp.to(device),
+                    do_sample=False,
+                    output_hidden_states=True,
+                    max_new_tokens=1,
+                    return_dict=True,
+                )["hidden_states"]
+            ]
+            if dataset == "prism" and (not first or tokenizer.chat_template)
+            else [
+                torch.mean(
+                    rep[-1, :, :].detach().cpu().clone().to(torch.float), 0
+                )
+                for rep in model(
+                    **inp.to(device),
+                    do_sample=False,
+                    output_hidden_states=True,
+                    max_new_tokens=1,
+                    return_dict=True,
+                )["hidden_states"]
+            ]
+        )
+        for inp in tqdm(inputs)
+    ]
 
     df["representations"] = representations
 
@@ -289,9 +215,6 @@ def train_probe(
     demographic_cols,
     save=False,
     data_subset="all",
-    balanced=False,
-    rebalance=False,
-    twoclasses=False,
     save_file="",
 ):
     results = {}
@@ -305,56 +228,26 @@ def train_probe(
         if demographic_col == "age" and dataset == "trustpilot":
             df = df[(df["age"] < 35) | (df["age"] > 45)]
             df["age"] = np.where(df["age"] < 35, "young", "old")
-        if rebalance:
-            rebalance_df = balanced_subsample(df, demographic_col)
-        elif twoclasses:
-            if data_subset != "all":
-                twoclasses_df = df[df["conversation_type"] == data_subset]
-            else:
-                twoclasses_df = df
-            twoclasses_df = select_twoclasses(twoclasses_df, demographic_col)
+
+        if data_subset != "all":
+            twoclasses_df = df[df["conversation_type"] == data_subset]
+        else:
+            twoclasses_df = df
+        twoclasses_df = select_twoclasses(twoclasses_df, demographic_col)
         results[demographic_col] = []
         for l in tqdm(range(n_layers)):
             if dataset == "prism":
-                if rebalance:
-                    X = np.array(
-                        [
-                            rep[l]
-                            for rep in rebalance_df["representations"].tolist()
-                        ]
-                    )
-                    y = np.array(rebalance_df[demographic_col].tolist())
-                elif twoclasses:
-                    X = np.array(
-                        [
-                            rep[l]
-                            for rep in twoclasses_df[
-                                "representations"
-                            ].tolist()
-                        ]
-                    )
-                    y = np.array(twoclasses_df[demographic_col].tolist())
-                else:
-                    X = np.array(
-                        [rep[l] for rep in df["representations"].tolist()]
-                    )
-                    y = np.array(df[demographic_col].tolist())
+                X = np.array(
+                    [
+                        rep[l]
+                        for rep in twoclasses_df["representations"].tolist()
+                    ]
+                )
+                y = np.array(twoclasses_df[demographic_col].tolist())
                 keep_idx = np.where(y != "Prefer not to say")[0]
                 y = y[keep_idx]
                 X = X[keep_idx]
-                if not twoclasses:
-                    demo_scoring = {
-                        f"f1_{group}": make_scorer(
-                            f1_score,
-                            average="weighted",
-                            labels=[group],
-                            pos_label=None,
-                        )
-                        for group in np.unique(y)
-                    }
-                    demo_scoring.update(standard_scoring)
-                else:
-                    demo_scoring = ["f1"]
+                demo_scoring = ["f1"]
 
             elif dataset == "trustpilot":
                 X_train = np.array(
@@ -385,7 +278,7 @@ def train_probe(
                 )
 
             clf = LogisticRegression(
-                random_state=42, class_weight="balanced" if balanced else None
+                random_state=42,
             )
 
             if save:
@@ -441,11 +334,11 @@ if __name__ == "__main__":
         help="Dataset to evaluate on",
     )
     parser.add_argument(
-        "-am",
-        "--agg_method",
+        "-demo",
+        "--demographic",
         type=str,
-        default="mean",
-        help="Method for aggregating representations across a conversation",
+        default="age",
+        help="Demographic to train probe for",
     )
     parser.add_argument(
         "-f",
@@ -467,21 +360,6 @@ if __name__ == "__main__":
         action="store_true",
         help="Whether to only use the first user turn for probing",
     )
-    parser.add_argument(
-        "--balanced",
-        action="store_true",
-        help="Whether probe class weight is balanced",
-    )
-    parser.add_argument(
-        "--rebalance",
-        action="store_true",
-        help="Whether classes should be manually rebalanced",
-    )
-    parser.add_argument(
-        "--twoclasses",
-        action="store_true",
-        help="Whether probe should only be trained for two large classes",
-    )
     args = parser.parse_args()
     if args.mode == "representations":
         device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -496,11 +374,11 @@ if __name__ == "__main__":
 
         if os.path.isfile(
             args.folder
-            + f"/{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}_{args.agg_method}{'_first' if args.first else ''}_representations.gz"
+            + f"/{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}_{'_first' if args.first else ''}_representations.gz"
         ):
             df = pd.read_pickle(
                 args.folder
-                + f"/{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}_{args.agg_method}{'_first' if args.first else ''}_representations.gz",
+                + f"/{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}_{'_first' if args.first else ''}_representations.gz",
                 compression="gzip",
             )
         else:
@@ -565,7 +443,7 @@ if __name__ == "__main__":
             )
             df.to_pickle(
                 args.folder
-                + f"/{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}_{args.agg_method}{'_first' if args.first else ''}_representations.gz"
+                + f"/{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}_{'_first' if args.first else ''}_representations.gz"
             )
 
             # questions = list(
@@ -581,11 +459,13 @@ if __name__ == "__main__":
 
     df = pd.read_pickle(
         args.folder
-        + f"/{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}_{args.agg_method}{'_first' if args.first else ''}_representations.gz",
+        + f"/{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}_{'_first' if args.first else ''}_representations.gz",
         compression="gzip",
     )
 
-    if args.dataset == "prism":
+    if args.demographic:
+        demographic_cols = [args.demographic]
+    elif args.dataset == "prism":
         demographic_cols = [
             "age",
             "gender",
@@ -602,9 +482,6 @@ if __name__ == "__main__":
         demographic_cols = ["gender", "age"]  # make sure age is second
     n_layers = len(df.iloc[0]["representations"])
 
-    if args.rebalance:
-        df = rebalance(df)
-
     if args.mode == "probe_cv":
         for data_subset in [
             "unguided",
@@ -617,15 +494,12 @@ if __name__ == "__main__":
                 args.dataset,
                 n_layers,
                 args.folder
-                + f"/{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}_probe_results_{args.agg_method}{'_first' if args.first else ''}{'_'+data_subset if data_subset!='all' else ''}{'_balanced' if args.balanced else ''}{'_rebalance' if args.rebalance else ''}{'_twoclasses' if args.twoclasses else ''}.pkl",
+                + f"/{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}_probe_results_{'_first' if args.first else ''}{'_'+data_subset if data_subset!='all' else ''}.pkl",
                 demographic_cols,
                 save=False,
                 data_subset=data_subset,
-                balanced=args.balanced,
-                rebalance=args.rebalance,
-                twoclasses=args.twoclasses,
                 save_file=args.folder
-                + f"/{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}{'_first' if args.first else ''}{'_'+data_subset if data_subset!='all' else ''}{'_balanced' if args.balanced else ''}{'_rebalance' if args.rebalance else ''}{'_twoclasses' if args.twoclasses else ''}_probe",
+                + f"/{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}{'_first' if args.first else ''}{'_'+data_subset if data_subset!='all' else ''}_probe",
             )
 
     elif args.mode == "probe_save":
@@ -634,12 +508,10 @@ if __name__ == "__main__":
             args.dataset,
             n_layers,
             args.folder
-            + f"/{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}_probe_results_{args.agg_method}{'_first' if args.first else ''}{'_balanced' if args.balanced else ''}{'_rebalance' if args.rebalance else ''}{'_twoclasses' if args.twoclasses else ''}.pkl",
+            + f"/{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}_probe_results_{'_first' if args.first else ''}{'_'+data_subset if data_subset!='all' else ''}.pkl",
             demographic_cols,
             save=True,
-            balanced=args.balanced,
-            rebalance=args.rebalance,
-            twoclasses=args.twoclasses,
+            data_subset=data_subset,
             save_file=args.folder
-            + f"/{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}{'_first' if args.first else ''}{'_balanced' if args.balanced else ''}{'_rebalance' if args.rebalance else ''}{'_twoclasses' if args.twoclasses else ''}_probe",
+            + f"/{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}{'_first' if args.first else ''}{'_'+data_subset if data_subset!='all' else ''}_probe",
         )
