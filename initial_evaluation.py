@@ -394,7 +394,7 @@ if __name__ == "__main__":
         print(inp)
         print(
             model.generate(
-                **inp.to(device),
+                inp.to(device),
                 output_hidden_states=True,
                 max_new_tokens=1,
                 return_dict_in_generate=True,
@@ -414,7 +414,7 @@ if __name__ == "__main__":
                 rep["sequences"][0],
             )
             for rep in model.generate(
-                **inp.to(device),
+                inp.to(device),
                 output_hidden_states=True,
                 max_new_tokens=1,
                 return_dict_in_generate=True,
