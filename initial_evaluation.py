@@ -23,7 +23,7 @@ which_probe = {
     "education": "",
     "birth_region": "",
     "reside_region": "controversy guided",
-    "marital_status": "value guided",
+    "marital_status": "values guided",
     "english_proficiency": "controversy guided",
 }
 
