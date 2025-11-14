@@ -14,6 +14,19 @@ import xml.etree.ElementTree as ET
 
 from mitigate import get_layer_names, modified_model
 
+which_probe = {
+    "age": "",
+    "gender": "unguided",
+    "religion": "values guided",
+    "ethnicity": "",
+    "employment_status": "",
+    "education": "",
+    "birth_region": "",
+    "reside_region": "controversy guided",
+    "marital_status": "value guided",
+    "english_proficiency": "controversy guided",
+}
+
 
 def get_convo(row, mitigation):
 
@@ -134,15 +147,17 @@ if __name__ == "__main__":
             torch_dtype=torch.bfloat16,
             device_map="auto",
         )
-    model = pipeline(
-        "text-generation",
-        model=model,
-        tokenizer=tokenizer,
-        torch_dtype=torch.bfloat16,
-        device_map="auto",
-    )
-    if not model.tokenizer.pad_token_id:
-        model.tokenizer.pad_token_id = model.tokenizer.eos_token_id
+    # model = pipeline(
+    #     "text-generation",
+    #     model=model,
+    #     tokenizer=tokenizer,
+    #     torch_dtype=torch.bfloat16,
+    #     device_map="auto",
+    # )
+    # if not model.tokenizer.pad_token_id:
+    #     model.tokenizer.pad_token_id = model.tokenizer.eos_token_id
+    if not tokenizer.pad_token_id:
+        tokenizer.pad_token_id = tokenizer.eos_token_id
 
     df = pd.read_pickle(
         "/scratch/vneplen/sociodemographics-interpretability-mitigation/prism_preprocessed.gz",
@@ -359,27 +374,67 @@ if __name__ == "__main__":
             for idx in to_remove:
                 del convo[idx]
 
-        conversations_with_questions = [
+        # conversations_with_questions = [
+        #     tokenizer.apply_chat_template(
+        #         convo,
+        #         tokenize=False,
+        #         add_generation_prompt=True,
+        #     )
+        #     for convo in convos
+        # ]
+        conversations_with_questions_tokenized = [
             tokenizer.apply_chat_template(
                 convo,
-                tokenize=False,
+                tokenize=True,
                 add_generation_prompt=True,
             )
             for convo in convos
         ]
-        answers = [
-            answer[0]["generated_text"].lower()
-            for answer in tqdm(
-                model(
-                    ListDataset(conversations_with_questions),
-                    batch_size=args.batch_size,
-                    do_sample=False,
-                    max_new_tokens=1,
-                    return_full_text=False,
-                ),
-                total=len(conversations_with_questions),
+        print(
+            model.generate(
+                conversations_with_questions_tokenized[0].to(device),
+                output_hidden_states=True,
+                max_new_tokens=1,
+                return_dict_in_generate=True,
+                do_sample=False,
             )
+        )
+        representations_and_answers = [
+            (
+                torch.mean(
+                    rep["hidden_states"][-1, :, :]
+                    .detach()
+                    .cpu()
+                    .clone()
+                    .to(torch.float),
+                    0,
+                ),
+                rep["sequences"][0],
+            )
+            for rep in model.generate(
+                inp.to(device),
+                output_hidden_states=True,
+                max_new_tokens=1,
+                return_dict_in_generate=True,
+                do_sample=False,
+            )
+            for inp in tqdm(conversations_with_questions_tokenized)
         ]
+        representations = [t[0] for t in representations_and_answers]
+        answers = [t[1] for t in representations_and_answers]
+        # answers = [
+        #     answer[0]["generated_text"].lower()
+        #     for answer in tqdm(
+        #         model(
+        #             ListDataset(conversations_with_questions),
+        #             batch_size=args.batch_size,
+        #             do_sample=False,
+        #             max_new_tokens=1,
+        #             return_full_text=False,
+        #         ),
+        #         total=len(conversations_with_questions),
+        #     )
+        # ]
         df["answer"] = answers
 
     # if os.path.isfile(
