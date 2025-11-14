@@ -515,10 +515,10 @@ if __name__ == "__main__":
             args.dataset,
             n_layers,
             args.folder
-            + f"/{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}_probe_results_{'_first' if args.first else ''}{'_'+data_subset if data_subset!='all' else ''}.pkl",
+            + f"/{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}_probe_results_{'_first' if args.first else ''}{'_'+args.data_subset if args.data_subset!='all' else ''}.pkl",
             demographic_cols,
             save=True,
             data_subset=args.data_subset,
             save_file=args.folder
-            + f"/{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}{'_first' if args.first else ''}{'_'+data_subset if data_subset!='all' else ''}_probe",
+            + f"/{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}{'_first' if args.first else ''}{'_'+args.data_subset if args.data_subset!='all' else ''}_probe",
         )
