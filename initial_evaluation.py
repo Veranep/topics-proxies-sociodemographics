@@ -172,15 +172,6 @@ if __name__ == "__main__":
             device_map="auto",
         )
         n_layers = 33
-    # model = pipeline(
-    #     "text-generation",
-    #     model=model,
-    #     tokenizer=tokenizer,
-    #     torch_dtype=torch.bfloat16,
-    #     device_map="auto",
-    # )
-    # if not model.tokenizer.pad_token_id:
-    #     model.tokenizer.pad_token_id = model.tokenizer.eos_token_id
 
     if not tokenizer.pad_token_id:
         tokenizer.pad_token_id = tokenizer.eos_token_id
@@ -338,6 +329,16 @@ if __name__ == "__main__":
 
     # TODO load probes
     if args.mitigation == "probe_ethnicity":
+        model = pipeline(
+            "text-generation",
+            model=model,
+            tokenizer=tokenizer,
+            torch_dtype=torch.bfloat16,
+            device_map="auto",
+        )
+        if not model.tokenizer.pad_token_id:
+            model.tokenizer.pad_token_id = model.tokenizer.eos_token_id
+
         N = 1
         probes = {n: probes[n]["ethnicity"] for n in range(n_layers)}
         modified_layer_names = get_layer_names(model.model)
