@@ -154,6 +154,13 @@ if __name__ == "__main__":
             "probe_ethnicity",
         ],
     )
+    parser.add_argument(
+        "-q",
+        "--quarter",
+        type=int,
+        choices=[1, 2, 3, 4],
+        help="Which quarter of the dataset to evaluate",
+    )
     args = parser.parse_args()
     np.random.seed(42)
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -421,28 +428,16 @@ if __name__ == "__main__":
             )
             for convo in convos
         ]
-        inp = conversations_with_questions_tokenized[0]
-        print(inp)
-        print(
-            model.generate(
-                inp.to(device),
-                output_hidden_states=True,
-                max_new_tokens=1,
-                return_dict_in_generate=True,
-                do_sample=False,
-            ),
-            process_output(
-                model.generate(
-                    inp.to(device),
-                    output_hidden_states=True,
-                    max_new_tokens=1,
-                    return_dict_in_generate=True,
-                    do_sample=False,
-                ),
-                tokenizer,
-                probes,
-            ),
-        )
+        if args.quarter:
+            quarter = len(conversations_with_questions_tokenized) // 4
+            rest = len(conversations_with_questions_tokenized) % 4
+            start_id = (args.quarter - 1) * quarter
+            end_id = start_id + quarter
+            if args.quarter == 4:
+                end_id += rest
+            conversations_with_questions_tokenized = (
+                conversations_with_questions_tokenized[start_id:end_id]
+            )
         probs_and_answers = [
             process_output(
                 model.generate(
@@ -484,5 +479,5 @@ if __name__ == "__main__":
     # else:
 
     df.to_pickle(
-        f"/scratch/vneplen/sociodemographics-interpretability-mitigation/{args.model.split('/')[1]}_answers_{args.dataset}{'_' + args.mitigation if args.mitigation else ''}.gz"
+        f"/scratch/vneplen/sociodemographics-interpretability-mitigation/{args.model.split('/')[1]}_answers_{args.dataset}{'_' + args.mitigation if args.mitigation else ''}{'_' + args.quarter if args.quarter else ''}.gz"
     )
