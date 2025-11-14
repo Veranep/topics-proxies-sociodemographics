@@ -33,12 +33,15 @@ def process_output(output, tokenizer, probes):
     probs = {
         n: {
             demo: probes[n][demo].predict_proba(
-                torch.mean(
-                    output["hidden_states"][0][n][-1, :, :]
-                    .detach()
-                    .cpu()
-                    .clone()
-                    .to(torch.float),
+                torch.unsqueeze(
+                    torch.mean(
+                        output["hidden_states"][0][n][-1, :, :]
+                        .detach()
+                        .cpu()
+                        .clone()
+                        .to(torch.float),
+                        0,
+                    ),
                     0,
                 )
             )
