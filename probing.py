@@ -334,6 +334,13 @@ if __name__ == "__main__":
         help="Dataset to evaluate on",
     )
     parser.add_argument(
+        "-ds",
+        "--data_subset",
+        type=str,
+        default=None,
+        help="Subset of data to use to train probe",
+    )
+    parser.add_argument(
         "-demo",
         "--demographic",
         type=str,
@@ -511,7 +518,7 @@ if __name__ == "__main__":
             + f"/{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}_probe_results_{'_first' if args.first else ''}{'_'+data_subset if data_subset!='all' else ''}.pkl",
             demographic_cols,
             save=True,
-            data_subset=data_subset,
+            data_subset=args.data_subset,
             save_file=args.folder
             + f"/{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}{'_first' if args.first else ''}{'_'+data_subset if data_subset!='all' else ''}_probe",
         )
