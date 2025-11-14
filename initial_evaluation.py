@@ -34,7 +34,7 @@ def process_output(output, tokenizer, probes):
         n: {
             demo: probes[n][demo].predict_proba(
                 torch.mean(
-                    output["hidden_states"][n][-1, :, :]
+                    output["hidden_states"][0][n][-1, :, :]
                     .detach()
                     .cpu()
                     .clone()
