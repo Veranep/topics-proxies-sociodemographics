@@ -159,11 +159,6 @@ if __name__ == "__main__":
     if not tokenizer.pad_token_id:
         tokenizer.pad_token_id = tokenizer.eos_token_id
 
-    df = pd.read_pickle(
-        "/scratch/vneplen/sociodemographics-interpretability-mitigation/prism_preprocessed.gz",
-        compression="gzip",
-    )
-
     if os.path.isfile(
         f"/scratch/vneplen/sociodemographics-interpretability-mitigation/prism_questions_{args.dataset}.gz"
     ):
@@ -172,6 +167,10 @@ if __name__ == "__main__":
             compression="gzip",
         )
     else:
+        df = pd.read_pickle(
+            "/scratch/vneplen/sociodemographics-interpretability-mitigation/prism_preprocessed.gz",
+            compression="gzip",
+        )
         if args.dataset == "climate_fever":
             climate_fever = (
                 load_dataset("tdiggelm/climate_fever", split="test")
@@ -390,9 +389,10 @@ if __name__ == "__main__":
             )
             for convo in convos
         ]
+        inp = conversations_with_questions_tokenized[0]
         print(
             model.generate(
-                conversations_with_questions_tokenized[0].to(device),
+                **inp.to(device),
                 output_hidden_states=True,
                 max_new_tokens=1,
                 return_dict_in_generate=True,
@@ -412,7 +412,7 @@ if __name__ == "__main__":
                 rep["sequences"][0],
             )
             for rep in model.generate(
-                inp.to(device),
+                **inp.to(device),
                 output_hidden_states=True,
                 max_new_tokens=1,
                 return_dict_in_generate=True,
