@@ -452,8 +452,8 @@ if __name__ == "__main__":
             )
             for inp in tqdm(conversations_with_questions_tokenized)
         ]
-        probs = [t[0] for t in representations_and_answers]
-        answers = [t[1] for t in representations_and_answers]
+        probs = [t[0] for t in probs_and_answers]
+        answers = [t[1] for t in probs_and_answers]
         # answers = [
         #     answer[0]["generated_text"].lower()
         #     for answer in tqdm(
