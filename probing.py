@@ -444,7 +444,6 @@ if __name__ == "__main__":
                 model,
                 tokenizer,
                 device,
-                args.agg_method,
                 questions=questions if args.add_questions else None,
                 first=args.first,
             )
