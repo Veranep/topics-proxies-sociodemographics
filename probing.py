@@ -344,7 +344,7 @@ if __name__ == "__main__":
         "-demo",
         "--demographic",
         type=str,
-        default="age",
+        default=None,
         help="Demographic to train probe for",
     )
     parser.add_argument(
