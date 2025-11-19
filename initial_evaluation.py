@@ -23,9 +23,33 @@ which_probe = {
     "education": "",
     "birth_region": "",
     "reside_region": "controversy guided",
-    "marital_status": "value guided",
+    "marital_status": "values guided",
     "english_proficiency": "controversy guided",
 }
+
+
+def process_output(output, tokenizer, probes):
+    answer = tokenizer.decode(output["sequences"][0][-1])
+    probs = {
+        n: {
+            demo: probes[n][demo].predict_proba(
+                torch.unsqueeze(
+                    torch.mean(
+                        output["hidden_states"][0][n][-1, :, :]
+                        .detach()
+                        .cpu()
+                        .clone()
+                        .to(torch.float),
+                        0,
+                    ),
+                    0,
+                )
+            )
+            for demo in probes[n]
+        }
+        for n in probes
+    }
+    return answer, probs
 
 
 def get_convo(row, mitigation):
@@ -130,6 +154,13 @@ if __name__ == "__main__":
             "probe_ethnicity",
         ],
     )
+    parser.add_argument(
+        "-q",
+        "--quarter",
+        type=int,
+        choices=[1, 2, 3, 4],
+        help="Which quarter of the dataset to evaluate",
+    )
     args = parser.parse_args()
     np.random.seed(42)
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -147,17 +178,23 @@ if __name__ == "__main__":
             torch_dtype=torch.bfloat16,
             device_map="auto",
         )
-    # model = pipeline(
-    #     "text-generation",
-    #     model=model,
-    #     tokenizer=tokenizer,
-    #     torch_dtype=torch.bfloat16,
-    #     device_map="auto",
-    # )
-    # if not model.tokenizer.pad_token_id:
-    #     model.tokenizer.pad_token_id = model.tokenizer.eos_token_id
+        n_layers = 33
+
     if not tokenizer.pad_token_id:
         tokenizer.pad_token_id = tokenizer.eos_token_id
+
+    probes = {
+        n: {
+            demo: pickle.load(
+                open(
+                    f"/scratch/vneplen/sociodemographics-interpretability-mitigation/olmo_probe/{args.model.split('/')[1]}_first{'_' + which_probe[demo] if which_probe[demo] else ''}_probe_{demo}_{n}.pkl",
+                    "rb",
+                )
+            )
+            for demo in which_probe
+        }
+        for n in range(n_layers)
+    }
 
     if os.path.isfile(
         f"/scratch/vneplen/sociodemographics-interpretability-mitigation/prism_questions_{args.dataset}.gz"
@@ -299,17 +336,18 @@ if __name__ == "__main__":
 
     # TODO load probes
     if args.mitigation == "probe_ethnicity":
+        model = pipeline(
+            "text-generation",
+            model=model,
+            tokenizer=tokenizer,
+            torch_dtype=torch.bfloat16,
+            device_map="auto",
+        )
+        if not model.tokenizer.pad_token_id:
+            model.tokenizer.pad_token_id = model.tokenizer.eos_token_id
+
         N = 1
-        n_layers = 33
-        probes = {
-            n: pickle.load(
-                open(
-                    f"/scratch/vneplen/sociodemographics-interpretability-mitigation/olmo_probe/{args.model.split('/')[1]}_twoclasses_probe.pkl_ethnicity_{n}.pkl",
-                    "rb",
-                )
-            )
-            for n in range(n_layers)
-        }
+        probes = {n: probes[n]["ethnicity"] for n in range(n_layers)}
         modified_layer_names = get_layer_names(model.model)
         df_0 = df[df["ethnicity"] == "White"].reset_index(drop=True)
         df_1 = df[
@@ -390,40 +428,33 @@ if __name__ == "__main__":
             )
             for convo in convos
         ]
-        inp = conversations_with_questions_tokenized[0]
-        print(inp)
-        print(
-            model.generate(
-                inp.to(device),
-                output_hidden_states=True,
-                max_new_tokens=1,
-                return_dict_in_generate=True,
-                do_sample=False,
+        if args.quarter:
+            quarter = len(conversations_with_questions_tokenized) // 4
+            rest = len(conversations_with_questions_tokenized) % 4
+            start_id = (args.quarter - 1) * quarter
+            end_id = start_id + quarter
+            if args.quarter == 4:
+                end_id += rest
+            conversations_with_questions_tokenized = (
+                conversations_with_questions_tokenized[start_id:end_id]
             )
-        )
-        representations_and_answers = [
-            (
-                torch.mean(
-                    rep["hidden_states"][-1, :, :]
-                    .detach()
-                    .cpu()
-                    .clone()
-                    .to(torch.float),
-                    0,
+            df = df.iloc[start_id:end_id]
+        probs_and_answers = [
+            process_output(
+                model.generate(
+                    inp.to(device),
+                    output_hidden_states=True,
+                    max_new_tokens=1,
+                    return_dict_in_generate=True,
+                    do_sample=False,
                 ),
-                rep["sequences"][0],
-            )
-            for rep in model.generate(
-                inp.to(device),
-                output_hidden_states=True,
-                max_new_tokens=1,
-                return_dict_in_generate=True,
-                do_sample=False,
+                tokenizer,
+                probes,
             )
             for inp in tqdm(conversations_with_questions_tokenized)
         ]
-        representations = [t[0] for t in representations_and_answers]
-        answers = [t[1] for t in representations_and_answers]
+        probs = [t[0] for t in probs_and_answers]
+        answers = [t[1] for t in probs_and_answers]
         # answers = [
         #     answer[0]["generated_text"].lower()
         #     for answer in tqdm(
@@ -437,6 +468,7 @@ if __name__ == "__main__":
         #         total=len(conversations_with_questions),
         #     )
         # ]
+        df["probs"] = probs
         df["answer"] = answers
 
     # if os.path.isfile(
@@ -448,5 +480,5 @@ if __name__ == "__main__":
     # else:
 
     df.to_pickle(
-        f"/scratch/vneplen/sociodemographics-interpretability-mitigation/{args.model.split('/')[1]}_answers_{args.dataset}{'_' + args.mitigation if args.mitigation else ''}.gz"
+        f"/scratch/vneplen/sociodemographics-interpretability-mitigation/{args.model.split('/')[1]}_answers_{args.dataset}{'_' + args.mitigation if args.mitigation else ''}{'_' + args.quarter if args.quarter else ''}.gz"
     )
