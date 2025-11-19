@@ -438,6 +438,7 @@ if __name__ == "__main__":
             conversations_with_questions_tokenized = (
                 conversations_with_questions_tokenized[start_id:end_id]
             )
+            df = df.iloc[start_id:end_id]
         probs_and_answers = [
             process_output(
                 model.generate(
