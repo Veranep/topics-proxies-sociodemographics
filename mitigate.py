@@ -26,7 +26,9 @@ def optimize_one_inter_rep(
     mult,
 ):
     global first_time
-    tensor = (inter_rep.clone()).to("cuda").requires_grad_(True)
+    tensor = (
+        (inter_rep.clone()).to("cuda").to(torch.float64).requires_grad_(True)
+    )
     rep_f = lambda: tensor
     probe_weights = (
         torch.from_numpy(probe.coef_[0]).to("cuda").to(torch.float64)
