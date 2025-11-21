@@ -41,8 +41,7 @@ def optimize_one_inter_rep(
 
     logits = torch.tensor(
         [
-            torch.dot(rep_f().squeeze()[i], probe_weights.unsqueeze(1))
-            + probe_intercept
+            torch.dot(rep_f().squeeze()[i], probe_weights) + probe_intercept
             for i in range(len(rep_f()))
         ]
     ).unsqueeze(1)
