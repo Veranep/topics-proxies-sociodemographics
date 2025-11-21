@@ -39,6 +39,9 @@ def optimize_one_inter_rep(
 
     # next try: rep_f() + (probe_weights - rep_f())
 
+    print(rep_f().shape, probe_weights.shape, probe_intercept.shape)
+    print(rep_f.shape)
+
     logit = torch.dot(probe_weights, rep_f()) + probe_intercept
     W_norm_sq = torch.dot(probe_weights, probe_weights)
 
