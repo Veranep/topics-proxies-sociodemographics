@@ -155,7 +155,7 @@ if __name__ == "__main__":
         ],
     )
     parser.add_argument(
-        "-n", "--n", type=int, help="Probe mitigation strength"
+        "-n", "--n", type=float, help="Probe mitigation strength"
     )
     parser.add_argument(
         "-q",
