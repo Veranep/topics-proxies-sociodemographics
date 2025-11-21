@@ -155,6 +155,9 @@ if __name__ == "__main__":
         ],
     )
     parser.add_argument(
+        "-n", "--n", type=int, help="Probe mitigation strength"
+    )
+    parser.add_argument(
         "-q",
         "--quarter",
         type=int,
@@ -334,7 +337,16 @@ if __name__ == "__main__":
 
     # else:
 
-    # TODO load probes
+    convos = [get_convo(df.iloc[i], args.mitigation) for i in range(len(df))]
+    for convo in convos:
+        to_remove = []
+        for i in range(len(convo)):
+            if i > 0 and convo[i]["role"] == convo[i - 1]["role"]:
+                to_remove.append(i)
+        to_remove = to_remove[::-1]
+        for idx in to_remove:
+            del convo[idx]
+
     if args.mitigation == "probe_ethnicity":
         model = pipeline(
             "text-generation",
@@ -346,70 +358,27 @@ if __name__ == "__main__":
         if not model.tokenizer.pad_token_id:
             model.tokenizer.pad_token_id = model.tokenizer.eos_token_id
 
-        N = 1
         probes = {n: probes[n]["ethnicity"] for n in range(n_layers)}
         modified_layer_names = get_layer_names(model.model)
-        df_0 = df[df["ethnicity"] == "White"].reset_index(drop=True)
-        df_1 = df[
-            df["ethnicity"].isin(["Hispanic", "Black", "Asian", "Mixed"])
-        ].reset_index(drop=True)
-        convos_0 = [
-            get_convo(df.iloc[i], args.mitigation) for i in range(len(df_0))
-        ]
-        convos_1 = [
-            get_convo(df.iloc[i], args.mitigation) for i in range(len(df_1))
-        ]
-        conversations_with_questions_0 = [
+
+        conversations_with_questions = [
             tokenizer.apply_chat_template(
                 convo,
                 tokenize=False,
                 add_generation_prompt=True,
             )
-            for convo in convos_0
+            for convo in convos
         ]
-        conversations_with_questions_1 = [
-            tokenizer.apply_chat_template(
-                convo,
-                tokenize=False,
-                add_generation_prompt=True,
-            )
-            for convo in convos_1
-        ]
-        answers_0 = modified_model(
+        answers = modified_model(
             model,
             probes,
             modified_layer_names,
             "ethnicity",
-            0,
             args.batch_size,
-            conversations_with_questions_0,
-            N,
+            conversations_with_questions,
+            args.n,
         )
-        answers_1 = modified_model(
-            model,
-            probes,
-            modified_layer_names,
-            "ethnicity",
-            1,
-            args.batch_size,
-            conversations_with_questions_1,
-            N,
-        )
-        df_0["answer"] = answers_0
-        df_1["answer"] = answers_1
-        df = pd.concat([df_0, df_1], ignore_index=True)
     else:
-        convos = [
-            get_convo(df.iloc[i], args.mitigation) for i in range(len(df))
-        ]
-        for convo in convos:
-            to_remove = []
-            for i in range(len(convo)):
-                if i > 0 and convo[i]["role"] == convo[i - 1]["role"]:
-                    to_remove.append(i)
-            to_remove = to_remove[::-1]
-            for idx in to_remove:
-                del convo[idx]
 
         # conversations_with_questions = [
         #     tokenizer.apply_chat_template(
@@ -469,7 +438,7 @@ if __name__ == "__main__":
         #     )
         # ]
         df["probs"] = probs
-        df["answer"] = answers
+    df["answer"] = answers
 
     # if os.path.isfile(
     #     f"/scratch/vneplen/sociodemographics-interpretability-mitigation/{args.model.split('/')[1]}_answers_{args.dataset}.gz"
@@ -480,5 +449,5 @@ if __name__ == "__main__":
     # else:
 
     df.to_pickle(
-        f"/scratch/vneplen/sociodemographics-interpretability-mitigation/{args.model.split('/')[1]}_answers_{args.dataset}{'_' + args.mitigation if args.mitigation else ''}{'_' + args.quarter if args.quarter else ''}.gz"
+        f"/scratch/vneplen/sociodemographics-interpretability-mitigation/{args.model.split('/')[1]}_answers_{args.dataset}{'_' + args.mitigation if args.mitigation else ''}{'_' + str(args.quarter) if args.quarter else ''}.gz"
     )
