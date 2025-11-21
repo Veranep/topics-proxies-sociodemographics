@@ -6,8 +6,8 @@ from tqdm import tqdm
 
 def get_layer_names(model):
     which_layers = []  # Which layer/s to intervene
-    from_idx = 14
-    to_idx = 15
+    from_idx = 10
+    to_idx = 13
     for name, module in model.named_modules():
         if name != "" and name[-1].isdigit():
             layer_num = name[
@@ -19,23 +19,29 @@ def get_layer_names(model):
 
 
 def optimize_one_inter_rep(
-    inter_rep, layer_name, target, probe, mult, normalized=False
+    inter_rep,
+    layer_name,
+    probe,
+    mult,
 ):
     global first_time
     tensor = (inter_rep.clone()).to("cuda").requires_grad_(True)
     rep_f = lambda: tensor
     probe_weights = torch.from_numpy(probe.coef_[0]).to("cuda")
+    probe_intercept = torch.from_numpy(probe.intercept_[0]).to("cuda")
 
     # cur_input_tensor = rep_f().clone().detach()
 
-    # + made differences worse
-    if normalized:
-        cur_input_tensor = (
-            rep_f() - probe_weights * mult * 100 / rep_f().norm()
-        )
+    # + made differences a lot worse, - also made them slightly worse
 
-    else:
-        cur_input_tensor = rep_f() - probe_weights * mult
+    # next try: rep_f() + (probe_weights - rep_f())
+
+    logit = torch.dot(probe_weights, rep_f()) + probe_intercept
+    W_norm_sq = torch.dot(probe_weights, probe_weights)
+
+    cur_input_tensor = rep_f() - mult * (logit / W_norm_sq) * probe_weights
+
+    # cur_input_tensor = rep_f() + (probe_weights - rep_f()) * mult
 
     return cur_input_tensor.clone()
 
@@ -52,10 +58,8 @@ def edit_inter_rep_multi_layers(output, layer_name):
         cloned_inter_rep = optimize_one_inter_rep(
             cloned_inter_rep,
             layer_name,
-            cf_target,
             probe,
             mult=mult,
-            normalized=False,
         )
     output[0][:, -1] = cloned_inter_rep.to(torch.float16)
     return output
@@ -66,7 +70,6 @@ def modified_model(
     probes,
     modified_layer_names,
     demographic,
-    target,
     batch_size,
     question_convos,
     N,
@@ -75,8 +78,6 @@ def modified_model(
     probes_dict = probes
     global mult
     mult = N
-    global cf_target
-    cf_target = target
     with TraceDict(
         model.model,
         modified_layer_names,
