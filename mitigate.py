@@ -52,7 +52,7 @@ def optimize_one_inter_rep(
     W_norm_sq = torch.dot(probe_weights, probe_weights)
 
     cur_input_tensor = (
-        rep_f() - mult * (logit / W_norm_sq) * probe_weights
+        rep_f() - mult * (logits / W_norm_sq) * probe_weights
     ).unsqueeze(0)
 
     # cur_input_tensor = rep_f() + (probe_weights - rep_f()) * mult
