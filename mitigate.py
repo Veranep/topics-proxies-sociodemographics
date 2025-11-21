@@ -39,13 +39,18 @@ def optimize_one_inter_rep(
 
     # next try: rep_f() + (probe_weights - rep_f())
 
-    print(rep_f().shape, probe_weights.shape, probe_intercept.shape)
-    print(rep_f.shape)
-
-    logit = torch.dot(probe_weights, rep_f()) + probe_intercept
+    logits = torch.tensor(
+        [
+            torch.dot(rep_f().squeeze()[i], probe_weights.unsqueeze(1))
+            + probe_intercept
+            for i in range(len(rep_f()))
+        ]
+    ).unsqueeze(1)
     W_norm_sq = torch.dot(probe_weights, probe_weights)
 
-    cur_input_tensor = rep_f() - mult * (logit / W_norm_sq) * probe_weights
+    cur_input_tensor = (
+        rep_f() - mult * (logit / W_norm_sq) * probe_weights
+    ).unsqueeze(0)
 
     # cur_input_tensor = rep_f() + (probe_weights - rep_f()) * mult
 
