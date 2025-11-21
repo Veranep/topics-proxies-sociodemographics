@@ -28,7 +28,9 @@ def optimize_one_inter_rep(
     tensor = (inter_rep.clone()).to("cuda").requires_grad_(True)
     rep_f = lambda: tensor
     probe_weights = torch.from_numpy(probe.coef_[0]).to("cuda")
-    probe_intercept = torch.from_numpy(probe.intercept_[0]).to("cuda")
+    probe_intercept = torch.from_numpy(np.array(probe.intercept_[0])).to(
+        "cuda"
+    )
 
     # cur_input_tensor = rep_f().clone().detach()
 
