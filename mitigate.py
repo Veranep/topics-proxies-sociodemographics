@@ -27,11 +27,11 @@ def optimize_one_inter_rep(
 ):
     global first_time
     tensor = (
-        (inter_rep.clone()).to("cuda").to(torch.float64).requires_grad_(True)
+        (inter_rep.clone()).to(torch.float64).to("cuda").requires_grad_(True)
     )
     rep_f = lambda: tensor
     probe_weights = (
-        torch.from_numpy(probe.coef_[0]).to("cuda").to(torch.float64)
+        torch.from_numpy(probe.coef_[0]).to(torch.float64).to("cuda")
     )
     probe_intercept = torch.from_numpy(np.array(probe.intercept_[0])).to(
         "cuda"
@@ -50,6 +50,7 @@ def optimize_one_inter_rep(
         ]
     ).unsqueeze(1)
     W_norm_sq = torch.dot(probe_weights, probe_weights)
+    print(logits.device, W_norm_sq.device)
 
     cur_input_tensor = (
         rep_f() - mult * (logits / W_norm_sq) * probe_weights
