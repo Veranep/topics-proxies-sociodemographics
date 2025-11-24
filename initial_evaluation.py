@@ -146,13 +146,6 @@ if __name__ == "__main__":
         "--mitigation",
         type=str,
         default=None,
-        choices=[
-            None,
-            "system_general",
-            "system_ethnicity",
-            "user_specific",
-            "probe_ethnicity",
-        ],
     )
     parser.add_argument(
         "-n", "--n", type=float, help="Probe mitigation strength"
@@ -347,7 +340,7 @@ if __name__ == "__main__":
         for idx in to_remove:
             del convo[idx]
 
-    if args.mitigation == "probe_ethnicity":
+    if "probe" in args.mitigation:
         model = pipeline(
             "text-generation",
             model=model,
@@ -358,7 +351,10 @@ if __name__ == "__main__":
         if not model.tokenizer.pad_token_id:
             model.tokenizer.pad_token_id = model.tokenizer.eos_token_id
 
-        probes = {n: probes[n]["ethnicity"] for n in range(n_layers)}
+        probes = {
+            n: probes[n][args.mitigation.split("_", 1)[1]]
+            for n in range(n_layers)
+        }
         modified_layer_names = get_layer_names(model.model)
 
         conversations_with_questions = [

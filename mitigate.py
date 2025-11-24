@@ -7,7 +7,7 @@ from tqdm import tqdm
 
 def get_layer_names(model):
     which_layers = []  # Which layer/s to intervene
-    from_idx = 10
+    from_idx = 8
     to_idx = 13
     for name, module in model.named_modules():
         if name != "" and name[-1].isdigit():
