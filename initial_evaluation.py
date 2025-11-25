@@ -340,7 +340,7 @@ if __name__ == "__main__":
         for idx in to_remove:
             del convo[idx]
 
-    if "probe" in args.mitigation:
+    if args.mitigation and "probe" in args.mitigation:
         model = pipeline(
             "text-generation",
             model=model,
