@@ -178,26 +178,29 @@ def get_repr(df, dataset, model, tokenizer, device, questions, first):
             tokenizer(inp, return_tensors="pt") for inp in df["text"].tolist()
         ]
     elif dataset == "sharelm":
-        convos = [
-            (
-                [{"role": "user", "content": c[0]["content"]}]
-                if tokenizer.chat_template
-                else c[0]["content"]
-            )
-            for c in df["conversation"].tolist()
-        ]
-        if tokenizer.chat_template:
-            inputs = [
-                tokenizer.apply_chat_template(
-                    convo,
-                    tokenize=True,
-                    add_generation_prompt=False,
-                    return_tensors="pt",
+        if first:
+            convos = [
+                (
+                    [{"role": "user", "content": c[0]["content"]}]
+                    if tokenizer.chat_template
+                    else c[0]["content"]
                 )
-                for convo in convos
+                for c in df["conversation"].tolist()
             ]
-        else:
-            inputs = [tokenizer(inp, return_tensors="pt") for inp in convos]
+            if tokenizer.chat_template:
+                inputs = [
+                    tokenizer.apply_chat_template(
+                        convo,
+                        tokenize=True,
+                        add_generation_prompt=False,
+                        return_tensors="pt",
+                    )
+                    for convo in convos
+                ]
+            else:
+                inputs = [
+                    tokenizer(inp, return_tensors="pt") for inp in convos
+                ]
 
     # if agg_method == "last":
     #     representations = [
@@ -410,7 +413,7 @@ if __name__ == "__main__":
         "-f",
         "--folder",
         type=str,
-        default="",  # "/scratch/vneplen/sociodemographics-interpretability-mitigation/"
+        default="",  # "/scratch/vneplen/sociodemographics-interpretability-mitigation"
     )
     parser.add_argument(
         "-mo",
