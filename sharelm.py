@@ -1,3 +1,4 @@
+from collections import Counter
 from datasets import load_dataset
 
 if __name__ == "__main__":
@@ -9,4 +10,5 @@ if __name__ == "__main__":
             lambda x: x[f"user_metadata.{metadata}"] != ""
         )
         print(len(filtered))
-        print(filtered[f"user_metadata.{metadata}"].unique())
+        unique_items = Counter(filtered[f"user_metadata.{metadata}"])
+        print(unique_items, len(unique_items))
