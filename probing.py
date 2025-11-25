@@ -18,6 +18,39 @@ chat_templates = {
 }
 
 
+def select_twoclasses_sharelm(df, col):
+    if col == "age":
+        df.loc[df[col] == "18-24 years old", col] = 0
+        df.loc[df[col] == "25-34 years old", col] = 0
+        df.loc[df[col] == "32", col] = 0
+        df.loc[df[col] == "29", col] = 0
+        df.loc[df[col] == "28", col] = 0
+        df.loc[df[col] == "20", col] = 0
+        df.loc[df[col] == "27", col] = 0
+        df.loc[df[col] == "19", col] = 0
+        df.loc[df[col] == "45-54 years old", col] = 1
+        df.loc[df[col] == "55-64 years old", col] = 1
+        df.loc[df[col] == "65+ years old", col] = 1
+    elif col == "gender":
+        df.loc[df[col] == "Male", col] = 0
+        df.loc[df[col] == "Man", col] = 0
+        df.loc[df[col] == "Female", col] = 1
+        df.loc[df[col] == "Woman", col] = 1
+    else:
+        df.loc["United States" in df[col], col] = 0
+        df.loc["China" in df[col], col] = 1
+    selected_df = df[df[col].isin([0, 1])].reset_index(drop=True)
+    max_amount = list(selected_df[col].value_counts())[-1]
+
+    indices_to_drop = []
+    for val in [0, 1]:
+        samples = selected_df[selected_df[col] == val].index.values
+        indexes = np.random.choice(samples, size=max_amount, replace=False)
+        indices_to_drop += [idx for idx in samples if idx not in indexes]
+
+    return selected_df.drop(index=indices_to_drop)
+
+
 def select_twoclasses(df, col):
     if col == "age":
         df.loc[df[col] == "18-24 years old", col] = 0
@@ -144,6 +177,28 @@ def get_repr(df, dataset, model, tokenizer, device, questions, first):
         inputs = [
             tokenizer(inp, return_tensors="pt") for inp in df["text"].tolist()
         ]
+    elif dataset == "sharelm":
+        convos = [
+            (
+                [{"role": "user", "content": c[0]["content"]}]
+                if tokenizer.chat_template
+                else c[0]["content"]
+            )
+            for c in df["conversation"].tolist()
+        ]
+        if tokenizer.chat_template:
+            inputs = [
+                tokenizer.apply_chat_template(
+                    convo,
+                    tokenize=True,
+                    add_generation_prompt=False,
+                    return_tensors="pt",
+                )
+                for convo in convos
+            ]
+        else:
+            inputs = [tokenizer(inp, return_tensors="pt") for inp in convos]
+
     # if agg_method == "last":
     #     representations = [
     #         (
@@ -185,7 +240,8 @@ def get_repr(df, dataset, model, tokenizer, device, questions, first):
                     return_dict=True,
                 )["hidden_states"]
             ]
-            if dataset == "prism" and (not first or tokenizer.chat_template)
+            if dataset in ["prism", "sharelm"]
+            and (not first or tokenizer.chat_template)
             else [
                 torch.mean(
                     rep[-1, :, :].detach().cpu().clone().to(torch.float), 0
@@ -233,10 +289,16 @@ def train_probe(
             twoclasses_df = df[df["conversation_type"] == data_subset]
         else:
             twoclasses_df = df
-        twoclasses_df = select_twoclasses(twoclasses_df, demographic_col)
+
+        if dataset == "prism":
+            twoclasses_df = select_twoclasses(twoclasses_df, demographic_col)
+        elif dataset == "sharelm":
+            twoclasses_df = select_twoclasses_sharelm(
+                twoclasses_df, demographic_col
+            )
         results[demographic_col] = []
         for l in tqdm(range(n_layers)):
-            if dataset == "prism":
+            if dataset in ["prism", "sharelm"]:
                 X = np.array(
                     [
                         rep[l]
@@ -244,9 +306,6 @@ def train_probe(
                     ]
                 )
                 y = np.array(twoclasses_df[demographic_col].tolist())
-                keep_idx = np.where(y != "Prefer not to say")[0]
-                y = y[keep_idx]
-                X = X[keep_idx]
                 demo_scoring = ["f1"]
 
             elif dataset == "trustpilot":
@@ -438,6 +497,31 @@ if __name__ == "__main__":
                     ignore_index=True,
                 ).drop(columns=["Unnamed: 0", "age_cat"])
                 df = df[~pd.isna(df["text"])]
+            elif args.dataset == "sharelm":
+                dataset = load_dataset("shachardon/ShareLM")["train"]
+                dataset = dataset.flatten()
+                dataset = dataset.filter(
+                    lambda x: x["user_metadata.gender"]
+                    in ["Male", "Female", "Man", "Woman"]
+                    or x["user_metadata.age"] != ""
+                    or (
+                        "reside_country" not in x["user_metadata.location"]
+                        and (
+                            "United States" in x["user_metadata.location"]
+                            or "China" in x["user_metadata.location"]
+                        )
+                        and x["conversation_metadata.language"] == "English"
+                    )
+                    or "'reside_country': 'United States'"
+                    in x["user_metadata.location"]
+                )
+                df = dataset.to_pandas().rename(
+                    columns={
+                        "user_metadata.location": "location",
+                        "user_metadata.age": "age",
+                        "user_metadata.gender": "gender",
+                    }
+                )
             df = get_repr(
                 df,
                 args.dataset,
@@ -486,26 +570,42 @@ if __name__ == "__main__":
         ]
     elif args.dataset == "trustpilot":
         demographic_cols = ["gender", "age"]  # make sure age is second
+    elif args.dataset == "sharelm":
+        demographic_cols = ["gender", "age", "location"]
     n_layers = len(df.iloc[0]["representations"])
 
     if args.mode == "probe_cv":
-        for data_subset in [
-            "unguided",
-            "controversy guided",
-            "values guided",
-            "all",
-        ]:
+        if args.dataset == "prism":
+            for data_subset in [
+                "unguided",
+                "controversy guided",
+                "values guided",
+                "all",
+            ]:
+                train_probe(
+                    df,
+                    args.dataset,
+                    n_layers,
+                    args.folder
+                    + f"/{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}_probe_results{'_first' if args.first else ''}{'_'+data_subset if data_subset!='all' else ''}.pkl",
+                    demographic_cols,
+                    save=False,
+                    data_subset=data_subset,
+                    save_file=args.folder
+                    + f"/{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}{'_first' if args.first else ''}{'_'+data_subset if data_subset!='all' else ''}_probe",
+                )
+        else:
             train_probe(
                 df,
                 args.dataset,
                 n_layers,
                 args.folder
-                + f"/{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}_probe_results{'_first' if args.first else ''}{'_'+data_subset if data_subset!='all' else ''}.pkl",
+                + f"/{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}_probe_results{'_first' if args.first else ''}{'_'+args.data_subset if args.data_subset!='all' else ''}.pkl",
                 demographic_cols,
                 save=False,
-                data_subset=data_subset,
+                data_subset=args.data_subset,
                 save_file=args.folder
-                + f"/{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}{'_first' if args.first else ''}{'_'+data_subset if data_subset!='all' else ''}_probe",
+                + f"/{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}{'_first' if args.first else ''}{'_'+args.data_subset if args.data_subset!='all' else ''}_probe",
             )
 
     elif args.mode == "probe_save":
