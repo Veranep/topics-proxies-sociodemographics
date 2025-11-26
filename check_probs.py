@@ -211,15 +211,16 @@ if __name__ == "__main__":
             pvalues = ttest_ind(*values_no).pvalue
             questions_diff = unique_questions[np.where(pvalues < 0.05)[0]]
             diff_questions[demographic] = questions_diff
+            print("got questions")
 
             merged_climate = get_binary_subset(
                 merged_climate_fever, demographic
             )
-            demo_questions = merged_climate_fever[
-                merged_climate_fever["question"].isin(questions_diff)
+            demo_questions = merged_climate[
+                merged_climate["question"].isin(questions_diff)
             ]
-            anti_demo_questions = merged_climate_fever[
-                ~merged_climate_fever["question"].isin(questions_diff)
+            anti_demo_questions = merged_climate[
+                ~merged_climate["question"].isin(questions_diff)
             ]
             demo = {}
             anti_demo = {}
