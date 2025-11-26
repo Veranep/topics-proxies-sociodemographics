@@ -83,8 +83,16 @@ if __name__ == "__main__":
         ["question", "conversation_id", "gold_answer", "answer", "probs"]
         + demographics
     ]
+    olmo_climatefever4 = pd.read_pickle(
+        "/scratch/vneplen/sociodemographics-interpretability-mitigation/OLMo-2-1124-7B-Instruct_answers_climate_fever_4.gz",
+        compression="gzip",
+    )[
+        ["question", "conversation_id", "gold_answer", "answer", "probs"]
+        + demographics
+    ]
     merged_climate_fever = pd.concat(
-        [olmo_climatefever1, olmo_climatefever3], ignore_index=True
+        [olmo_climatefever1, olmo_climatefever3, olmo_climatefever4],
+        ignore_index=True,
     )
 
     dfs = {"OLMo Climate Fever": olmo_climatefever}
