@@ -76,7 +76,7 @@ if __name__ == "__main__":
         ["question", "conversation_id", "gold_answer", "answer", "probs"]
         + demographics
     ]
-    print(olmo_climatefever1.iloc[0]["probs"])
+    print("Finished 1")
     olmo_climatefever2 = pd.read_pickle(
         "/scratch/vneplen/sociodemographics-interpretability-mitigation/OLMo-2-1124-7B-Instruct_answers_climate_fever_2.gz",
         compression="gzip",
@@ -84,6 +84,7 @@ if __name__ == "__main__":
         ["question", "conversation_id", "gold_answer", "answer", "probs"]
         + demographics
     ]
+    print("Finished 2")
     olmo_climatefever3 = pd.read_pickle(
         "/scratch/vneplen/sociodemographics-interpretability-mitigation/OLMo-2-1124-7B-Instruct_answers_climate_fever_3.gz",
         compression="gzip",
@@ -91,6 +92,7 @@ if __name__ == "__main__":
         ["question", "conversation_id", "gold_answer", "answer", "probs"]
         + demographics
     ]
+    print("Finished 3")
     olmo_climatefever4 = pd.read_pickle(
         "/scratch/vneplen/sociodemographics-interpretability-mitigation/OLMo-2-1124-7B-Instruct_answers_climate_fever_4.gz",
         compression="gzip",
@@ -98,6 +100,7 @@ if __name__ == "__main__":
         ["question", "conversation_id", "gold_answer", "answer", "probs"]
         + demographics
     ]
+    print("Finished 4")
     merged_climate_fever = pd.concat(
         [
             olmo_climatefever1,
@@ -107,6 +110,7 @@ if __name__ == "__main__":
         ],
         ignore_index=True,
     )
+    print("Finished merge")
 
     dfs = {"OLMo Climate Fever": olmo_climatefever}
     baseline_acc = {}
@@ -216,14 +220,13 @@ if __name__ == "__main__":
             demo = {}
             anti_demo = {}
             for _, row in demo_questions.iterrows():
-                print(row["probs"].keys())
-                for n in row["probs"]:
+                for n in row["answer"]:
                     if n not in demo:
                         demo[n] = [[], []]
                     demo[n][0].append(row[n][demographic][0])
                     demo[n][1].append(row[n][demographic][1])
             for _, row in anti_demo_questions.iterrows():
-                for n in row["probs"]:
+                for n in row["answer"]:
                     if n not in anti_demo:
                         anti_demo[n] = [[], []]
                     anti_demo[n][0].append(row[n][demographic][0])
