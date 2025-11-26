@@ -76,6 +76,14 @@ if __name__ == "__main__":
         ["question", "conversation_id", "gold_answer", "answer", "probs"]
         + demographics
     ]
+    print(olmo_climatefever1.iloc[0]["probs"])
+    olmo_climatefever2 = pd.read_pickle(
+        "/scratch/vneplen/sociodemographics-interpretability-mitigation/OLMo-2-1124-7B-Instruct_answers_climate_fever_2.gz",
+        compression="gzip",
+    )[
+        ["question", "conversation_id", "gold_answer", "answer", "probs"]
+        + demographics
+    ]
     olmo_climatefever3 = pd.read_pickle(
         "/scratch/vneplen/sociodemographics-interpretability-mitigation/OLMo-2-1124-7B-Instruct_answers_climate_fever_3.gz",
         compression="gzip",
@@ -91,7 +99,12 @@ if __name__ == "__main__":
         + demographics
     ]
     merged_climate_fever = pd.concat(
-        [olmo_climatefever1, olmo_climatefever3, olmo_climatefever4],
+        [
+            olmo_climatefever1,
+            olmo_climatefever2,
+            olmo_climatefever3,
+            olmo_climatefever4,
+        ],
         ignore_index=True,
     )
 
@@ -203,6 +216,7 @@ if __name__ == "__main__":
             demo = {}
             anti_demo = {}
             for _, row in demo_questions.iterrows():
+                print(row["probs"].keys())
                 for n in row["probs"]:
                     if n not in demo:
                         demo[n] = [[], []]
