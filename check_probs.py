@@ -223,14 +223,14 @@ if __name__ == "__main__":
                 for n in row["answer"]:
                     if n not in demo:
                         demo[n] = [[], []]
-                    demo[n][0].append(row[n][demographic][0])
-                    demo[n][1].append(row[n][demographic][1])
+                    demo[n][0].append(row["answer"][n][demographic][0])
+                    demo[n][1].append(row["answer"][n][demographic][1])
             for _, row in anti_demo_questions.iterrows():
                 for n in row["answer"]:
                     if n not in anti_demo:
                         anti_demo[n] = [[], []]
-                    anti_demo[n][0].append(row[n][demographic][0])
-                    anti_demo[n][1].append(row[n][demographic][1])
+                    anti_demo[n][0].append(row["answer"][n][demographic][0])
+                    anti_demo[n][1].append(row["answer"][n][demographic][1])
             for n in demo:
                 print(
                     demographic,
