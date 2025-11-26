@@ -66,18 +66,18 @@ if __name__ == "__main__":
         "english_proficiency",
     ]
     olmo_climatefever = pd.read_pickle(
-        "results/OLMo-2-1124-7B-Instruct_answers_climate_fever.gz",
+        "/scratch/vneplen/sociodemographics-interpretability-mitigation/OLMo-2-1124-7B-Instruct_answers_climate_fever.gz",
         compression="gzip",
     )[["question", "conversation_id", "gold_answer", "answer"] + demographics]
     olmo_climatefever1 = pd.read_pickle(
-        "results/OLMo-2-1124-7B-Instruct_answers_climate_fever_1.gz",
+        "/scratch/vneplen/sociodemographics-interpretability-mitigation/OLMo-2-1124-7B-Instruct_answers_climate_fever_1.gz",
         compression="gzip",
     )[
         ["question", "conversation_id", "gold_answer", "answer", "probs"]
         + demographics
     ]
     olmo_climatefever3 = pd.read_pickle(
-        "results/OLMo-2-1124-7B-Instruct_answers_climate_fever_3.gz",
+        "/scratch/vneplen/sociodemographics-interpretability-mitigation/OLMo-2-1124-7B-Instruct_answers_climate_fever_3.gz",
         compression="gzip",
     )[
         ["question", "conversation_id", "gold_answer", "answer", "probs"]
