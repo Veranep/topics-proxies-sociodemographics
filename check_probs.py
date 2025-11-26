@@ -211,6 +211,10 @@ if __name__ == "__main__":
             pvalues = ttest_ind(*values_no).pvalue
             questions_diff = unique_questions[np.where(pvalues < 0.05)[0]]
             diff_questions[demographic] = questions_diff
+
+            merged_climate = get_binary_subset(
+                merged_climate_fever, demographic
+            )
             demo_questions = merged_climate_fever[
                 merged_climate_fever["question"].isin(questions_diff)
             ]
@@ -222,15 +226,23 @@ if __name__ == "__main__":
             for _, row in demo_questions.iterrows():
                 for n in row["answer"]:
                     if n not in demo:
-                        demo[n] = [[], []]
+                        demo[n] = [[], [], []]
                     demo[n][0].append(row["answer"][n][demographic][0][0])
                     demo[n][1].append(row["answer"][n][demographic][0][1])
+                    demo[n][2].append(
+                        np.argmax(row["answer"][n][demographic][0])
+                        == row[demographic]
+                    )
             for _, row in anti_demo_questions.iterrows():
                 for n in row["answer"]:
                     if n not in anti_demo:
-                        anti_demo[n] = [[], []]
+                        anti_demo[n] = [[], [], []]
                     anti_demo[n][0].append(row["answer"][n][demographic][0][0])
                     anti_demo[n][1].append(row["answer"][n][demographic][0][1])
+                    anti_demo[n][2].append(
+                        np.argmax(row["answer"][n][demographic][0])
+                        == row[demographic]
+                    )
             for n in demo:
                 print(
                     demographic,
@@ -243,4 +255,7 @@ if __name__ == "__main__":
                     ttest_ind(
                         anti_demo[n][0], anti_demo[n][1], axis=None
                     ).pvalue,
+                    np.mean(demo[n][2]),
+                    np.mean(anti_demo[n][2]),
+                    ttest_ind(demo[n][2], anti_demo[n][2], axis=None).pvalue,
                 )
