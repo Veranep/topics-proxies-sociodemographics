@@ -260,7 +260,10 @@ if __name__ == "__main__":
                             )
                         )
 
+            overall_acc = []
+
             for n in demo:
+                overall_acc.append(np.mean(all_data[n][2]))
                 print(
                     demographic,
                     n,
@@ -275,3 +278,4 @@ if __name__ == "__main__":
                     ttest_ind(demo[n][2], anti_demo[n][2], axis=None).pvalue,
                     ttest_ind(demo[n][2], all_data[n][2], axis=None).pvalue,
                 )
+            print(np.sort(overall_acc), np.argsort(overall_acc))
