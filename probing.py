@@ -504,9 +504,11 @@ if __name__ == "__main__":
                 dataset = load_dataset("shachardon/ShareLM")["train"]
                 dataset = dataset.flatten()
                 dataset = dataset.filter(
-                    lambda x: x["user_metadata.gender"]
-                    in ["Male", "Female", "Man", "Woman"]
-                    # or x["user_metadata.age"] != ""
+                    lambda x:  # x["user_metadata.gender"]
+                    # in ["Male", "Female", "Man", "Woman"]
+                    # or
+                    x["user_metadata.age"]
+                    != ""
                     # or (
                     #     "reside_country" not in x["user_metadata.location"]
                     #     and (
