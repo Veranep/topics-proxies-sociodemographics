@@ -506,17 +506,17 @@ if __name__ == "__main__":
                 dataset = dataset.filter(
                     lambda x: x["user_metadata.gender"]
                     in ["Male", "Female", "Man", "Woman"]
-                    or x["user_metadata.age"] != ""
-                    or (
-                        "reside_country" not in x["user_metadata.location"]
-                        and (
-                            "United States" in x["user_metadata.location"]
-                            or "China" in x["user_metadata.location"]
-                        )
-                        and x["conversation_metadata.language"] == "English"
-                    )
-                    or "'reside_country': 'United States'"
-                    in x["user_metadata.location"]
+                    # or x["user_metadata.age"] != ""
+                    # or (
+                    #     "reside_country" not in x["user_metadata.location"]
+                    #     and (
+                    #         "United States" in x["user_metadata.location"]
+                    #         or "China" in x["user_metadata.location"]
+                    #     )
+                    #     and x["conversation_metadata.language"] == "English"
+                    # )
+                    # or "'reside_country': 'United States'"
+                    # in x["user_metadata.location"]
                 )
                 df = dataset.to_pandas().rename(
                     columns={
