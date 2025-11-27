@@ -216,12 +216,6 @@ if __name__ == "__main__":
             merged_climate = get_binary_subset(
                 merged_climate_fever, demographic
             )
-            demo_questions = merged_climate[
-                merged_climate["question"].isin(questions_diff)
-            ]
-            anti_demo_questions = merged_climate[
-                ~merged_climate["question"].isin(questions_diff)
-            ]
             all_data = {}
             demo = {}
             anti_demo = {}
