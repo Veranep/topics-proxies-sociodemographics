@@ -399,7 +399,7 @@ if __name__ == "__main__":
         "-ds",
         "--data_subset",
         type=str,
-        default=None,
+        default="all",
         help="Subset of data to use to train probe",
     )
     parser.add_argument(
