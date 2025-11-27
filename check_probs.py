@@ -222,42 +222,62 @@ if __name__ == "__main__":
             anti_demo_questions = merged_climate[
                 ~merged_climate["question"].isin(questions_diff)
             ]
+            all_data = {}
             demo = {}
             anti_demo = {}
-            for _, row in demo_questions.iterrows():
+            for _, row in merged_climate.iterrows():
                 for n in row["answer"]:
                     if n not in demo:
                         demo[n] = [[], [], []]
-                    demo[n][0].append(row["answer"][n][demographic][0][0])
-                    demo[n][1].append(row["answer"][n][demographic][0][1])
-                    demo[n][2].append(
-                        1
-                        * (
-                            np.argmax(row["answer"][n][demographic][0])
-                            == row[demographic]
-                        )
-                    )
-            for _, row in anti_demo_questions.iterrows():
-                for n in row["answer"]:
-                    if n not in anti_demo:
                         anti_demo[n] = [[], [], []]
-                    anti_demo[n][0].append(row["answer"][n][demographic][0][0])
-                    anti_demo[n][1].append(row["answer"][n][demographic][0][1])
-                    anti_demo[n][2].append(
+                        all_data[n] = [[], [], []]
+
+                    all_data[n][0].append(row["answer"][n][demographic][0][0])
+                    all_data[n][1].append(row["answer"][n][demographic][0][1])
+                    all_data[n][2].append(
                         1
                         * (
                             np.argmax(row["answer"][n][demographic][0])
                             == row[demographic]
                         )
                     )
+                    if row["question"] in questions_diff:
+                        demo[n][0].append(row["answer"][n][demographic][0][0])
+                        demo[n][1].append(row["answer"][n][demographic][0][1])
+                        demo[n][2].append(
+                            1
+                            * (
+                                np.argmax(row["answer"][n][demographic][0])
+                                == row[demographic]
+                            )
+                        )
+                    else:
+                        anti_demo[n][0].append(
+                            row["answer"][n][demographic][0][0]
+                        )
+                        anti_demo[n][1].append(
+                            row["answer"][n][demographic][0][1]
+                        )
+                        anti_demo[n][2].append(
+                            1
+                            * (
+                                np.argmax(row["answer"][n][demographic][0])
+                                == row[demographic]
+                            )
+                        )
+
             for n in demo:
                 print(
                     demographic,
                     n,
                     (np.mean(demo[n][0]), np.mean(demo[n][1])),
                     (np.mean(anti_demo[n][0]), np.mean(anti_demo[n][1])),
+                    (np.mean(all_data[n][0]), np.mean(all_data[n][1])),
                     ttest_ind(demo[n][0], anti_demo[n][0], axis=None).pvalue,
+                    ttest_ind(demo[n][0], all_data[n][0], axis=None).pvalue,
                     np.mean(demo[n][2]),
                     np.mean(anti_demo[n][2]),
+                    np.mean(all_data[n][2]),
                     ttest_ind(demo[n][2], anti_demo[n][2], axis=None).pvalue,
+                    ttest_ind(demo[n][2], all_data[n][2], axis=None).pvalue,
                 )
