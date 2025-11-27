@@ -39,11 +39,15 @@ def select_twoclasses_sharelm(df, col):
     else:
         df.loc["United States" in df[col], col] = 0
         df.loc["China" in df[col], col] = 1
-    selected_df = df[df[col].isin([0, 1])].reset_index(drop=True)
+        df.loc["Germany" in df[col], col] = 2
+        df.loc["Egypt" in df[col], col] = 3
+        df.loc["Russia" in df[col], col] = 4
+        df.loc["Brazil" in df[col], col] = 5
+    selected_df = df[df[col].isin([0, 1, 2, 3, 4, 5])].reset_index(drop=True)
     max_amount = list(selected_df[col].value_counts())[-1]
 
     indices_to_drop = []
-    for val in [0, 1]:
+    for val in [0, 1, 2, 3, 4, 5]:
         samples = selected_df[selected_df[col] == val].index.values
         indexes = np.random.choice(samples, size=max_amount, replace=False)
         indices_to_drop += [idx for idx in samples if idx not in indexes]
@@ -295,10 +299,10 @@ def train_probe(
 
         if dataset == "prism":
             twoclasses_df = select_twoclasses(twoclasses_df, demographic_col)
-        elif dataset == "sharelm":
-            twoclasses_df = select_twoclasses_sharelm(
-                twoclasses_df, demographic_col
-            )
+        # elif dataset == "sharelm":
+        #     twoclasses_df = select_twoclasses_sharelm(
+        #         twoclasses_df, demographic_col
+        #     )
         results[demographic_col] = []
         for l in tqdm(range(n_layers)):
             if dataset in ["prism", "sharelm"]:
@@ -309,7 +313,20 @@ def train_probe(
                     ]
                 )
                 y = np.array(twoclasses_df[demographic_col].tolist())
-                demo_scoring = ["f1"]
+                if dataset == "prism":
+                    demo_scoring = ["f1"]
+                else:
+                    demo_scoring = {
+                        f"f1_{group}": make_scorer(
+                            f1_score,
+                            average="weighted",
+                            labels=[group],
+                            pos_label=None,
+                        )
+                        for group in np.unique(y)
+                    }
+
+                    demo_scoring.update(standard_scoring)
 
             elif dataset == "trustpilot":
                 X_train = np.array(
@@ -507,8 +524,17 @@ if __name__ == "__main__":
                     lambda x:  # x["user_metadata.gender"]
                     # in ["Male", "Female", "Man", "Woman"]
                     # or
-                    x["user_metadata.age"]
-                    != ""
+                    # x["user_metadata.age"]
+                    # != ""
+                    x["conversation_metadata.language"] == "English"
+                    and (
+                        "United States" in x["user_metadata.location"]
+                        or "China" in x["user_metadata.location"]
+                        or "Germany" in x["user_metadata.location"]
+                        or "Egypt" in x["user_metadata.location"]
+                        or "Russia" in x["user_metadata.location"]
+                        or "Brazil" in x["user_metadata.location"]
+                    )
                     # or (
                     #     "reside_country" not in x["user_metadata.location"]
                     #     and (
@@ -527,6 +553,9 @@ if __name__ == "__main__":
                         "user_metadata.gender": "gender",
                     }
                 )
+                print(df.shape)
+                df = select_twoclasses_sharelm(df, "location")
+                print(df.shape)
             df = get_repr(
                 df,
                 args.dataset,
