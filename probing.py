@@ -36,13 +36,13 @@ def select_twoclasses_sharelm(df, col):
         df.loc[df[col] == "Man", col] = 0
         df.loc[df[col] == "Female", col] = 1
         df.loc[df[col] == "Woman", col] = 1
-    else:
-        df.loc[df[col].str.contains("United States"), col] = 0
-        df.loc[df[col].str.contains("China"), col] = 1
-        df.loc[df[col].str.contains("Germany"), col] = 2
-        df.loc[df[col].str.contains("Egypt"), col] = 3
-        df.loc[df[col].str.contains("Russia"), col] = 4
-        df.loc[df[col].str.contains("Brazil"), col] = 5
+    elif col == "location":
+        df.loc[df[col].str.contains("United States", na=False), col] = 0
+        df.loc[df[col].str.contains("China", na=False), col] = 1
+        df.loc[df[col].str.contains("Germany", na=False), col] = 2
+        df.loc[df[col].str.contains("Egypt", na=False), col] = 3
+        df.loc[df[col].str.contains("Russia", na=False), col] = 4
+        df.loc[df[col].str.contains("Brazil", na=False), col] = 5
     selected_df = df[df[col].isin([0, 1, 2, 3, 4, 5])].reset_index(drop=True)
     max_amount = list(selected_df[col].value_counts())[-1]
 
