@@ -350,7 +350,7 @@ def train_probe(
                 ) as outfile:
                     pickle.dump(clf, outfile)
             else:
-                if dataset == "prism":
+                if dataset in ["prism", "sharelm"]:
                     scores = cross_validate(
                         clf,
                         X,
