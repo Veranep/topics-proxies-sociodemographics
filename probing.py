@@ -439,6 +439,13 @@ if __name__ == "__main__":
         choices=["representations", "probe_cv", "probe_save"],
     )
     parser.add_argument(
+        "-p",
+        "--part",
+        type=int,
+        choices=[1, 2, 3, 4, 5, 6],
+        help="Which part of the dataset to evaluate",
+    )
+    parser.add_argument(
         "--add_questions", action="store_true", help="Probe after question"
     )
     parser.add_argument(
@@ -556,6 +563,14 @@ if __name__ == "__main__":
                 print(df.shape)
                 df = select_twoclasses_sharelm(df, "location")
                 print(df.shape)
+            if args.part:
+                part = len(df) // 6
+                rest = len(df) % 6
+                start_id = (args.part - 1) * part
+                end_id = start_id + part
+                if args.part == 6:
+                    end_id += rest
+                df = df.iloc[start_id:end_id]
             df = get_repr(
                 df,
                 args.dataset,
@@ -567,7 +582,7 @@ if __name__ == "__main__":
             )
             df.to_pickle(
                 args.folder
-                + f"/{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}{'_first' if args.first else ''}_representations.gz"
+                + f"/{args.model.split('/')[1]}{'_'+args.dataset if args.dataset != 'prism' else ''}{'_first' if args.first else ''}{'_' + str(args.part) if args.part else ''}_representations.gz"
             )
 
             # questions = list(
