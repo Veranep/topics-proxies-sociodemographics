@@ -157,6 +157,18 @@ if __name__ == "__main__":
         choices=[1, 2, 3, 4],
         help="Which quarter of the dataset to evaluate",
     )
+    parser.add_argument(
+        "-fi",
+        "--from_idx",
+        type=int,
+        help="Layer to start steering from",
+    )
+    parser.add_argument(
+        "-ti",
+        "--to_idx",
+        type=int,
+        help="Layer to stop steering at",
+    )
     args = parser.parse_args()
     np.random.seed(42)
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -355,7 +367,9 @@ if __name__ == "__main__":
             n: probes[n][args.mitigation.split("_", 1)[1]]
             for n in range(n_layers)
         }
-        modified_layer_names = get_layer_names(model.model)
+        modified_layer_names = get_layer_names(
+            model.model, args.from_idx, args.to_idx
+        )
 
         conversations_with_questions = [
             tokenizer.apply_chat_template(

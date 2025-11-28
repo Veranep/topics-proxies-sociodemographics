@@ -5,10 +5,8 @@ from torch import nn
 from tqdm import tqdm
 
 
-def get_layer_names(model):
+def get_layer_names(model, from_idx, to_idx):
     which_layers = []  # Which layer/s to intervene
-    from_idx = 0
-    to_idx = 6
     for name, module in model.named_modules():
         if name != "" and name[-1].isdigit():
             layer_num = name[
