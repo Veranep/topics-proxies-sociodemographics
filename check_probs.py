@@ -278,4 +278,11 @@ if __name__ == "__main__":
                     ttest_ind(demo[n][2], anti_demo[n][2], axis=None).pvalue,
                     ttest_ind(demo[n][2], all_data[n][2], axis=None).pvalue,
                 )
-            print(np.sort(overall_acc), np.argsort(overall_acc))
+            print(
+                repr(
+                    (
+                        np.sort(overall_acc).tolist(),
+                        np.argsort(overall_acc).tolist(),
+                    )
+                )
+            )
