@@ -389,24 +389,23 @@ if __name__ == "__main__":
             args.n,
         )
     else:
-
-        # conversations_with_questions = [
-        #     tokenizer.apply_chat_template(
-        #         convo,
-        #         tokenize=False,
-        #         add_generation_prompt=True,
-        #     )
-        #     for convo in convos
-        # ]
-        conversations_with_questions_tokenized = [
+        conversations_with_questions = [
             tokenizer.apply_chat_template(
                 convo,
-                tokenize=True,
+                tokenize=False,
                 add_generation_prompt=True,
-                return_tensors="pt",
             )
             for convo in convos
         ]
+        # conversations_with_questions_tokenized = [
+        #     tokenizer.apply_chat_template(
+        #         convo,
+        #         tokenize=True,
+        #         add_generation_prompt=True,
+        #         return_tensors="pt",
+        #     )
+        #     for convo in convos
+        # ]
         if args.quarter:
             quarter = len(conversations_with_questions_tokenized) // 4
             rest = len(conversations_with_questions_tokenized) % 4
@@ -418,36 +417,36 @@ if __name__ == "__main__":
                 conversations_with_questions_tokenized[start_id:end_id]
             )
             df = df.iloc[start_id:end_id]
-        probs_and_answers = [
-            process_output(
-                model.generate(
-                    inp.to(device),
-                    output_hidden_states=True,
-                    max_new_tokens=1,
-                    return_dict_in_generate=True,
-                    do_sample=False,
-                ),
-                tokenizer,
-                probes,
-            )
-            for inp in tqdm(conversations_with_questions_tokenized)
-        ]
-        probs = [t[0] for t in probs_and_answers]
-        answers = [t[1] for t in probs_and_answers]
-        # answers = [
-        #     answer[0]["generated_text"].lower()
-        #     for answer in tqdm(
-        #         model(
-        #             ListDataset(conversations_with_questions),
-        #             batch_size=args.batch_size,
-        #             do_sample=False,
+        # probs_and_answers = [
+        #     process_output(
+        #         model.generate(
+        #             inp.to(device),
+        #             output_hidden_states=True,
         #             max_new_tokens=1,
-        #             return_full_text=False,
+        #             return_dict_in_generate=True,
+        #             do_sample=False,
         #         ),
-        #         total=len(conversations_with_questions),
+        #         tokenizer,
+        #         probes,
         #     )
+        #     for inp in tqdm(conversations_with_questions_tokenized)
         # ]
-        df["probs"] = probs
+        # probs = [t[0] for t in probs_and_answers]
+        # answers = [t[1] for t in probs_and_answers]
+        answers = [
+            answer[0]["generated_text"].lower()
+            for answer in tqdm(
+                model(
+                    ListDataset(conversations_with_questions),
+                    batch_size=args.batch_size,
+                    do_sample=False,
+                    max_new_tokens=1,
+                    return_full_text=False,
+                ),
+                total=len(conversations_with_questions),
+            )
+        ]
+        # df["probs"] = probs
     df["answer"] = answers
 
     # if os.path.isfile(
