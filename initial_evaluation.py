@@ -188,8 +188,15 @@ if __name__ == "__main__":
         )
         n_layers = 33
 
-    if not tokenizer.pad_token_id:
-        tokenizer.pad_token_id = tokenizer.eos_token_id
+    model = pipeline(
+        "text-generation",
+        model=model,
+        tokenizer=tokenizer,
+        torch_dtype=torch.bfloat16,
+        device_map="auto",
+    )
+    if not model.tokenizer.pad_token_id:
+        model.tokenizer.pad_token_id = model.tokenizer.eos_token_id
 
     # probes = {
     #     n: {
@@ -353,16 +360,6 @@ if __name__ == "__main__":
             del convo[idx]
 
     if args.mitigation and "probe" in args.mitigation:
-        model = pipeline(
-            "text-generation",
-            model=model,
-            tokenizer=tokenizer,
-            torch_dtype=torch.bfloat16,
-            device_map="auto",
-        )
-        if not model.tokenizer.pad_token_id:
-            model.tokenizer.pad_token_id = model.tokenizer.eos_token_id
-
         probes = {
             n: probes[n][args.mitigation.split("_", 1)[1]]
             for n in range(n_layers)
