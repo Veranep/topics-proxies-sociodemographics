@@ -73,8 +73,8 @@ def plot_feature_effects(demographic, n):
         clf.coef_ * np.asarray(X_train.mean(axis=0)).ravel()
     )
     return (
-        feature_names[np.argsort(average_feature_effects)[n:][::-1]],
-        feature_names[np.argsort(average_feature_effects)[n]],
+        feature_names[np.argsort(average_feature_effects)[:n]].tolist(),
+        feature_names[np.argsort(average_feature_effects)[-n:][::-1]].tolist(),
     )
 
 
@@ -115,4 +115,5 @@ if __name__ == "__main__":
             print(model, demographic)
             target_names = ["0", "1"]
             feature_names = vectorizer.get_feature_names_out()
-            print(plot_feature_effects(demographic, 25))
+            for feature_names in plot_feature_effects(demographic, 25):
+                print(feature_names)
