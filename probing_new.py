@@ -70,7 +70,8 @@ def select_twoclasses(df, col):
 
 def train_probe(df, model, n_layers, demographic, device):
     accuracies = {n: [] for n in range(n_layers)}
-    select_df = df[df["question"] == df["question"].unique().values[0]]
+    print(df, df["question"].unique())
+    select_df = df[df["question"] == df["question"].unique()[0]]
     selected_ids = select_twoclasses(select_df, demographic)
     for _ in tqdm(range(5)):
         train_ids, test_ids = train_test_split(
@@ -265,12 +266,20 @@ if __name__ == "__main__":
     )
 
     df = pd.concat([climate_fever, health_misinfo, pubhealth, finfact])
+    print(df.shape)
 
     with open("data/conv_ids_prism.pkl", "rb") as infile:
         conv_ids = pickle.load(infile)
     with open("data/q_ids_prism.pkl", "rb") as infile:
         q_ids = pickle.load(infile)
 
+    print(df[df["conversation_id"].isin(conv_ids)].shape)
+    print(df[df["question"].isin(q_ids)].shape)
+    print(
+        df[df["conversation_id"].isin(conv_ids)][
+            df["question"].isin(q_ids)
+        ].shape
+    )
     df = df[df["conversation_id"].isin(conv_ids)][df["question"].isin(q_ids)]
 
     accuracies = train_probe(
