@@ -11,8 +11,10 @@ import pandas as pd
 import pickle
 import itertools
 import xml.etree.ElementTree as ET
+from huggingface_hub import login
 
 from mitigate import get_layer_names, modified_model
+from probing_new import get_model_name
 
 which_probe = {
     "age": "",
@@ -107,14 +109,14 @@ def clean_fact_data(example):
         )
     example["claim"] = (
         example["claim"]
-        + " Respond with either 'Yes' or 'No' and no additonal text."
+        + " Respond with either 'Yes' or 'No' and no additional text."
     )
     return example
 
 
 def clean_health_misinfo_data(example):
     return (
-        example + +" Respond with either 'Yes' or 'No' and no additonal text."
+        example + +" Respond with either 'Yes' or 'No' and no additional text."
     )
 
 
@@ -169,7 +171,15 @@ if __name__ == "__main__":
         type=int,
         help="Layer to stop steering at",
     )
+    parser.add_argument(
+        "-token",
+        type=str,
+        default="",
+        help="Huggingface token that grants access to Llama model",
+    )
     args = parser.parse_args()
+    if args.token:
+        login(args.token)
     np.random.seed(42)
     device = "cuda" if torch.cuda.is_available() else "cpu"
     tokenizer = AutoTokenizer.from_pretrained(args.model, padding_side="left")
@@ -211,16 +221,32 @@ if __name__ == "__main__":
     #     for n in range(n_layers)
     # }
 
-    if os.path.isfile(
-        f"/scratch/vneplen/sociodemographics-interpretability-mitigation/prism_questions_{args.dataset}.gz"
-    ):
+    if os.path.isfile(f"data/prism_questions_{args.dataset}.gz"):
         df = pd.read_pickle(
-            f"/scratch/vneplen/sociodemographics-interpretability-mitigation/prism_questions_{args.dataset}.gz",
+            f"data/prism_questions_{args.dataset}.gz",
             compression="gzip",
         )
+        if args.dataset == "health_misinfo_full":
+            tokens = 100
+            with open("data/q_ids_prism.pkl", "rb") as infile:
+                q_ids = pickle.load(infile)
+
+                model_name = get_model_name(args.model)
+                questions = [
+                    q.replace(
+                        " Respond with either 'Yes' or 'No' and no additonal text.",
+                        "",
+                    )
+                    for demographic in q_ids[model_name]
+                    for q in q_ids[model_name][demographic]
+                ]
+                df = df[df["question"].isin(questions)]
+                print(df.shape)
+        else:
+            tokens = 1
     else:
         df = pd.read_pickle(
-            "/scratch/vneplen/sociodemographics-interpretability-mitigation/prism_preprocessed.gz",
+            "prism_preprocessed.gz",
             compression="gzip",
         )
         if args.dataset == "climate_fever":
@@ -239,7 +265,21 @@ if __name__ == "__main__":
                     list(climate_fever["claim_label"]),
                 )
             )
-
+            tokens = 1
+        elif args.dataset == "health_misinfo_full":
+            questions = [
+                topic.find("question").text
+                for topic in ET.parse("data/misinfo-2022-topics.xml")
+                .getroot()
+                .findall("topic")
+            ]
+            answers = [
+                topic.find("answer").text
+                for topic in ET.parse("data/misinfo-2022-topics.xml")
+                .getroot()
+                .findall("topic")
+            ]
+            tokens = 100
         elif args.dataset == "health_misinfo":
             questions = [
                 clean_health_misinfo_data(topic.find("question").text)
@@ -253,6 +293,7 @@ if __name__ == "__main__":
                 .getroot()
                 .findall("topic")
             ]
+            tokens = 1
         elif args.dataset == "pubhealth":
             pubhealth = (
                 load_dataset(
@@ -269,6 +310,7 @@ if __name__ == "__main__":
                     list(pubhealth["label"]),
                 )
             )
+            tokens = 1
         elif args.dataset == "finfact":
             finfact = (
                 load_dataset("amanrangapur/Fin-Fact", split="train")
@@ -289,18 +331,7 @@ if __name__ == "__main__":
                     list(finfact["label"]),
                 )
             )
-        # elif args.dataset == "medical":
-        #     questions = list(
-        #         set(
-        #             pd.read_csv("old/medical_llama_prompts.csv")[
-        #                 "prompts"
-        #             ].tolist()
-        #             + pd.read_csv("old/medical_qwen_prompts.csv")[
-        #                 "prompts"
-        #             ].tolist(),
-        #         )
-        #     )
-        #     answers = ["-"] * len(questions)
+            tokens = 1
 
         question_only = {col: [""] for col in df.columns}
         question_only["conversation_history"] = [[]]
@@ -322,9 +353,7 @@ if __name__ == "__main__":
         df["question"] = all_questions
         df["gold_answer"] = gold_answers
         print("got all data")
-        df.to_pickle(
-            f"/scratch/vneplen/sociodemographics-interpretability-mitigation/prism_questions_{args.dataset}.gz"
-        )
+        df.to_pickle(f"data/prism_questions_{args.dataset}.gz")
 
     # temporary
     # if os.path.isfile(
@@ -437,10 +466,10 @@ if __name__ == "__main__":
                     ListDataset(conversations_with_questions),
                     batch_size=args.batch_size,
                     do_sample=False,
-                    max_new_tokens=1,
+                    max_new_tokens=tokens,
                     return_full_text=False,
                 ),
-                total=len(conversations_with_questions),
+                total=len(conversations_with_questions) // args.batch_size,
             )
         ]
         # df["probs"] = probs
@@ -455,5 +484,5 @@ if __name__ == "__main__":
     # else:
 
     df.to_pickle(
-        f"/scratch/vneplen/sociodemographics-interpretability-mitigation/{args.model.split('/')[1]}_answers_{args.dataset}{'_' + args.mitigation if args.mitigation else ''}{'_' + str(args.n) if args.n else ''}{'_' + str(args.quarter) if args.quarter else ''}.gz"
+        f"{args.model.split('/')[1]}_answers_{args.dataset}{'_' + args.mitigation if args.mitigation else ''}{'_' + str(args.n) if args.n else ''}{'_' + str(args.quarter) if args.quarter else ''}.gz"
     )

@@ -132,9 +132,7 @@ def train_probe(df, model, n_layers, demographic, device):
     select_df = df[df["question"] == df["question"].unique()[0]]
     selected_ids = select_twoclasses(select_df, demographic)
     for _ in tqdm(range(5)):
-        train_ids, test_ids = train_test_split(
-            selected_ids, shuffle=True, random_state=42
-        )
+        train_ids, test_ids = train_test_split(selected_ids, shuffle=True)
         df_train = select_df[select_df["conversation_id"].isin(train_ids)]
         df_train = change_labels(df_train, demographic)
         df_test = (
