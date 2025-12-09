@@ -488,5 +488,5 @@ if __name__ == "__main__":
     # else:
 
     df.to_pickle(
-        f"{args.model.split('/')[1]}_answers_{args.dataset}{'_' + args.mitigation if args.mitigation else ''}{'_' + str(args.n) if args.n else ''}{'_' + str(args.quarter) if args.quarter else ''}.gz"
+        f"/scratch/vneplen/sociodemographics-interpretability-mitigation/{args.model.split('/')[1]}_answers_{args.dataset}{'_' + args.mitigation if args.mitigation else ''}{'_' + str(args.n) if args.n else ''}{'_' + str(args.quarter) if args.quarter else ''}.gz"
     )
