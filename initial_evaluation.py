@@ -221,9 +221,11 @@ if __name__ == "__main__":
     #     for n in range(n_layers)
     # }
 
-    if os.path.isfile(f"data/prism_questions_{args.dataset}.gz"):
+    if os.path.isfile(
+        f"/scratch/vneplen/sociodemographics-interpretability-mitigation/prism_questions_{args.dataset}.gz"
+    ):
         df = pd.read_pickle(
-            f"data/prism_questions_{args.dataset}.gz",
+            f"/scratch/vneplen/sociodemographics-interpretability-mitigation/prism_questions_{args.dataset}.gz",
             compression="gzip",
         )
         if args.dataset == "health_misinfo_full":
@@ -246,7 +248,7 @@ if __name__ == "__main__":
             tokens = 1
     else:
         df = pd.read_pickle(
-            "prism_preprocessed.gz",
+            "/scratch/vneplen/sociodemographics-interpretability-mitigation/prism_preprocessed.gz",
             compression="gzip",
         )
         if args.dataset == "climate_fever":
@@ -353,7 +355,9 @@ if __name__ == "__main__":
         df["question"] = all_questions
         df["gold_answer"] = gold_answers
         print("got all data")
-        df.to_pickle(f"data/prism_questions_{args.dataset}.gz")
+        df.to_pickle(
+            f"/scratch/vneplen/sociodemographics-interpretability-mitigation/prism_questions_{args.dataset}.gz"
+        )
 
     # temporary
     # if os.path.isfile(
