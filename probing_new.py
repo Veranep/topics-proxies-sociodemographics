@@ -8,8 +8,67 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import f1_score
+from huggingface_hub import login
 
 np.random.seed(42)
+
+
+def get_convo(row):
+    return [
+        {
+            "role": turn["role"].replace("model", "assistant"),
+            "content": turn["content"],
+        }
+        for turn in row["conversation_history"]
+        if turn["role"] == "user" or turn["if_chosen"] == True
+    ] + [{"role": "user", "content": row["question"]}]
+
+
+def change_labels(df, col):
+    if col == "age":
+        df.loc[df[col] == "18-24 years old", col] = 0
+        df.loc[df[col] == "55-64 years old", col] = 1
+        df.loc[df[col] == "65+ years old", col] = 1
+    elif col == "gender":
+        df.loc[df[col] == "Male", col] = 0
+        df.loc[df[col] == "Female", col] = 1
+    elif col == "religion":
+        df.loc[df[col] == "No Affiliation", col] = 0
+        df.loc[df[col] == "Christian", col] = 1
+        df.loc[df[col] == "Jewish", col] = 1
+        df.loc[df[col] == "Muslim", col] = 1
+    elif col == "ethnicity":
+        df.loc[df[col] == "White", col] = 0
+        df.loc[df[col] == "Hispanic", col] = 1
+        df.loc[df[col] == "Black", col] = 1
+        df.loc[df[col] == "Asian", col] = 1
+        df.loc[df[col] == "Mixed", col] = 1
+    elif col == "employment_status":
+        df.loc[df[col] == "Unemployed, seeking work", col] = 0
+        df.loc[df[col] == "Unemployed, not seeking work", col] = 0
+        df.loc[df[col] == "Homemaker / Stay-at-home parent", col] = 0
+        df.loc[df[col] == "Working full-time", col] = 1
+    elif col == "education":
+        df.loc[df[col] == "Some Primary", col] = 0
+        df.loc[df[col] == "Completed Primary School", col] = 0
+        df.loc[df[col] == "Some Secondary", col] = 0
+        df.loc[df[col] == "Completed Secondary School", col] = 0
+        df.loc[df[col] == "Graduate / Professional degree", col] = 1
+    elif col == "birth_region":
+        df.loc[df[col] == "Europe", col] = 0
+        df.loc[df[col] == "Americas", col] = 1
+    elif col == "reside_region":
+        df.loc[df[col] == "Europe", col] = 0
+        df.loc[df[col] == "Americas", col] = 1
+    elif col == "marital_status":
+        df.loc[df[col] == "Never been married", col] = 0
+        df.loc[df[col] == "Married", col] = 1
+    elif col == "english_proficiency":
+        df.loc[df[col] == "Native speaker", col] = 0
+        df.loc[df[col] == "Advanced", col] = 1
+        df.loc[df[col] == "Intermediate", col] = 1
+        df.loc[df[col] == "Basic", col] = 1
+    return df
 
 
 def select_twoclasses(df, col):
@@ -70,7 +129,6 @@ def select_twoclasses(df, col):
 
 def train_probe(df, model, n_layers, demographic, device):
     accuracies = {n: [] for n in range(n_layers)}
-    print(df, df["question"].unique())
     select_df = df[df["question"] == df["question"].unique()[0]]
     selected_ids = select_twoclasses(select_df, demographic)
     for _ in tqdm(range(5)):
@@ -78,11 +136,13 @@ def train_probe(df, model, n_layers, demographic, device):
             selected_ids, shuffle=True, random_state=42
         )
         df_train = select_df[select_df["conversation_id"].isin(train_ids)]
+        df_train = change_labels(df_train, demographic)
         df_test = (
             df[df["conversation_id"].isin(test_ids)]
             .groupby("conversation_id")
             .sample(n=1, random_state=42)
         )
+        df_test = change_labels(df_test, demographic)
         train_convos = [
             (
                 [{"role": "user", "content": op}]
@@ -137,9 +197,7 @@ def train_probe(df, model, n_layers, demographic, device):
         ]
         print("Got train representations")
 
-        test_convos = [
-            get_convo(df.iloc[i], args.mitigation) for i in range(len(df_test))
-        ]
+        test_convos = [get_convo(df.iloc[i]) for i in range(len(df_test))]
         for convo in test_convos:
             to_remove = []
             for i in range(len(convo)):
@@ -209,6 +267,17 @@ def train_probe(df, model, n_layers, demographic, device):
     return accuracies
 
 
+def get_model_name(model):
+    if "Olmo-3" in model:
+        return "OLMo3"
+    elif "OLMo-2" in model:
+        return "OLMo2"
+    elif "Llama" in model:
+        return "Llama"
+    elif "gemma" in model:
+        return "Gemma"
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -238,8 +307,17 @@ if __name__ == "__main__":
         type=str,
         default="",  # "/scratch/vneplen/sociodemographics-interpretability-mitigation"
     )
+    parser.add_argument(
+        "-token",
+        type=str,
+        default="",
+        help="Huggingface token that grants access to Llama model",
+    )
     args = parser.parse_args()
+    if args.token:
+        login(args.token)
     device = "cuda" if torch.cuda.is_available() else "cpu"
+    model_name = get_model_name(args.model)
     tokenizer = AutoTokenizer.from_pretrained(args.model)
     if not tokenizer.chat_template and not args.first:
         tokenizer.chat_template = chat_templates[args.model]
@@ -266,27 +344,21 @@ if __name__ == "__main__":
     )
 
     df = pd.concat([climate_fever, health_misinfo, pubhealth, finfact])
-    print(df.shape)
 
     with open("data/conv_ids_prism.pkl", "rb") as infile:
         conv_ids = pickle.load(infile)
     with open("data/q_ids_prism.pkl", "rb") as infile:
         q_ids = pickle.load(infile)
 
-    print(df[df["conversation_id"].isin(conv_ids)].shape)
-    print(df[df["question"].isin(q_ids)].shape)
-    print(
-        df[df["conversation_id"].isin(conv_ids)][
-            df["question"].isin(q_ids)
-        ].shape
-    )
-    df = df[df["conversation_id"].isin(conv_ids)][df["question"].isin(q_ids)]
+    df = df[df["conversation_id"].isin(conv_ids[model_name][args.demographic])]
+    df = df[df["question"].isin(q_ids[model_name][args.demographic])]
 
     accuracies = train_probe(
         df, model, args.n_layers, args.demographic, device
     )
     with open(
-        args.folder + f"/{args.model.split('/')[1]}/{args.demographic}",
+        args.folder
+        + f"/{args.model.split('/')[1]}_{args.demographic}_results.pkl",
         "wb",
     ) as outfile:
         pickle.dump(accuracies, outfile)
