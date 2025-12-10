@@ -116,7 +116,7 @@ def clean_fact_data(example):
 
 def clean_health_misinfo_data(example):
     return (
-        example + +" Respond with either 'Yes' or 'No' and no additional text."
+        example + " Respond with either 'Yes' or 'No' and no additional text."
     )
 
 
