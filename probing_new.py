@@ -13,15 +13,18 @@ from huggingface_hub import login
 np.random.seed(42)
 
 
-def get_convo(row):
-    return [
+def get_convo(row, test=True):
+    convo = [
         {
             "role": turn["role"].replace("model", "assistant"),
             "content": turn["content"],
         }
         for turn in row["conversation_history"]
         if turn["role"] == "user" or turn["if_chosen"] == True
-    ] + [{"role": "user", "content": row["question"]}]
+    ]
+    if test:
+        convo += [{"role": "user", "content": row["question"]}]
+    return convo
 
 
 def change_labels(df, col):
@@ -142,13 +145,17 @@ def train_probe(df, model, n_layers, demographic, device):
         )
         df_test = change_labels(df_test, demographic)
         train_convos = [
-            (
-                [{"role": "user", "content": op}]
-                if tokenizer.chat_template
-                else op
-            )
-            for op in df_train["opening_prompt"].tolist()
+            get_convo(df.iloc[i], test=False) for i in range(len(df_train))
         ]
+        for convo in train_convos:
+            to_remove = []
+            for i in range(len(convo)):
+                if i > 0 and convo[i]["role"] == convo[i - 1]["role"]:
+                    to_remove.append(i)
+            to_remove = to_remove[::-1]
+            for idx in to_remove:
+                del convo[idx]
+
         if tokenizer.chat_template:
             train_inputs = [
                 tokenizer.apply_chat_template(
