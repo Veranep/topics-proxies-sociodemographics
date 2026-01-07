@@ -227,7 +227,7 @@ if __name__ == "__main__":
             compression="gzip",
         )
         if args.dataset == "health_misinfo_full":
-            tokens = 100
+            tokens = 50
             with open("data/q_ids_prism.pkl", "rb") as infile:
                 q_ids = pickle.load(infile)
 
@@ -279,7 +279,7 @@ if __name__ == "__main__":
                 .getroot()
                 .findall("topic")
             ]
-            tokens = 100
+            tokens = 50
         elif args.dataset == "health_misinfo":
             questions = [
                 clean_health_misinfo_data(topic.find("question").text)
@@ -469,7 +469,7 @@ if __name__ == "__main__":
                     max_new_tokens=tokens,
                     return_full_text=False,
                 ),
-                total=len(conversations_with_questions) // args.batch_size,
+                total=len(conversations_with_questions),
             )
         ]
         # df["probs"] = probs
