@@ -208,18 +208,18 @@ if __name__ == "__main__":
     if not model.tokenizer.pad_token_id:
         model.tokenizer.pad_token_id = model.tokenizer.eos_token_id
 
-    # probes = {
-    #     n: {
-    #         demo: pickle.load(
-    #             open(
-    #                 f"/scratch/vneplen/sociodemographics-interpretability-mitigation/olmo_probe/{args.model.split('/')[1]}_first{'_' + which_probe[demo] if which_probe[demo] else ''}_probe_{demo}_{n}.pkl",
-    #                 "rb",
-    #             )
-    #         )
-    #         for demo in which_probe
-    #     }
-    #     for n in range(n_layers)
-    # }
+    probes = {
+        n: {
+            demo: pickle.load(
+                open(
+                    f"/scratch/vneplen/sociodemographics-interpretability-mitigation/olmo_probe/{args.model.split('/')[1]}_first{'_' + which_probe[demo] if which_probe[demo] else ''}_probe_{demo}_{n}.pkl",
+                    "rb",
+                )
+            )
+            for demo in which_probe
+        }
+        for n in range(n_layers)
+    }
 
     if os.path.isfile(
         f"/scratch/vneplen/sociodemographics-interpretability-mitigation/prism_questions_{args.dataset}.gz"
