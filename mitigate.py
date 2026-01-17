@@ -40,6 +40,8 @@ def optimize_one_inter_rep(
 
     # next try: rep_f() + (probe_weights - rep_f())
 
+    print(rep_f().shape, probe_weights.shape)
+
     logits = (
         torch.tensor(
             [
