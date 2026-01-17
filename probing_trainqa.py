@@ -13,7 +13,7 @@ from huggingface_hub import login
 np.random.seed(42)
 
 
-def get_convo(row, test=True):
+def get_convo(row, train=False):
     convo = [
         {
             "role": turn["role"].replace("model", "assistant"),
@@ -21,9 +21,9 @@ def get_convo(row, test=True):
         }
         for turn in row["conversation_history"]
         if turn["role"] == "user" or turn["if_chosen"] == True
-    ]
-    if test:
-        convo += [{"role": "user", "content": row["question"]}]
+    ] + [{"role": "user", "content": row["question"]}]
+    if train:
+        convo += [{"role": "assistant", "content": row["answer"]}]
     return convo
 
 
@@ -71,7 +71,7 @@ def change_labels(df, col):
         df.loc[df[col] == "Advanced", col] = 1
         df.loc[df[col] == "Intermediate", col] = 1
         df.loc[df[col] == "Basic", col] = 1
-    return df
+    return df[df[col].isin([0, 1])].reset_index(drop=True)
 
 
 def select_twoclasses(df, col):
@@ -130,26 +130,88 @@ def select_twoclasses(df, col):
     return selected_df.drop(index=indices_to_drop)["conversation_id"].unique()
 
 
-def train_probe(
-    df, model, n_layers, demographic, device, save=False, save_file=""
-):
+def train_probe(df_in, df_out, model, n_layers, demographic, device):
+    # in has some convos, some questions from medical
+    # out has some convos, some questions from each other dataset
+
     accuracies = {n: [] for n in range(n_layers)}
-    select_df = df[df["question"] == df["question"].unique()[0]]
+    select_df = df_in[df_in["question"] == df_in["question"].unique()[0]]
     selected_ids = select_twoclasses(select_df, demographic)
-    for r in tqdm(range(5)):
-        if save and r > 0:
-            break
+    df_out = (
+        change_labels(df_out, demographic)
+        .groupby("conversation_id")
+        .sample(n=1, random_state=42)
+    )
+    test_out_convos = [get_convo(df_out.iloc[i]) for i in range(len(df_out))]
+    for convo in test_out_convos:
+        to_remove = []
+        for i in range(len(convo)):
+            if i > 0 and convo[i]["role"] == convo[i - 1]["role"]:
+                to_remove.append(i)
+        to_remove = to_remove[::-1]
+        for idx in to_remove:
+            del convo[idx]
+
+    if tokenizer.chat_template:
+        test_out_inputs = [
+            tokenizer.apply_chat_template(
+                convo,
+                tokenize=True,
+                add_generation_prompt=True,
+                return_tensors="pt",
+            )
+            for convo in test_out_convos
+        ]
+    else:
+        test_out_inputs = [
+            tokenizer(inp, return_tensors="pt") for inp in test_out_convos
+        ]
+    test_out_representations = [
+        (
+            [
+                torch.mean(
+                    rep[-1, :, :].detach().cpu().clone().to(torch.float), 0
+                )
+                for rep in model(
+                    inp.to(device),
+                    do_sample=False,
+                    output_hidden_states=True,
+                    max_new_tokens=1,
+                    return_dict=True,
+                )["hidden_states"]
+            ]
+            if tokenizer.chat_template
+            else [
+                torch.mean(
+                    rep[-1, :, :].detach().cpu().clone().to(torch.float), 0
+                )
+                for rep in model(
+                    **inp.to(device),
+                    do_sample=False,
+                    output_hidden_states=True,
+                    max_new_tokens=1,
+                    return_dict=True,
+                )["hidden_states"]
+            ]
+        )
+        for inp in tqdm(test_out_inputs)
+    ]
+    for _ in tqdm(range(5)):
         train_ids, test_ids = train_test_split(selected_ids, shuffle=True)
-        df_train = select_df[select_df["conversation_id"].isin(train_ids)]
+        df_train = (
+            df_in[df_in["conversation_id"].isin(train_ids)]
+            .groupby("conversation_id")
+            .sample(n=1, random_state=42)
+        )
         df_train = change_labels(df_train, demographic)
         df_test = (
-            df[df["conversation_id"].isin(test_ids)]
+            df_in[df_in["conversation_id"].isin(test_ids)]
             .groupby("conversation_id")
             .sample(n=1, random_state=42)
         )
         df_test = change_labels(df_test, demographic)
         train_convos = [
-            get_convo(df.iloc[i], test=False) for i in range(len(df_train))
+            get_convo(df_in.iloc[i], train=True) for i in range(len(df_train))
         ]
         for convo in train_convos:
             to_remove = []
@@ -206,7 +268,7 @@ def train_probe(
         ]
         print("Got train representations")
 
-        test_convos = [get_convo(df.iloc[i]) for i in range(len(df_test))]
+        test_convos = [get_convo(df_in.iloc[i]) for i in range(len(df_test))]
         for convo in test_convos:
             to_remove = []
             for i in range(len(convo)):
@@ -265,23 +327,22 @@ def train_probe(
         for l in tqdm(range(n_layers)):
             X_train = [rep[l] for rep in train_representations]
             X_test = [rep[l] for rep in test_representations]
+            X_test_out = [rep[l] for rep in test_out_representations]
             y_train = np.array(df_train[demographic].tolist())
             y_test = np.array(df_test[demographic].tolist())
+            y_test_out = np.array(df_out[demographic].tolist())
             clf = LogisticRegression(
                 random_state=42,
             )
             clf = clf.fit(X_train, y_train)
-            if save:
-                with open(
-                    save_file + f"_{demographic}_{l}.pkl", "wb"
-                ) as outfile:
-                    pickle.dump(clf, outfile)
-            else:
-                y_pred = clf.predict(X_test)
-                accuracies[l].append({"f1": f1_score(y_test, y_pred)})
-    if save:
-        with open(save_file + f"_{demographic}_test_ids.pkl", "wb") as outfile:
-            pickle.dump(test_ids, outfile)
+            y_pred = clf.predict(X_test)
+            y_pred_out = clf.predict(X_test_out)
+            accuracies[l].append(
+                {
+                    "f1": f1_score(y_test, y_pred),
+                    "f1_out": f1_score(y_test_out, y_pred_out),
+                }
+            )
     return accuracies
 
 
@@ -331,11 +392,6 @@ if __name__ == "__main__":
         default="",
         help="Huggingface token that grants access to Llama model",
     )
-    parser.add_argument(
-        "--save",
-        action="store_true",
-        help="Whether to save the trained probe",
-    )
     args = parser.parse_args()
     if args.token:
         login(args.token)
@@ -349,12 +405,9 @@ if __name__ == "__main__":
         torch_dtype=torch.bfloat16,
         device_map="auto",
     )
+
     climate_fever = pd.read_pickle(
         "data/prism_questions_climate_fever.gz",
-        compression="gzip",
-    )
-    health_misinfo = pd.read_pickle(
-        "data/prism_questions_health_misinfo.gz",
         compression="gzip",
     )
     pubhealth = pd.read_pickle(
@@ -362,28 +415,48 @@ if __name__ == "__main__":
         compression="gzip",
     )
 
-    df = pd.concat([climate_fever, health_misinfo, pubhealth])
+    in_df = pd.read_pickle(
+        f"data/{args.model.split('/')[1]}_answers_health_misinfo_full.gz",
+        compression="gzip",
+    )
+
+    out_df = pd.concat([climate_fever, pubhealth])
 
     with open("data/conv_ids_prism.pkl", "rb") as infile:
         conv_ids = pickle.load(infile)
     with open("data/q_ids_prism.pkl", "rb") as infile:
         q_ids = pickle.load(infile)
 
-    df = df[df["conversation_id"].isin(conv_ids[model_name][args.demographic])]
-    df = df[df["question"].isin(q_ids[model_name][args.demographic])]
+    print(in_df.shape)
+    in_df = in_df[
+        in_df["conversation_id"].isin(conv_ids[model_name][args.demographic])
+    ]
+    print(in_df.shape)
+    in_df = in_df[
+        in_df["question"].isin(
+            [
+                q.replace(
+                    " Respond with either 'Yes' or 'No' and no additional text.",
+                    "",
+                )
+                for q in q_ids[model_name][args.demographic]
+            ]
+        )
+    ]
+    print(in_df.shape)
+    out_df = out_df[
+        out_df["conversation_id"].isin(conv_ids[model_name][args.demographic])
+    ]
+    out_df = out_df[
+        out_df["question"].isin(q_ids[model_name][args.demographic])
+    ]
 
     accuracies = train_probe(
-        df,
-        model,
-        args.n_layers,
-        args.demographic,
-        device,
-        save=args.save,
-        save_file=args.folder + f"/{args.model.split('/')[1]}",
+        in_df, out_df, model, args.n_layers, args.demographic, device
     )
     with open(
         args.folder
-        + f"/{args.model.split('/')[1]}_{args.demographic}_results.pkl",
+        + f"/{args.model.split('/')[1]}_{args.demographic}_trainqa_results.pkl",
         "wb",
     ) as outfile:
         pickle.dump(accuracies, outfile)

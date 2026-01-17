@@ -39,15 +39,18 @@ def select_twoclasses_sharelm(df, col):
     elif col == "location":
         df.loc[df[col].str.contains("United States", na=False), col] = 0
         df.loc[df[col].str.contains("China", na=False), col] = 1
-        df.loc[df[col].str.contains("Germany", na=False), col] = 2
-        df.loc[df[col].str.contains("Egypt", na=False), col] = 3
-        df.loc[df[col].str.contains("Russia", na=False), col] = 4
-        df.loc[df[col].str.contains("Brazil", na=False), col] = 5
+        # df.loc[df[col].str.contains("Germany", na=False), col] = 2
+        # df.loc[df[col].str.contains("Egypt", na=False), col] = 3
+        # df.loc[df[col].str.contains("Russia", na=False), col] = 4
+        # df.loc[df[col].str.contains("Brazil", na=False), col] = 5
     selected_df = df[df[col].isin([0, 1, 2, 3, 4, 5])].reset_index(drop=True)
-    max_amount = list(selected_df[col].value_counts())[-1]
+    max_amount = 10000  # list(selected_df[col].value_counts())[-1]
 
     indices_to_drop = []
-    for val in [0, 1, 2, 3, 4, 5]:
+    for val in [
+        0,
+        1,  # 2, 3, 4, 5
+    ]:
         samples = selected_df[selected_df[col] == val].index.values
         indexes = np.random.choice(samples, size=max_amount, replace=False)
         indices_to_drop += [idx for idx in samples if idx not in indexes]

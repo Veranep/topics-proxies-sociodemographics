@@ -21,7 +21,6 @@ def optimize_one_inter_rep(
     inter_rep,
     layer_name,
     probe,
-    mult,
 ):
     global first_time
     tensor = (
@@ -52,10 +51,11 @@ def optimize_one_inter_rep(
         .unsqueeze(1)
         .to("cuda")
     )
+
     W_norm_sq = torch.dot(probe_weights, probe_weights)
 
     cur_input_tensor = (
-        rep_f() - mult * (logits / W_norm_sq) * probe_weights
+        rep_f() - (logits / W_norm_sq) * probe_weights
     ).unsqueeze(0)
 
     # cur_input_tensor = rep_f() + (probe_weights - rep_f()) * mult
@@ -76,7 +76,6 @@ def edit_inter_rep_multi_layers(output, layer_name):
             cloned_inter_rep,
             layer_name,
             probe,
-            mult=mult,
         )
     output[0][:, -1] = cloned_inter_rep.to(torch.float16)
     return output
@@ -88,13 +87,11 @@ def modified_model(
     modified_layer_names,
     demographic,
     batch_size,
+    tokens,
     question_convos,
-    N,
 ):
     global probes_dict
     probes_dict = probes
-    global mult
-    mult = N
     with TraceDict(
         model.model,
         modified_layer_names,
@@ -107,7 +104,7 @@ def modified_model(
                     question_convos,
                     batch_size=batch_size,
                     do_sample=False,
-                    max_new_tokens=1,
+                    max_new_tokens=tokens,
                     return_full_text=False,
                 ),
                 total=len(question_convos),

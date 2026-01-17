@@ -13,18 +13,15 @@ from huggingface_hub import login
 np.random.seed(42)
 
 
-def get_convo(row, test=True):
-    convo = [
+def get_convo(row):
+    return [
         {
             "role": turn["role"].replace("model", "assistant"),
             "content": turn["content"],
         }
         for turn in row["conversation_history"]
         if turn["role"] == "user" or turn["if_chosen"] == True
-    ]
-    if test:
-        convo += [{"role": "user", "content": row["question"]}]
-    return convo
+    ] + [{"role": "user", "content": row["question"]}]
 
 
 def change_labels(df, col):
@@ -130,17 +127,17 @@ def select_twoclasses(df, col):
     return selected_df.drop(index=indices_to_drop)["conversation_id"].unique()
 
 
-def train_probe(
-    df, model, n_layers, demographic, device, save=False, save_file=""
-):
+def train_probe(df, model, n_layers, demographic, device):
     accuracies = {n: [] for n in range(n_layers)}
     select_df = df[df["question"] == df["question"].unique()[0]]
     selected_ids = select_twoclasses(select_df, demographic)
-    for r in tqdm(range(5)):
-        if save and r > 0:
-            break
+    for _ in tqdm(range(5)):
         train_ids, test_ids = train_test_split(selected_ids, shuffle=True)
-        df_train = select_df[select_df["conversation_id"].isin(train_ids)]
+        df_train = (
+            df[df["conversation_id"].isin(train_ids)]
+            .groupby("conversation_id")
+            .sample(n=1, random_state=42)
+        )
         df_train = change_labels(df_train, demographic)
         df_test = (
             df[df["conversation_id"].isin(test_ids)]
@@ -148,9 +145,7 @@ def train_probe(
             .sample(n=1, random_state=42)
         )
         df_test = change_labels(df_test, demographic)
-        train_convos = [
-            get_convo(df.iloc[i], test=False) for i in range(len(df_train))
-        ]
+        train_convos = [get_convo(df.iloc[i]) for i in range(len(df_train))]
         for convo in train_convos:
             to_remove = []
             for i in range(len(convo)):
@@ -271,17 +266,8 @@ def train_probe(
                 random_state=42,
             )
             clf = clf.fit(X_train, y_train)
-            if save:
-                with open(
-                    save_file + f"_{demographic}_{l}.pkl", "wb"
-                ) as outfile:
-                    pickle.dump(clf, outfile)
-            else:
-                y_pred = clf.predict(X_test)
-                accuracies[l].append({"f1": f1_score(y_test, y_pred)})
-    if save:
-        with open(save_file + f"_{demographic}_test_ids.pkl", "wb") as outfile:
-            pickle.dump(test_ids, outfile)
+            y_pred = clf.predict(X_test)
+            accuracies[l].append({"f1": f1_score(y_test, y_pred)})
     return accuracies
 
 
@@ -331,11 +317,6 @@ if __name__ == "__main__":
         default="",
         help="Huggingface token that grants access to Llama model",
     )
-    parser.add_argument(
-        "--save",
-        action="store_true",
-        help="Whether to save the trained probe",
-    )
     args = parser.parse_args()
     if args.token:
         login(args.token)
@@ -373,17 +354,11 @@ if __name__ == "__main__":
     df = df[df["question"].isin(q_ids[model_name][args.demographic])]
 
     accuracies = train_probe(
-        df,
-        model,
-        args.n_layers,
-        args.demographic,
-        device,
-        save=args.save,
-        save_file=args.folder + f"/{args.model.split('/')[1]}",
+        df, model, args.n_layers, args.demographic, device
     )
     with open(
         args.folder
-        + f"/{args.model.split('/')[1]}_{args.demographic}_results.pkl",
+        + f"/{args.model.split('/')[1]}_{args.demographic}_trainq_results.pkl",
         "wb",
     ) as outfile:
         pickle.dump(accuracies, outfile)
