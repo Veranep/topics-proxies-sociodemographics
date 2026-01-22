@@ -127,7 +127,7 @@ def select_twoclasses(df, col):
     return selected_df.drop(index=indices_to_drop)["conversation_id"].unique()
 
 
-def train_probe(df, model, n_layers, demographic, device):
+def train_probe(df, model, n_layers, demographic, device, prompt, last):
     accuracies = {n: [] for n in range(n_layers)}
     select_df = df[df["question"] == df["question"].unique()[0]]
     selected_ids = select_twoclasses(select_df, demographic)
@@ -157,11 +157,23 @@ def train_probe(df, model, n_layers, demographic, device):
 
         if tokenizer.chat_template:
             train_inputs = [
-                tokenizer.apply_chat_template(
-                    convo,
-                    tokenize=True,
-                    add_generation_prompt=True,
-                    return_tensors="pt",
+                (
+                    tokenizer.encode(
+                        tokenizer.apply_chat_template(
+                            convo,
+                            tokenize=False,
+                            add_generation_prompt=False,
+                        )
+                        + f" I think the {demographic} of this user is ",
+                        return_tensors="pt",
+                    )
+                    if prompt
+                    else tokenizer.apply_chat_template(
+                        convo,
+                        tokenize=True,
+                        add_generation_prompt=True,
+                        return_tensors="pt",
+                    )
                 )
                 for convo in train_convos
             ]
@@ -169,36 +181,74 @@ def train_probe(df, model, n_layers, demographic, device):
             train_inputs = [
                 tokenizer(inp, return_tensors="pt") for inp in train_convos
             ]
-        train_representations = [
-            (
-                [
-                    torch.mean(
-                        rep[-1, :, :].detach().cpu().clone().to(torch.float), 0
-                    )
-                    for rep in model(
-                        inp.to(device),
-                        do_sample=False,
-                        output_hidden_states=True,
-                        max_new_tokens=1,
-                        return_dict=True,
-                    )["hidden_states"]
-                ]
-                if tokenizer.chat_template
-                else [
-                    torch.mean(
-                        rep[-1, :, :].detach().cpu().clone().to(torch.float), 0
-                    )
-                    for rep in model(
-                        **inp.to(device),
-                        do_sample=False,
-                        output_hidden_states=True,
-                        max_new_tokens=1,
-                        return_dict=True,
-                    )["hidden_states"]
-                ]
-            )
-            for inp in tqdm(train_inputs)
-        ]
+        if last:
+            train_representations = [
+                (
+                    [
+                        rep[-1, -1, :].detach().cpu().clone().to(torch.float)
+                        for rep in model(
+                            inp.to(device),
+                            do_sample=False,
+                            output_hidden_states=True,
+                            max_new_tokens=1,
+                            return_dict=True,
+                        )["hidden_states"]
+                    ]
+                    if tokenizer.chat_template
+                    else [
+                        rep[-1, -1, :].detach().cpu().clone().to(torch.float)
+                        for rep in model(
+                            **inp.to(device),
+                            do_sample=False,
+                            output_hidden_states=True,
+                            max_new_tokens=1,
+                            return_dict=True,
+                        )["hidden_states"]
+                    ]
+                )
+                for inp in tqdm(train_inputs)
+            ]
+        else:
+            train_representations = [
+                (
+                    [
+                        torch.mean(
+                            rep[-1, :, :]
+                            .detach()
+                            .cpu()
+                            .clone()
+                            .to(torch.float),
+                            0,
+                        )
+                        for rep in model(
+                            inp.to(device),
+                            do_sample=False,
+                            output_hidden_states=True,
+                            max_new_tokens=1,
+                            return_dict=True,
+                        )["hidden_states"]
+                    ]
+                    if tokenizer.chat_template
+                    else [
+                        torch.mean(
+                            rep[-1, :, :]
+                            .detach()
+                            .cpu()
+                            .clone()
+                            .to(torch.float),
+                            0,
+                        )
+                        for rep in model(
+                            **inp.to(device),
+                            do_sample=False,
+                            output_hidden_states=True,
+                            max_new_tokens=1,
+                            return_dict=True,
+                        )["hidden_states"]
+                    ]
+                )
+                for inp in tqdm(train_inputs)
+            ]
         print("Got train representations")
 
         test_convos = [get_convo(df.iloc[i]) for i in range(len(df_test))]
@@ -213,11 +263,23 @@ def train_probe(df, model, n_layers, demographic, device):
 
         if tokenizer.chat_template:
             test_inputs = [
-                tokenizer.apply_chat_template(
-                    convo,
-                    tokenize=True,
-                    add_generation_prompt=True,
-                    return_tensors="pt",
+                (
+                    tokenizer.encode(
+                        tokenizer.apply_chat_template(
+                            convo,
+                            tokenize=False,
+                            add_generation_prompt=False,
+                        )
+                        + f" I think the {demographic} of this user is ",
+                        return_tensors="pt",
+                    )
+                    if prompt
+                    else tokenizer.apply_chat_template(
+                        convo,
+                        tokenize=True,
+                        add_generation_prompt=True,
+                        return_tensors="pt",
+                    )
                 )
                 for convo in test_convos
             ]
@@ -225,36 +287,74 @@ def train_probe(df, model, n_layers, demographic, device):
             test_inputs = [
                 tokenizer(inp, return_tensors="pt") for inp in test_convos
             ]
-        test_representations = [
-            (
-                [
-                    torch.mean(
-                        rep[-1, :, :].detach().cpu().clone().to(torch.float), 0
-                    )
-                    for rep in model(
-                        inp.to(device),
-                        do_sample=False,
-                        output_hidden_states=True,
-                        max_new_tokens=1,
-                        return_dict=True,
-                    )["hidden_states"]
-                ]
-                if tokenizer.chat_template
-                else [
-                    torch.mean(
-                        rep[-1, :, :].detach().cpu().clone().to(torch.float), 0
-                    )
-                    for rep in model(
-                        **inp.to(device),
-                        do_sample=False,
-                        output_hidden_states=True,
-                        max_new_tokens=1,
-                        return_dict=True,
-                    )["hidden_states"]
-                ]
-            )
-            for inp in tqdm(test_inputs)
-        ]
+        if last:
+            test_representations = [
+                (
+                    [
+                        rep[-1, -1, :].detach().cpu().clone().to(torch.float)
+                        for rep in model(
+                            inp.to(device),
+                            do_sample=False,
+                            output_hidden_states=True,
+                            max_new_tokens=1,
+                            return_dict=True,
+                        )["hidden_states"]
+                    ]
+                    if tokenizer.chat_template
+                    else [
+                        rep[-1, -1, :].detach().cpu().clone().to(torch.float)
+                        for rep in model(
+                            **inp.to(device),
+                            do_sample=False,
+                            output_hidden_states=True,
+                            max_new_tokens=1,
+                            return_dict=True,
+                        )["hidden_states"]
+                    ]
+                )
+                for inp in tqdm(test_inputs)
+            ]
+        else:
+            test_representations = [
+                (
+                    [
+                        torch.mean(
+                            rep[-1, :, :]
+                            .detach()
+                            .cpu()
+                            .clone()
+                            .to(torch.float),
+                            0,
+                        )
+                        for rep in model(
+                            inp.to(device),
+                            do_sample=False,
+                            output_hidden_states=True,
+                            max_new_tokens=1,
+                            return_dict=True,
+                        )["hidden_states"]
+                    ]
+                    if tokenizer.chat_template
+                    else [
+                        torch.mean(
+                            rep[-1, :, :]
+                            .detach()
+                            .cpu()
+                            .clone()
+                            .to(torch.float),
+                            0,
+                        )
+                        for rep in model(
+                            **inp.to(device),
+                            do_sample=False,
+                            output_hidden_states=True,
+                            max_new_tokens=1,
+                            return_dict=True,
+                        )["hidden_states"]
+                    ]
+                )
+                for inp in tqdm(test_inputs)
+            ]
         print("Got test representations")
         print("Training probe")
         for l in tqdm(range(n_layers)):
@@ -317,6 +417,17 @@ if __name__ == "__main__":
         default="",
         help="Huggingface token that grants access to Llama model",
     )
+    parser.add_argument(
+        "--last",
+        action="store_true",
+        help="Whether to get representations from the last token position only",
+    )
+    parser.add_argument(
+        "--prompt",
+        action="store_true",
+        help="Whether to add an introspective sentence to the prompt",
+    )
+
     args = parser.parse_args()
     if args.token:
         login(args.token)
@@ -354,11 +465,17 @@ if __name__ == "__main__":
     df = df[df["question"].isin(q_ids[model_name][args.demographic])]
 
     accuracies = train_probe(
-        df, model, args.n_layers, args.demographic, device
+        df,
+        model,
+        args.n_layers,
+        args.demographic,
+        device,
+        args.prompt,
+        args.last,
     )
     with open(
         args.folder
-        + f"/{args.model.split('/')[1]}_{args.demographic}_trainq_results.pkl",
+        + f"/{args.model.split('/')[1]}_{args.demographic}{'_prompt' if args.prompt else ''}{'_last' if args.last else ''}_trainq_results.pkl",
         "wb",
     ) as outfile:
         pickle.dump(accuracies, outfile)

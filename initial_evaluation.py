@@ -61,7 +61,7 @@ def process_output(output, tokenizer, probes):
     return answer, probs
 
 
-def get_convo(row, mitigation, add_answer=False):
+def get_convo(row, mitigation, dataset, add_answer=False):
 
     convo = [
         {
@@ -69,7 +69,9 @@ def get_convo(row, mitigation, add_answer=False):
             "content": turn["content"],
         }
         for turn in row["conversation_history"]
-        if turn["role"] == "user" or turn["if_chosen"] == True
+        if turn["role"] == "user"
+        or (dataset == "prism" and turn["if_chosen"] == True)
+        or (dataset != "prism" and turn["role"] == "assistant")
     ]
     if mitigation == "system_general":
         convo = [
@@ -261,36 +263,74 @@ if __name__ == "__main__":
                 compression="gzip",
             )
         elif args.conversations_dataset == "wildchat":
-            df = (
+            dataset = (
                 load_dataset("allenai/WildChat-1M", split="train")
                 .filter(lambda example: example["language"] == "English")
-                .shuffle(seed=42)[:8000]
-                .to_pandas()
+                .shuffle(seed=42)
             )
+            dataset.set_format("pandas")
+            df = dataset[:8011]
             df = df.rename(columns={"conversation": "conversation_history"})
         elif args.conversations_dataset == "own":
-            df = ...
-        if "climate_fever" in args.dataset:
-            climate_fever = (
-                load_dataset("tdiggelm/climate_fever", split="test")
-                .shuffle(seed=42)
-                .filter(
-                    lambda x: x["claim_label"] == 0 or x["claim_label"] == 1
-                )
-                .select(list(range(50)))
+            conversation_history = []
+            attributes = []
+            groups = []
+            for m in [
+                "gemma-2-9b-it",
+                "Llama-3.1-8B-Instruct",
+                "OLMo-2-1124-7B-Instruct",
+            ]:
+                if m == args.model.split("/")[1]:
+                    continue
+                for att in ["age", "gender", "race", "socio-economic status"]:
+                    with open(
+                        f"{folder}/convos_{att}_250_{model}.pkl", "rb"
+                    ) as infile:
+                        convos = pickle.load(infile)[att]
+                    for group in convos:
+                        if (
+                            group == "neutral_none"
+                            or "stereo_none" not in convos[group]
+                        ):
+                            continue
+                        conversation_history += convos[group]["stereo_none"][
+                            "conversation"
+                        ]
+                        attributes += [att] * len(
+                            convos[group]["stereo_none"]["conversation"]
+                        )
+                        groups += [group] * len(
+                            convos[group]["stereo_none"]["conversation"]
+                        )
+            df = pd.DataFrame(
+                {
+                    "conversation_history": conversation_history,
+                    "attribute": attributes,
+                    "group": groups,
+                }
             )
+        if "climate_fever" in args.dataset:
+            climate_fever = load_dataset(
+                "tdiggelm/climate_fever", split="test"
+            ).shuffle(seed=42)
+            climate_fever_0 = climate_fever.filter(
+                lambda x: x["claim_label"] == 0
+            ).select(list(range(25)))
+            climate_fever_1 = climate_fever.filter(
+                lambda x: x["claim_label"] == 1
+            ).select(list(range(25)))
             questions = list(
                 map(
                     lambda x: clean_fact_data(x, full="full" in args.dataset),
-                    list(climate_fever["claim"]),
+                    list(climate_fever_0["claim"]),
                 )
-            )
-            answers = list(
+            ) + list(
                 map(
-                    lambda x: "no" if x == 1 else "yes",
-                    list(climate_fever["claim_label"]),
+                    lambda x: clean_fact_data(x, full="full" in args.dataset),
+                    list(climate_fever_1["claim"]),
                 )
             )
+            answers = ["yes"] * 25 + ["no"] * 25
 
         elif "health_misinfo" in args.dataset:
             questions = [
@@ -310,46 +350,57 @@ if __name__ == "__main__":
                 .findall("topic")
             ]
         elif "pubhealth" in args.dataset:
-            pubhealth = (
-                load_dataset(
-                    "bigbio/pubhealth", name="pubhealth_source", split="test"
-                )
-                .shuffle(seed=42)
-                .filter(lambda x: x["label"] == 0 or x["label"] == 1)
-                .select(list(range(50)))
+            pubhealth = load_dataset(
+                "bigbio/pubhealth", name="pubhealth_source", split="test"
+            ).shuffle(seed=42)
+            pubhealth_0 = pubhealth.filter(lambda x: x["label"] == 0).select(
+                list(range(25))
+            )
+            pubhealth_1 = pubhealth.filter(lambda x: x["label"] == 1).select(
+                list(range(25))
             )
             questions = list(
                 map(
                     lambda x: clean_fact_data(x, full="full" in args.dataset),
-                    list(pubhealth["claim"]),
+                    list(pubhealth_0["claim"]),
                 )
-            )
-            answers = list(
+            ) + list(
                 map(
-                    lambda x: "no" if x == 1 else "yes",
-                    list(pubhealth["label"]),
+                    lambda x: clean_fact_data(x, full="full" in args.dataset),
+                    list(pubhealth_1["claim"]),
                 )
             )
-        elif args.dataset == "finfact":
+            answers = ["yes"] * 25 + ["no"] * 25
+
+        elif "finfact" in args.dataset:
             finfact = (
                 load_dataset("amanrangapur/Fin-Fact", split="train")
                 .shuffle(seed=42)
                 .filter(
                     lambda x: x["image_data"] == []
-                    and (x["label"] == "false" or x["label"] == "true")
                     and " i " not in x["claim"].lower()
                     and len(x["claim"].split()) > 4
                     and x["claim"].lower().split()[0] != "says"
                 )
-                .select(list(range(50)))
             )
-            questions = list(finfact.map(clean_fact_data)["claim"])
-            answers = list(
+            finfact_0 = finfact.filter(lambda x: x["label"] == "false").select(
+                list(range(25))
+            )
+            finfact_1 = finfact.filter(lambda x: x["label"] == "true").select(
+                list(range(25))
+            )
+            questions = list(
                 map(
-                    lambda x: "no" if x == "false" else "yes",
-                    list(finfact["label"]),
+                    lambda x: clean_fact_data(x, full="full" in args.dataset),
+                    list(finfact_0["claim"]),
+                )
+            ) + list(
+                map(
+                    lambda x: clean_fact_data(x, full="full" in args.dataset),
+                    list(finfact_1["claim"]),
                 )
             )
+            answers = ["no"] * 25 + ["yes"] * 25
             tokens = 1
         elif args.dataset == "revealed_belief":
             questions = revealed_belief_questions[
@@ -429,7 +480,10 @@ if __name__ == "__main__":
 
     # else:
 
-    convos = [get_convo(df.iloc[i], args.mitigation) for i in range(len(df))]
+    convos = [
+        get_convo(df.iloc[i], args.mitigation, args.conversations_dataset)
+        for i in range(len(df))
+    ]
     for convo in convos:
         to_remove = []
         for i in range(len(convo)):
@@ -548,5 +602,5 @@ if __name__ == "__main__":
     # else:
 
     df.to_pickle(
-        f"{folder}/{args.model.split('/')[1]}_answers_{args.dataset}{'_' + args.mitigation if args.mitigation else ''}{'_' + args.revealed_belief_demographic if args.revealed_belief_demographic else ''}{'_' + str(args.quarter) if args.quarter else ''}.gz"
+        f"{folder}/{args.model.split('/')[1]}_answers{'_' + args.conversations_dataset if args.conversations_dataset != 'prism' else ''}_{args.dataset}{'_' + args.mitigation if args.mitigation else ''}{'_' + args.revealed_belief_demographic if args.revealed_belief_demographic else ''}{'_' + str(args.quarter) if args.quarter else ''}.gz"
     )
