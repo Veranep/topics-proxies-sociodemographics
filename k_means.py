@@ -10,7 +10,7 @@ from huggingface_hub import login
 from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
 
-from probing_new import get_convo
+from probing_new import get_convo, get_model_name
 
 np.random.seed(42)
 
