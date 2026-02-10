@@ -109,100 +109,83 @@ def balance_df(df, col, language):
 
 
 def train_probe(
-    df, convo_func, model, n_layers, demographic, device, save, save_file
+    df,
+    convo_func,
+    dataset,
+    model,
+    n_layers,
+    demographic,
+    device,
+    save,
+    save_file,
 ):
+    convos = convo_func(df)
+    if tokenizer.chat_template:
+        inputs = [
+            tokenizer.apply_chat_template(
+                convo,
+                tokenize=True,
+                add_generation_prompt=True,
+                return_tensors="pt",
+            )
+            for convo in convos
+        ]
+    else:
+        inputs = [tokenizer(inp, return_tensors="pt") for inp in convos]
+    representations = np.array(
+        [
+            (
+                [
+                    rep[-1, -1, :].detach().cpu().clone().to(torch.float)
+                    for rep in model(
+                        inp.to(device),
+                        do_sample=False,
+                        output_hidden_states=True,
+                        max_new_tokens=1,
+                        return_dict=True,
+                    )["hidden_states"]
+                ]
+                if tokenizer.chat_template
+                else [
+                    rep[-1, -1, :].detach().cpu().clone().to(torch.float)
+                    for rep in model(
+                        **inp.to(device),
+                        do_sample=False,
+                        output_hidden_states=True,
+                        max_new_tokens=1,
+                        return_dict=True,
+                    )["hidden_states"]
+                ]
+            )
+            for inp in tqdm(inputs)
+        ]
+    )
+    print("got representations!")
     scores = {n: {"f1": [], "majority f1": []} for n in range(n_layers)}
     for r in tqdm(range(5)):
         if save and r > 0:
             break
-        df_train, df_test = train_test_split(df, shuffle=True)
-        train_convos = convo_func(df_train)
-
-        if tokenizer.chat_template:
-            train_inputs = [
-                tokenizer.apply_chat_template(
-                    convo,
-                    tokenize=True,
-                    add_generation_prompt=True,
-                    return_tensors="pt",
-                )
-                for convo in train_convos
-            ]
-        else:
-            train_inputs = [
-                tokenizer(inp, return_tensors="pt") for inp in train_convos
-            ]
-        train_representations = [
-            (
-                [
-                    rep[-1, -1, :].detach().cpu().clone().to(torch.float)
-                    for rep in model(
-                        inp.to(device),
-                        do_sample=False,
-                        output_hidden_states=True,
-                        max_new_tokens=1,
-                        return_dict=True,
-                    )["hidden_states"]
-                ]
-                if tokenizer.chat_template
-                else [
-                    rep[-1, -1, :].detach().cpu().clone().to(torch.float)
-                    for rep in model(
-                        **inp.to(device),
-                        do_sample=False,
-                        output_hidden_states=True,
-                        max_new_tokens=1,
-                        return_dict=True,
-                    )["hidden_states"]
-                ]
+        df_train, df_test, indices_train, indices_test = train_test_split(
+            df, range(len(df)), shuffle=True
+        )
+        train_indices = indices_train
+        if dataset == "chen":
+            train_indices = np.concat(
+                [train_indices, indices_train + 1, indices_train + 2]
             )
-            for inp in tqdm(train_inputs)
-        ]
-        print("Got train representations")
-
-        test_convos = convo_func(df_test)
-
-        if tokenizer.chat_template:
-            test_inputs = [
-                tokenizer.apply_chat_template(
-                    convo,
-                    tokenize=True,
-                    add_generation_prompt=True,
-                    return_tensors="pt",
-                )
-                for convo in test_convos
-            ]
-        else:
-            test_inputs = [
-                tokenizer(inp, return_tensors="pt") for inp in test_convos
-            ]
-        test_representations = [
-            (
-                [
-                    rep[-1, -1, :].detach().cpu().clone().to(torch.float)
-                    for rep in model(
-                        inp.to(device),
-                        do_sample=False,
-                        output_hidden_states=True,
-                        max_new_tokens=1,
-                        return_dict=True,
-                    )["hidden_states"]
-                ]
-                if tokenizer.chat_template
-                else [
-                    rep[-1, -1, :].detach().cpu().clone().to(torch.float)
-                    for rep in model(
-                        **inp.to(device),
-                        do_sample=False,
-                        output_hidden_states=True,
-                        max_new_tokens=1,
-                        return_dict=True,
-                    )["hidden_states"]
-                ]
+            df_train = df_train.loc[df_train.index.repeat(3)].reset_index(
+                drop=True
             )
-            for inp in tqdm(test_inputs)
-        ]
-        print("Got test representations")
+        test_indices = indices_test
+        if dataset == "chen":
+            test_indices = np.concat(
+                [test_indices, indices_test + 1, indices_test + 2]
+            )
+            df_test = df_test.loc[df_test.index.repeat(3)].reset_index(
+                drop=True
+            )
+        train_representations = representations[train_indices]
+        test_representations = representations[test_indices]
         print("Training probe")
         values, counts = np.unique(y_test, return_counts=True)
         majority = values[np.argmax(counts)][0]
@@ -343,6 +326,7 @@ if __name__ == "__main__":
     scores = train_probe(
         convos,
         convo_func,
+        args.dataset,
         model,
         args.n_layers,
         args.demographic,
