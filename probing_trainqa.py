@@ -10,6 +10,8 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import f1_score
 from huggingface_hub import login
 
+from probing_new import get_model_name
+
 np.random.seed(42)
 
 
@@ -344,17 +346,6 @@ def train_probe(df_in, df_out, model, n_layers, demographic, device):
                 }
             )
     return accuracies
-
-
-def get_model_name(model):
-    if "Olmo-3" in model:
-        return "OLMo3"
-    elif "OLMo-2" in model:
-        return "OLMo2"
-    elif "Llama" in model:
-        return "Llama"
-    elif "gemma" in model:
-        return "Gemma"
 
 
 if __name__ == "__main__":
