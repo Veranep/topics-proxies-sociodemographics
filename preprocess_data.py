@@ -10,7 +10,7 @@ def get_prism_turns(row):
             "role": turn["role"].replace("model", "assistant"),
             "content": turn["content"],
         }
-        for turn in row["conversation_history"]
+        for turn in row.conversation_history
         if turn["role"] == "user" or turn["if_chosen"] == True
     ]
 
@@ -32,16 +32,20 @@ def get_cad_turns(row):
     turns = []
     for turn in ["first", "second", "third", "fourth"]:
         pref_response = f"{turn}_turn_preferred_response"
-        if not row[pref_response]:
+        if not getattr(row, pref_response):
             return turns
         else:
             turns += [
-                {"role": "user", "content": row[f"{turn}_turn_prompt"]},
+                {
+                    "role": "user",
+                    "content": getattr(row, f"{turn}_turn_prompt"),
+                },
                 {
                     "role": "assistant",
-                    "content": row[
-                        f"{turn}_turn_response_{row[pref_response][-1]}"
-                    ],
+                    "content": getattr(
+                        row,
+                        f"{turn}_turn_response_{getattr(row,pref_response)[-1]}",
+                    ),
                 },
             ]
     return turns
