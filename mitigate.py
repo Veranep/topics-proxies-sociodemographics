@@ -4,6 +4,29 @@ import torch
 from torch import nn
 from tqdm import tqdm
 
+probe_targets = {
+    "age": {
+        "adolescent": 0,
+        "adult": 1,
+        "child": 2,
+        "neutral": 3,
+        "older adult": 4,
+    },
+    "gender": {"female": 0, "male": 1, "neutral": 2, "non-binary": 3},
+    "race": {
+        "asian": 0,
+        "black": 1,
+        "hispanic": 2,
+        "neutral": 3,
+        "white": 4,
+    },
+    "socio-economic status": {
+        "high": 0,
+        "low": 1,
+        "neutral": 2,
+    },
+}
+
 
 def get_layer_names(model, from_idx, to_idx):
     which_layers = []  # Which layer/s to intervene
@@ -22,45 +45,48 @@ def optimize_one_inter_rep(
     layer_name,
     probe,
 ):
-    global first_time
     tensor = (
         (inter_rep.clone()).to(torch.float64).to("cuda").requires_grad_(True)
     )
     rep_f = lambda: tensor
-    probe_weights = (
-        torch.from_numpy(probe.coef_[0]).to(torch.float64).to("cuda")
-    )
-    probe_intercept = torch.from_numpy(np.array(probe.intercept_[0])).to(
-        "cuda"
-    )
-
-    # cur_input_tensor = rep_f().clone().detach()
-
-    # + made differences a lot worse, - also made them slightly worse
-
-    # next try: rep_f() + (probe_weights - rep_f())
-
-    print(rep_f().shape, probe_weights.shape)
-
-    logits = (
-        torch.tensor(
-            [
-                torch.dot(rep_f().squeeze()[i], probe_weights)
-                + probe_intercept
-                for i in range(len(rep_f()))
-            ]
+    if data == "own":
+        probe_weights = torch.from_numpy(probe.coef_[cf_target]).to("cuda")
+        cur_input_tensor = rep_f() - (probe_weights * 0.1)
+    else:
+        probe_weights = (
+            torch.from_numpy(probe.coef_[0]).to(torch.float64).to("cuda")
         )
-        .unsqueeze(1)
-        .to("cuda")
-    )
+        probe_intercept = torch.from_numpy(np.array(probe.intercept_[0])).to(
+            "cuda"
+        )
 
-    W_norm_sq = torch.dot(probe_weights, probe_weights)
+        # cur_input_tensor = rep_f().clone().detach()
 
-    cur_input_tensor = (
-        rep_f() - (logits / W_norm_sq) * probe_weights
-    ).unsqueeze(0)
+        # + made differences a lot worse, - also made them slightly worse
 
-    # cur_input_tensor = rep_f() + (probe_weights - rep_f()) * mult
+        # next try: rep_f() + (probe_weights - rep_f())
+
+        print(rep_f().shape, probe_weights.shape)
+
+        logits = (
+            torch.tensor(
+                [
+                    torch.dot(rep_f().squeeze()[i], probe_weights)
+                    + probe_intercept
+                    for i in range(len(rep_f()))
+                ]
+            )
+            .unsqueeze(1)
+            .to("cuda")
+        )
+
+        W_norm_sq = torch.dot(probe_weights, probe_weights)
+
+        cur_input_tensor = (
+            rep_f() - (logits / W_norm_sq) * probe_weights
+        ).unsqueeze(0)
+
+        # cur_input_tensor = rep_f() + (probe_weights - rep_f()) * mult
 
     return cur_input_tensor.clone()
 
@@ -91,9 +117,16 @@ def modified_model(
     batch_size,
     tokens,
     question_convos,
+    dataset,
+    value=None,
 ):
     global probes_dict
     probes_dict = probes
+    global data
+    data = dataset
+    if dataset == "own":
+        global cf_target
+        cf_target = probe_targets[demographic][value]
     with TraceDict(
         model.model,
         modified_layer_names,

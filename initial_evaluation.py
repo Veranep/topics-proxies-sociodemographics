@@ -236,19 +236,6 @@ if __name__ == "__main__":
     # folder = "/scratch/vneplen/sociodemographics-interpretability-mitigation"
     folder = "data"
 
-    if args.mitigation and "probe" in args.mitigation:
-        probes = {
-            n: {
-                "ethnicity": pickle.load(
-                    open(
-                        f"new_probing/{args.model.split('/')[1]}_ethnicity_{n}.pkl",
-                        "rb",
-                    )
-                )
-            }
-            for n in range(n_layers)
-        }
-
     if os.path.isfile(
         f"{folder}/{args.conversations_dataset}_questions_{args.dataset}.gz"
     ):
@@ -433,6 +420,34 @@ if __name__ == "__main__":
             f"{folder}/{args.conversations_dataset}_questions_{args.dataset}.gz"
         )
 
+    if args.mitigation and "probe" in args.mitigation:
+        if args.conversations_dataset == "own":
+            probes = {
+                demographic: {
+                    n: pickle.load(
+                        open(
+                            f"own_probes/{args.model.split('/')[1]}_probe__{demographic}_{n}.pkl",
+                            "rb",
+                        )
+                    )
+                    for n in range(n_layers)
+                }
+                for demographic in df["attribute"].unique()
+                if demographic != ""
+            }
+        else:
+            probes = {
+                n: {
+                    "ethnicity": pickle.load(
+                        open(
+                            f"new_probing/{args.model.split('/')[1]}_ethnicity_{n}.pkl",
+                            "rb",
+                        )
+                    )
+                }
+                for n in range(n_layers)
+            }
+
     tokens = 50 if "full" in args.dataset or "belief" in args.dataset else 1
     if "full" in args.dataset:
         with open("data/q_ids_prism.pkl", "rb") as infile:
@@ -449,7 +464,11 @@ if __name__ == "__main__":
         ]
         df = df[df["question"].isin(questions)]
         print(df.shape)
-    if args.mitigation and "probe" in args.mitigation:
+    if (
+        args.mitigation
+        and "probe" in args.mitigation
+        and args.conversations_dataset == "prism"
+    ):
         with open(
             f"new_probing/{args.model.split('/')[1]}_ethnicity_test_ids.pkl",
             "rb",
@@ -494,32 +513,81 @@ if __name__ == "__main__":
             del convo[idx]
 
     if args.mitigation and "probe" in args.mitigation:
-        probes = {
-            n: probes[n][args.mitigation.split("_", 1)[1]]
-            for n in range(n_layers)
-        }
         modified_layer_names = get_layer_names(
             model.model, args.from_idx, args.to_idx
         )
+        if args.conversations_dataset == "own":
+            full_df = pd.DataFrame()
+            all_answers = []
+            for group in tqdm(df["group"].unique()):
+                if group == "":
+                    continue
+                demo_df = df.loc[df["group"] == group]
+                demographic = demo_df["attribute"].unique()[0]
+                convos = [
+                    get_convo(
+                        demo_df.iloc[i],
+                        args.mitigation,
+                        args.conversations_dataset,
+                    )
+                    for i in range(len(demo_df))
+                ]
+                for convo in convos:
+                    to_remove = []
+                    for i in range(len(convo)):
+                        if i > 0 and convo[i]["role"] == convo[i - 1]["role"]:
+                            to_remove.append(i)
+                    to_remove = to_remove[::-1]
+                    for idx in to_remove:
+                        del convo[idx]
+                conversations_with_questions = [
+                    tokenizer.apply_chat_template(
+                        convo,
+                        tokenize=False,
+                        add_generation_prompt=True,
+                    )
+                    for convo in convos
+                ]
+                answers = modified_model(
+                    model,
+                    probes[demographic],
+                    modified_layer_names,
+                    demographic,
+                    args.batch_size,
+                    tokens,
+                    conversations_with_questions,
+                    args.conversations_dataset,
+                    value=group,
+                )
+                all_answers += answers
+                full_df = pd.concat([full_df, demo_df], ignore_index=True)
+            df = full_df
+            answers = all_answers
+        else:
+            probes = {
+                n: probes[n][args.mitigation.split("_", 1)[1]]
+                for n in range(n_layers)
+            }
 
-        conversations_with_questions = [
-            tokenizer.apply_chat_template(
-                convo,
-                tokenize=False,
-                add_generation_prompt=True,
+            conversations_with_questions = [
+                tokenizer.apply_chat_template(
+                    convo,
+                    tokenize=False,
+                    add_generation_prompt=True,
+                )
+                for convo in convos[:100]
+            ]
+            df = df.iloc[:100]  # only for now
+            answers = modified_model(
+                model,
+                probes,
+                modified_layer_names,
+                "ethnicity",
+                args.batch_size,
+                tokens,
+                conversations_with_questions,
+                args.conversations_dataset,
             )
-            for convo in convos[:100]  # only for now
-        ]
-        df = df.iloc[:100]  # only for now
-        answers = modified_model(
-            model,
-            probes,
-            modified_layer_names,
-            "ethnicity",
-            args.batch_size,
-            tokens,
-            conversations_with_questions,
-        )
     else:
         conversations_with_questions = [
             tokenizer.apply_chat_template(
@@ -602,5 +670,5 @@ if __name__ == "__main__":
     # else:
 
     df.to_pickle(
-        f"{folder}/{args.model.split('/')[1]}_answers{'_' + args.conversations_dataset if args.conversations_dataset != 'prism' else ''}_{args.dataset}{'_' + args.mitigation if args.mitigation else ''}{'_' + args.revealed_belief_demographic if args.revealed_belief_demographic else ''}{'_' + str(args.quarter) if args.quarter else ''}.gz"
+        f"{folder}/{args.model.split('/')[1]}_answers{'_' + args.conversations_dataset if args.conversations_dataset != 'prism' else ''}_{args.dataset}{'_' + args.mitigation if args.mitigation else ''}{'_' + args.revealed_belief_demographic if args.revealed_belief_demographic else ''}{'_' + str(args.quarter) if args.quarter else ''}_0.1.gz"
     )
