@@ -67,6 +67,7 @@ if __name__ == "__main__":
         help="Folder to save dataset in",
         default="",  # "/scratch/vneplen/sociodemographics-interpretability-mitigation"
     )
+    args = parser.parse_args()
     if args.dataset == "prism":
         conversations = load_dataset(
             "HannahRoseKirk/prism-alignment", "conversations"
