@@ -55,6 +55,34 @@ def get_cad_convos(df):
     return list(map(get_cad_turns, df.itertuples(index=False)))
 
 
+def get_chen_turns(row, prompt):
+    return [
+        [
+            {
+                "role": "user",
+                "content": f"Could you paraphrase my writing: '{row.short_text}'?",
+            }
+        ],
+        [
+            {
+                "role": "user",
+                "content": f"Please fix any grammar or spelling mistakes in my writing: '{row.short_text}'.",
+            }
+        ],
+        [
+            {
+                "role": "user",
+                "content": f"What are a few good titles for my text: '{row.short_text}'?",
+            }
+        ],
+    ]
+
+
+def get_chen_convos(df):
+    convos = list(map(get_chen_turns, df.itertuples(index=False)))
+    return [c for cs in convos for c in cs]
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -117,3 +145,12 @@ if __name__ == "__main__":
             filtered_ds.to_pandas().to_pickle(
                 f"{args.folder}/cad_{language + '_'}preprocessed.gz"
             )
+    elif args.dataset == "chen":
+        df = pd.read_csv(f"{args.folder}/responses.csv")
+        df = (
+            df.groupby(["text_id", "short_text", "label"])["style_score"]
+            .apply(list)
+            .reset_index()
+        )
+        df.to_pickle(f"{args.folder}/chen_preprocessed.gz")
+        print(get_chen_convos(df)[:5])

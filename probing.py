@@ -11,7 +11,7 @@ from sklearn.metrics import f1_score
 from huggingface_hub import login
 from deepsig import aso
 
-from preprocess_data import get_prism_convos, get_cad_convos
+from preprocess_data import get_prism_convos, get_cad_convos, get_chen_convos
 
 
 np.random.seed(42)
@@ -22,7 +22,7 @@ def balance_df(df, col, language):
         df.loc[df[col] == "18-34", col] = 0
         df.loc[df[col] == "46-54", col] = 1
         df.loc[df[col] == "55+", col] = 1
-    elif col == "annotator_gender":
+    elif col in ["annotator_gender", "label"]:
         df.loc[df[col] == "male", col] = 0
         df.loc[df[col] == "female", col] = 1
     elif col == "annotator_education_level":
@@ -335,6 +335,10 @@ if __name__ == "__main__":
                 != "other"
             ]
         convo_func = get_cad_convos
+    elif args.dataset == "chen":
+        if args.balanced:
+            df = balance_df(df, args.demographic, "")
+        convo_func = get_chen_convos
 
     scores = train_probe(
         convos,
