@@ -58,13 +58,13 @@ if __name__ == "__main__":
         "--dataset",
         type=str,
         default="prism",
-        help="Dataset to evaluate on",
+        help="Dataset to preprocess",
     )
     parser.add_argument(
         "-f",
         "--folder",
         type=str,
-        help="Folder dataset is stored in",
+        help="Folder to save dataset in",
         default="",  # "/scratch/vneplen/sociodemographics-interpretability-mitigation"
     )
     if args.dataset == "prism":
