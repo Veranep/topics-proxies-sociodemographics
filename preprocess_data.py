@@ -55,7 +55,7 @@ def get_cad_convos(df):
     return list(map(get_cad_turns, df.itertuples(index=False)))
 
 
-def get_chen_turns(row, prompt):
+def get_chen_turns(row):
     return [
         [
             {
