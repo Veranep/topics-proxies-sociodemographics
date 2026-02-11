@@ -241,6 +241,7 @@ if __name__ == "__main__":
                 "fourth_turn_prompt": "fourth",
             }
         )
+        df["first_turn_prompt"] = df["first"]
         df = df.melt(
             id_vars=[
                 "conversation_id",
@@ -263,6 +264,7 @@ if __name__ == "__main__":
                 "is_pregenerated_first_prompt",
                 "in_balanced_subset",
                 "in_balanced_subset_10",
+                "first_turn_prompt",
             ],
             var_name="turn",
             value_name="user_prompt",
@@ -293,6 +295,7 @@ if __name__ == "__main__":
                 "is_pregenerated_first_prompt",
                 "in_balanced_subset",
                 "in_balanced_subset_10",
+                "first_turn_prompt",
                 "user_prompt",
             ],
             var_name="turn",
@@ -324,6 +327,7 @@ if __name__ == "__main__":
                 "is_pregenerated_first_prompt",
                 "in_balanced_subset",
                 "in_balanced_subset_10",
+                "first_turn_prompt",
                 "user_prompt",
                 "model_response",
             ],
