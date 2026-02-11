@@ -62,26 +62,26 @@ def get_chen_turns(row):
     return [
         {
             "role": "user",
-            "content": f"Could you paraphrase my writing: '{row.short_text}'?",
+            "content": f"Could you paraphrase my writing: '{row.user_prompt}'?",
         }
     ]
     # return [
     #     [
     #         {
     #             "role": "user",
-    #             "content": f"Could you paraphrase my writing: '{row.short_text}'?",
+    #             "content": f"Could you paraphrase my writing: '{row.user_prompt}'?",
     #         }
     #     ],
     #     [
     #         {
     #             "role": "user",
-    #             "content": f"Please fix any grammar or spelling mistakes in my writing: '{row.short_text}'.",
+    #             "content": f"Please fix any grammar or spelling mistakes in my writing: '{row.user_prompt}'.",
     #         }
     #     ],
     #     [
     #         {
     #             "role": "user",
-    #             "content": f"What are a few good titles for my text: '{row.short_text}'?",
+    #             "content": f"What are a few good titles for my text: '{row.user_prompt}'?",
     #         }
     #     ],
     # ]
@@ -264,9 +264,9 @@ if __name__ == "__main__":
                 "in_balanced_subset_10",
             ],
             var_name="turn",
-            value_name="prompt",
+            value_name="user_prompt",
         )
-        df = df[~df["prompt"].isna()].rename(
+        df = df[~df["user_prompt"].isna()].rename(
             columns={
                 "first_turn_preferred_response": "first",
                 "second_turn_preferred_response": "second",
@@ -292,10 +292,10 @@ if __name__ == "__main__":
                 "is_pregenerated_first_prompt",
                 "in_balanced_subset",
                 "in_balanced_subset_10",
-                "prompt",
+                "user_prompt",
             ],
             var_name="turn",
-            value_name="response",
+            value_name="model_response",
         )
         df = df.rename(
             columns={
@@ -323,8 +323,8 @@ if __name__ == "__main__":
                 "is_pregenerated_first_prompt",
                 "in_balanced_subset",
                 "in_balanced_subset_10",
-                "prompt",
-                "response",
+                "user_prompt",
+                "model_response",
             ],
             var_name="turn",
             value_name="feedback",
@@ -346,8 +346,9 @@ if __name__ == "__main__":
 
     elif args.dataset == "chen":
         df = pd.read_csv(f"{args.folder}/responses.csv")
+        df = df.rename(columns={"short_text": "user_prompt"})
         df = (
-            df.groupby(["text_id", "short_text", "label"])["style_score"]
+            df.groupby(["text_id", "user_prompt", "label"])["style_score"]
             .apply(list)
             .reset_index()
         )
