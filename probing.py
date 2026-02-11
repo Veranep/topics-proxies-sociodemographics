@@ -162,13 +162,14 @@ def train_probe(
     )
     print("got representations!")
     scores = {n: {"f1": [], "majority f1": []} for n in range(n_layers)}
-    for r in tqdm(range(5)):
+    for r in tqdm(range(10)):
         if save and r > 0:
             break
         df_train, df_test, indices_train, indices_test = train_test_split(
             df, range(len(df)), shuffle=True
         )
         train_indices = indices_train
+        test_indices = indices_test
         if dataset == "chen":
             train_indices = np.concat(
                 [train_indices, indices_train + 1, indices_train + 2]
@@ -176,8 +177,6 @@ def train_probe(
             df_train = df_train.loc[df_train.index.repeat(3)].reset_index(
                 drop=True
             )
-        test_indices = indices_test
-        if dataset == "chen":
             test_indices = np.concat(
                 [test_indices, indices_test + 1, indices_test + 2]
             )
@@ -187,8 +186,10 @@ def train_probe(
         train_representations = representations[train_indices]
         test_representations = representations[test_indices]
         print("Training probe")
+        y_train = np.array(df_train[demographic].tolist())
+        y_test = np.array(df_test[demographic].tolist())
         values, counts = np.unique(y_test, return_counts=True)
-        majority = values[np.argmax(counts)][0]
+        majority = values[np.argmax(counts)]
         majority_f1 = f1_score(
             y_test,
             np.full(len(y_test), majority),
@@ -197,8 +198,6 @@ def train_probe(
         for l in tqdm(range(n_layers)):
             X_train = [rep[l] for rep in train_representations]
             X_test = [rep[l] for rep in test_representations]
-            y_train = np.array(df_train[demographic].tolist())
-            y_test = np.array(df_test[demographic].tolist())
             clf = LogisticRegression(
                 random_state=42,
             )
@@ -219,11 +218,12 @@ def train_probe(
             scores[l]["f1"], scores[l]["majority f1"], seed=42
         )
     if save:
+        id_col = "conversation_id" if dataset != "chen" else "text_id"
         with open(save_file + f"_{demographic}_ids.pkl", "wb") as outfile:
             pickle.dump(
                 (
-                    df_train["conversation_id"].to_numpy(),
-                    df_test["conversation_id"].to_numpy(),
+                    df_train[id_col].to_numpy(),
+                    df_test[id_col].to_numpy(),
                 ),
                 outfile,
             )
@@ -298,14 +298,14 @@ if __name__ == "__main__":
         torch_dtype=torch.bfloat16,
         device_map="auto",
     )
-    df.read_pickle(f"{args.data_folder}/{args.dataset}_preprocessed.gz")
+    df = pd.read_pickle(f"{args.data_folder}/{args.dataset}_preprocessed.gz")
     if args.dataset == "prism":
         if args.balanced:
             df = balance_df(df, args.demographic, "")
         else:
             df = df.loc[
-                ~(df[args.demographic].isna()) & df[args.demographic]
-                != "Prefer not to say"
+                ~(df[args.demographic].isna())
+                & (df[args.demographic] != "Prefer not to say")
             ]
         convo_func = get_prism_convos
     elif "cad" in args.dataset:
@@ -313,9 +313,9 @@ if __name__ == "__main__":
             df = balance_df(df, args.demographic, args.dataset.split("_")[-1])
         else:
             df = df.loc[
-                ~(df[args.demographic].isna()) & df[args.demographic]
-                != "Prefer not to say" & df[args.demographic]
-                != "other"
+                ~(df[args.demographic].isna())
+                & (df[args.demographic] != "Prefer not to say")
+                & (df[args.demographic] != "other")
             ]
         convo_func = get_cad_convos
     elif args.dataset == "chen":
@@ -324,7 +324,7 @@ if __name__ == "__main__":
         convo_func = get_chen_convos
 
     scores = train_probe(
-        convos,
+        df,
         convo_func,
         args.dataset,
         model,

@@ -35,19 +35,22 @@ def get_cad_turns(row):
         if not getattr(row, pref_response):
             return turns
         else:
-            turns += [
-                {
-                    "role": "user",
-                    "content": getattr(row, f"{turn}_turn_prompt"),
-                },
-                {
-                    "role": "assistant",
-                    "content": getattr(
-                        row,
-                        f"{turn}_turn_response_{getattr(row,pref_response)[-1]}",
-                    ),
-                },
-            ]
+            try:
+                turns += [
+                    {
+                        "role": "user",
+                        "content": getattr(row, f"{turn}_turn_prompt"),
+                    },
+                    {
+                        "role": "assistant",
+                        "content": getattr(
+                            row,
+                            f"{turn}_turn_response_{getattr(row,pref_response)[-1]}",
+                        ),
+                    },
+                ]
+            except:
+                print(getattr(row, pref_response))
     return turns
 
 
