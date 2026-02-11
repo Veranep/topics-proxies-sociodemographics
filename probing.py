@@ -14,7 +14,7 @@ from deepsig import aso
 from preprocess_data import get_prism_convos, get_cad_convos, get_chen_convos
 
 
-np.random.seed(42)
+# np.random.seed(42)
 
 
 def balance_df(df, col, language):
@@ -108,17 +108,7 @@ def balance_df(df, col, language):
     return selected_df.drop(index=indices_to_drop)
 
 
-def train_probe(
-    df,
-    convo_func,
-    dataset,
-    model,
-    n_layers,
-    demographic,
-    device,
-    save,
-    save_file,
-):
+def get_representations(df, convo_func, tokenizer, model, device):
     convos = convo_func(df)
     if tokenizer.chat_template:
         inputs = [
@@ -160,7 +150,18 @@ def train_probe(
             for inp in tqdm(inputs)
         ]
     )
-    print("got representations!")
+    return representations
+
+
+def train_probe(
+    df,
+    representations,
+    dataset,
+    n_layers,
+    demographic,
+    save,
+    save_file,
+):
     scores = {n: {"f1": [], "majority f1": []} for n in range(n_layers)}
     for r in tqdm(range(10)):
         if save and r > 0:
@@ -170,19 +171,19 @@ def train_probe(
         )
         train_indices = indices_train
         test_indices = indices_test
-        if dataset == "chen":
-            train_indices = np.concat(
-                [train_indices, indices_train + 1, indices_train + 2]
-            )
-            df_train = df_train.loc[df_train.index.repeat(3)].reset_index(
-                drop=True
-            )
-            test_indices = np.concat(
-                [test_indices, indices_test + 1, indices_test + 2]
-            )
-            df_test = df_test.loc[df_test.index.repeat(3)].reset_index(
-                drop=True
-            )
+        # if dataset == "chen":
+        #     train_indices = np.concat(
+        #         [train_indices, indices_train + 1, indices_train + 2]
+        #     )
+        #     df_train = df_train.loc[df_train.index.repeat(3)].reset_index(
+        #         drop=True
+        #     )
+        #     test_indices = np.concat(
+        #         [test_indices, indices_test + 1, indices_test + 2]
+        #     )
+        #     df_test = df_test.loc[df_test.index.repeat(3)].reset_index(
+        #         drop=True
+        #     )
         train_representations = representations[train_indices]
         test_representations = representations[test_indices]
         print("Training probe")
@@ -195,6 +196,12 @@ def train_probe(
             np.full(len(y_test), majority),
             average="macro",
         )
+        random_f1 = f1_score(
+            y_test,
+            np.random.choice(
+                np.unique(y_test), size=len(y_test), replace=True
+            ),
+        )
         for l in tqdm(range(n_layers)):
             X_train = [rep[l] for rep in train_representations]
             X_test = [rep[l] for rep in test_representations]
@@ -202,31 +209,33 @@ def train_probe(
                 random_state=42,
             )
             clf = clf.fit(X_train, y_train)
-            if save:
-                with open(
-                    save_file + f"_{demographic}_{l}.pkl", "wb"
-                ) as outfile:
-                    pickle.dump(clf, outfile)
-            else:
-                y_pred = clf.predict(X_test)
-                scores[l]["f1"].append(
-                    f1_score(y_test, y_pred, average="macro")
-                )
-                scores[l]["majority f1"].append(majority_f1)
+            # if save:
+            #     with open(
+            #         save_file + f"_{demographic}_{l}.pkl", "wb"
+            #     ) as outfile:
+            #         pickle.dump(clf, outfile)
+            # else:
+            y_pred = clf.predict(X_test)
+            scores[l]["f1"].append(f1_score(y_test, y_pred, average="macro"))
+            scores[l]["majority f1"].append(majority_f1)
+            scores[l]["random f1"].append(random_f1)
     for l in range(n_layers):
-        scores[l]["aso"] = aso(
+        scores[l]["majority aso"] = aso(
             scores[l]["f1"], scores[l]["majority f1"], seed=42
         )
-    if save:
-        id_col = "conversation_id" if dataset != "chen" else "text_id"
-        with open(save_file + f"_{demographic}_ids.pkl", "wb") as outfile:
-            pickle.dump(
-                (
-                    df_train[id_col].to_numpy(),
-                    df_test[id_col].to_numpy(),
-                ),
-                outfile,
-            )
+        scores[l]["random aso"] = aso(
+            scores[l]["f1"], scores[l]["random f1"], seed=42
+        )
+    # if save:
+    #     id_col = "conversation_id" if dataset != "chen" else "text_id"
+    #     with open(save_file + f"_{demographic}_ids.pkl", "wb") as outfile:
+    #         pickle.dump(
+    #             (
+    #                 df_train[id_col].to_numpy(),
+    #                 df_test[id_col].to_numpy(),
+    #             ),
+    #             outfile,
+    #         )
     return scores
 
 
@@ -299,44 +308,73 @@ if __name__ == "__main__":
         device_map="auto",
     )
     df = pd.read_pickle(f"{args.data_folder}/{args.dataset}_preprocessed.gz")
-    if args.dataset == "prism":
-        if args.balanced:
-            df = balance_df(df, args.demographic, "")
-        else:
-            df = df.loc[
-                ~(df[args.demographic].isna())
-                & (df[args.demographic] != "Prefer not to say")
-            ]
-        convo_func = get_prism_convos
-    elif "cad" in args.dataset:
-        if args.balanced:
-            df = balance_df(df, args.demographic, args.dataset.split("_")[-1])
-        else:
-            df = df.loc[
-                ~(df[args.demographic].isna())
-                & (df[args.demographic] != "Prefer not to say")
-                & (df[args.demographic] != "other")
-            ]
-        convo_func = get_cad_convos
-    elif args.dataset == "chen":
-        if args.balanced:
-            df = balance_df(df, args.demographic, "")
-        convo_func = get_chen_convos
 
-    scores = train_probe(
-        df,
-        convo_func,
-        args.dataset,
-        model,
-        args.n_layers,
-        args.demographic,
-        device,
-        save=args.save,
-        save_file=args.results_folder + f"/{args.model.split('/')[1]}",
-    )
-    with open(
+    if os.path.isfile(
         args.results_folder
-        + f"/{args.model.split('/')[1]}_{args.dataset}_{args.demographic}{'_balanced' if args.balanced else ''}_scores.pkl",
-        "wb",
-    ) as outfile:
-        pickle.dump(scores, outfile)
+        + +f"/{args.model.split('/')[1]}_{args.dataset}_representations.pkl"
+    ):
+        with open(
+            args.results_folder
+            + +f"/{args.model.split('/')[1]}_{args.dataset}_representations.pkl",
+            "rb",
+        ) as infile:
+            representations = pickle.load(infile)
+
+        df["representations"] = representations
+
+        if args.dataset == "prism":
+            if args.balanced:
+                df = balance_df(df, args.demographic, "")
+            else:
+                df = df.loc[
+                    ~(df[args.demographic].isna())
+                    & (df[args.demographic] != "Prefer not to say")
+                ]
+        elif "cad" in args.dataset:
+            if args.balanced:
+                df = balance_df(
+                    df, args.demographic, args.dataset.split("_")[-1]
+                )
+            else:
+                df = df.loc[
+                    ~(df[args.demographic].isna())
+                    & (df[args.demographic] != "Prefer not to say")
+                    & (df[args.demographic] != "other")
+                ]
+        elif args.dataset == "chen":
+            if args.balanced:
+                df = balance_df(df, args.demographic, "")
+
+        scores = train_probe(
+            df,
+            df["representations"].values,
+            args.dataset,
+            args.n_layers,
+            args.demographic,
+            save=args.save,
+            save_file=args.results_folder + f"/{args.model.split('/')[1]}",
+        )
+        with open(
+            args.results_folder
+            + f"/{args.model.split('/')[1]}_{args.dataset}_{args.demographic}{'_balanced' if args.balanced else ''}_scores.pkl",
+            "wb",
+        ) as outfile:
+            pickle.dump(scores, outfile)
+
+    else:
+        if args.dataset == "prism":
+            convo_func = get_prism_convos
+        elif "cad" in args.dataset:
+            convo_func = get_cad_convos
+        elif args.dataset == "chen":
+            convo_func = get_chen_convos
+        representations = get_representations(
+            df, convo_func, tokenizer, model, device
+        )
+        with open(
+            args.results_folder
+            + +f"/{args.model.split('/')[1]}_{args.dataset}_representations.pkl",
+            "wb",
+        ) as outfile:
+            pickle.dump(representations, outfile)
+        print("got representations!")

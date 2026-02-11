@@ -60,30 +60,37 @@ def get_cad_convos(df):
 
 def get_chen_turns(row):
     return [
-        [
-            {
-                "role": "user",
-                "content": f"Could you paraphrase my writing: '{row.short_text}'?",
-            }
-        ],
-        [
-            {
-                "role": "user",
-                "content": f"Please fix any grammar or spelling mistakes in my writing: '{row.short_text}'.",
-            }
-        ],
-        [
-            {
-                "role": "user",
-                "content": f"What are a few good titles for my text: '{row.short_text}'?",
-            }
-        ],
+        {
+            "role": "user",
+            "content": f"Could you paraphrase my writing: '{row.short_text}'?",
+        }
     ]
+    # return [
+    #     [
+    #         {
+    #             "role": "user",
+    #             "content": f"Could you paraphrase my writing: '{row.short_text}'?",
+    #         }
+    #     ],
+    #     [
+    #         {
+    #             "role": "user",
+    #             "content": f"Please fix any grammar or spelling mistakes in my writing: '{row.short_text}'.",
+    #         }
+    #     ],
+    #     [
+    #         {
+    #             "role": "user",
+    #             "content": f"What are a few good titles for my text: '{row.short_text}'?",
+    #         }
+    #     ],
+    # ]
 
 
 def get_chen_convos(df):
     convos = list(map(get_chen_turns, df.itertuples(index=False)))
-    return [c for cs in convos for c in cs]
+    return convos
+    # return [c for cs in convos for c in cs]
 
 
 if __name__ == "__main__":
