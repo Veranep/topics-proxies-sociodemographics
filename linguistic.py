@@ -4,6 +4,7 @@ import evaluate
 import numpy as np
 import spacy
 import textstat
+import torch
 from tqdm import tqdm
 from transformers import pipeline
 import pandas as pd
@@ -27,6 +28,7 @@ if __name__ == "__main__":
         default="",
     )
     args = parser.parse_args()
+    device = "cuda" if torch.cuda.is_available() else "cpu"
     df = pd.read_pickle(
         f"{args.data_folder}/{args.dataset}{'_utterances' if args.dataset != 'chen' else ''}_preprocessed.gz"
     )
@@ -60,12 +62,12 @@ if __name__ == "__main__":
             "text-classification",
             model="AnasAlokla/multilingual_go_emotions",
             top_k=None,  # To return all scores for each label
-            device_map="auto",
+            device=device,
         )
         politeness_classifier = pipeline(
             "text-classification",
             "Intel/polite-guard",
-            device_map="auto",
+            device=device,
         )
         concreteness_df = pd.read_excel(
             f"{args.data_folder}/13428_2013_403_MOESM1_ESM.xlsx"
@@ -82,7 +84,7 @@ if __name__ == "__main__":
                     "text-classification",
                     model="AnasAlokla/multilingual_go_emotions",
                     top_k=None,  # To return all scores for each label
-                    device_map="auto",
+                    device=device,
                 )
     emotions = [
         "admiration",
@@ -125,7 +127,6 @@ if __name__ == "__main__":
             "type_to_token_ratio": [],
             "num_entities": [],
             "num_entities_per_sent": [],
-            "perplexity": [],
         }
         if language in ["en", "it", "fr"]:
             annotations["avg_num_syllables"] = []
@@ -187,11 +188,6 @@ if __name__ == "__main__":
             num_entities_per_sent = (
                 num_entities / num_sents if num_sents > 0 else None
             )
-            perpl = perplexity.compute(
-                model_id="ai-forever/mGPT",
-                add_start_token=False,
-                predictions=[text],
-            )["perplexities"][0]
 
             if language in ["en", "it", "fr"]:
                 reading_ease = textstat.flesch_reading_ease(text)
@@ -215,10 +211,15 @@ if __name__ == "__main__":
             annotations["type_to_token_ratio"].append(type_to_token_ratio)
             annotations["num_entities"].append(num_entities)
             annotations["num_entities_per_sent"].append(num_entities_per_sent)
-            annotations["perplexity"].append(perpl)
 
         for annotation in annotations:
             df[f"{annotation}_{column}"] = annotations[annotation]
+
+        df[f"perplexity_{column}"] = perplexity.compute(
+            model_id="ai-forever/mGPT",
+            predictions=df[column].to_list(),
+            device=device,
+        )["perplexities"]
 
         if language == "en":
             for metric in tqdm(
