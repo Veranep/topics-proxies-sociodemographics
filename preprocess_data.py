@@ -1,5 +1,6 @@
 import argparse
 from datasets import load_dataset
+import os
 import numpy as np
 import pandas as pd
 import pickle
@@ -144,7 +145,8 @@ if __name__ == "__main__":
                 )
             )
 
-        df.to_pickle(f"{args.folder}/prism_preprocessed.gz")
+        if not os.path.isfile(f"{args.folder}/prism_preprocessed.gz"):
+            df.to_pickle(f"{args.folder}/prism_preprocessed.gz")
         print(get_prism_convos(df)[:5])
 
         df_utterances = pd.merge(utterances, survey, on=["user_id"])
@@ -170,15 +172,19 @@ if __name__ == "__main__":
             .first()
             .reset_index()
         )
-        df_utterances.to_pickle(
+        if not os.path.isfile(
             f"{args.folder}/prism_utterances_preprocessed.gz"
-        )
+        ):
+            df_utterances.to_pickle(
+                f"{args.folder}/prism_utterances_preprocessed.gz"
+            )
 
     elif args.dataset == "cad":
         ds = load_dataset(
             "facebook/community-alignment-dataset", split="filtered"
         )
-        ds.to_pandas().to_pickle(f"{args.folder}/cad_preprocessed.gz")
+        if not os.path.isfile(f"{args.folder}/cad_preprocessed.gz"):
+            ds.to_pandas().to_pickle(f"{args.folder}/cad_preprocessed.gz")
         print(get_cad_convos(ds.to_pandas())[:5])
 
         df = ds.to_pandas()
@@ -297,9 +303,15 @@ if __name__ == "__main__":
                 "in_balanced_subset_10",
                 "first_turn_prompt",
                 "user_prompt",
+                "turn",
             ],
-            var_name="turn",
+            var_name="turn2",
             value_name="model_response",
+        )
+        df = (
+            df[df["turn"] == df["turn2"]]
+            .reset_index(drop=True)
+            .drop(columns=["turn2"])
         )
         df = df.rename(
             columns={
@@ -314,10 +326,6 @@ if __name__ == "__main__":
                 "conversation_id",
                 "assigned_lang",
                 "annotator_id",
-                "first_turn_feedback",
-                "second_turn_feedback",
-                "third_turn_feedback",
-                "fourth_turn_feedback",
                 "annotator_age",
                 "annotator_gender",
                 "annotator_education_level",
@@ -330,24 +338,37 @@ if __name__ == "__main__":
                 "first_turn_prompt",
                 "user_prompt",
                 "model_response",
+                "turn",
             ],
-            var_name="turn",
+            var_name="turn2",
             value_name="feedback",
         )
+        df = (
+            df[df["turn"] == df["turn2"]]
+            .reset_index(drop=True)
+            .drop(columns=["turn2"])
+        )
         print(df)
-        df.to_pickle(f"{args.folder}/cad_utterances_preprocessed.gz")
+        if not os.path.isfile(f"{args.folder}/cad_utterances_preprocessed.gz"):
+            df.to_pickle(f"{args.folder}/cad_utterances_preprocessed.gz")
 
         for language in ["en", "fr", "it", "pt", "hi"]:
             filtered_ds = ds.filter(
                 lambda example: example["assigned_lang"] == language
             )
-            filtered_ds.to_pandas().to_pickle(
+            if not os.path.isfile(
                 f"{args.folder}/cad_{language}_preprocessed.gz"
-            )
-            lang_df = df[df["language"] == language].reset_index()
-            lang_df.to_pickle(
+            ):
+                filtered_ds.to_pandas().to_pickle(
+                    f"{args.folder}/cad_{language}_preprocessed.gz"
+                )
+            lang_df = df[df["assigned_lang"] == language].reset_index()
+            if not os.path.isfile(
                 f"{args.folder}/cad_{language}_utterances_preprocessed.gz"
-            )
+            ):
+                lang_df.to_pickle(
+                    f"{args.folder}/cad_{language}_utterances_preprocessed.gz"
+                )
 
     elif args.dataset == "chen":
         df = pd.read_csv(f"{args.folder}/responses.csv")
@@ -357,5 +378,6 @@ if __name__ == "__main__":
             .apply(list)
             .reset_index()
         )
-        df.to_pickle(f"{args.folder}/chen_preprocessed.gz")
+        if not os.path.isfile(f"{args.folder}/chen_preprocessed.gz"):
+            df.to_pickle(f"{args.folder}/chen_preprocessed.gz")
         print(get_chen_convos(df)[:5])
