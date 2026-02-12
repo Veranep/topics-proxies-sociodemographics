@@ -97,7 +97,7 @@ def balance_df(df, col, language):
     elif col == "lm_familiarity":
         df.loc[df[col] == "Not familiar at all"] = 0
         df.loc[df[col] == "Very familiar"] = 1
-    selected_df = df[df[col].isin([0, 1])].reset_index(drop=True)
+    selected_df = df[df[col].isin([0, 1])]
     max_amount = list(selected_df[col].value_counts())[-1]
 
     indices_to_drop = []
@@ -155,7 +155,7 @@ def get_representations(df, convo_func, tokenizer, model, device):
 
 
 def train_probe(
-    df,
+    target,
     representations,
     dataset,
     n_layers,
@@ -163,15 +163,16 @@ def train_probe(
     save,
     save_file,
 ):
-    scores = {n: {"f1": [], "majority f1": []} for n in range(n_layers)}
-    for r in tqdm(range(10)):
+    scores = {
+        n: {"f1": [], "majority f1": [], "random f1": []}
+        for n in range(n_layers)
+    }
+    for r in tqdm(range(5)):
         if save and r > 0:
             break
-        df_train, df_test, indices_train, indices_test = train_test_split(
-            df, range(len(df)), shuffle=True
+        y_train, y_test, train_representations, test_representations = (
+            train_test_split(target, representations, shuffle=True)
         )
-        train_indices = indices_train
-        test_indices = indices_test
         # if dataset == "chen":
         #     train_indices = np.concat(
         #         [train_indices, indices_train + 1, indices_train + 2]
@@ -185,11 +186,7 @@ def train_probe(
         #     df_test = df_test.loc[df_test.index.repeat(3)].reset_index(
         #         drop=True
         #     )
-        train_representations = representations[train_indices]
-        test_representations = representations[test_indices]
         print("Training probe")
-        y_train = np.array(df_train[demographic].tolist())
-        y_test = np.array(df_test[demographic].tolist())
         values, counts = np.unique(y_test, return_counts=True)
         majority = values[np.argmax(counts)]
         majority_f1 = f1_score(
@@ -202,13 +199,12 @@ def train_probe(
             np.random.choice(
                 np.unique(y_test), size=len(y_test), replace=True
             ),
+            average="macro",
         )
         for l in tqdm(range(n_layers)):
             X_train = [rep[l] for rep in train_representations]
             X_test = [rep[l] for rep in test_representations]
-            clf = LogisticRegression(
-                random_state=42,
-            )
+            clf = LogisticRegression(random_state=42)
             clf = clf.fit(X_train, y_train)
             # if save:
             #     with open(
@@ -299,29 +295,18 @@ if __name__ == "__main__":
         help="Whether to balance the dataset for the demographic attribute",
     )
     args = parser.parse_args()
-    if args.token:
-        login(args.token)
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    tokenizer = AutoTokenizer.from_pretrained(args.model)
-    model = AutoModelForCausalLM.from_pretrained(
-        args.model,
-        torch_dtype=torch.bfloat16,
-        device_map="auto",
-    )
     df = pd.read_pickle(f"{args.data_folder}/{args.dataset}_preprocessed.gz")
 
     if os.path.isfile(
         args.results_folder
-        + +f"/{args.model.split('/')[1]}_{args.dataset}_representations.pkl"
+        + f"/{args.model.split('/')[1]}_{args.dataset}_representations.pkl"
     ):
         with open(
             args.results_folder
-            + +f"/{args.model.split('/')[1]}_{args.dataset}_representations.pkl",
+            + f"/{args.model.split('/')[1]}_{args.dataset}_representations.pkl",
             "rb",
         ) as infile:
             representations = pickle.load(infile)
-
-        df["representations"] = representations
 
         if args.dataset == "prism":
             if args.balanced:
@@ -346,9 +331,15 @@ if __name__ == "__main__":
             if args.balanced:
                 df = balance_df(df, args.demographic, "")
 
+        print(df.index, len(df.index), len(representations))
+        representations = representations[df.index]
+        print(len(representations))
+
+        print("ready df")
+
         scores = train_probe(
-            df,
-            df["representations"].values,
+            df[args.demographic].tolist(),
+            representations,
             args.dataset,
             args.n_layers,
             args.demographic,
@@ -363,6 +354,15 @@ if __name__ == "__main__":
             pickle.dump(scores, outfile)
 
     else:
+        if args.token:
+            login(args.token)
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        tokenizer = AutoTokenizer.from_pretrained(args.model)
+        model = AutoModelForCausalLM.from_pretrained(
+            args.model,
+            torch_dtype=torch.bfloat16,
+            device_map="auto",
+        )
         if args.dataset == "prism":
             convo_func = get_prism_convos
         elif "cad" in args.dataset:
@@ -374,7 +374,7 @@ if __name__ == "__main__":
         )
         with open(
             args.results_folder
-            + +f"/{args.model.split('/')[1]}_{args.dataset}_representations.pkl",
+            + f"/{args.model.split('/')[1]}_{args.dataset}_representations.pkl",
             "wb",
         ) as outfile:
             pickle.dump(representations, outfile)
