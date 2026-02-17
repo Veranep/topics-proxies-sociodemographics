@@ -31,11 +31,11 @@ if __name__ == "__main__":
     if language == "en":
         liwc_dict = "LIWC22"
     elif language == "it":
-        liwc_dict = "LIWC2007 Dictionary - Italian.dicx"
+        liwc_dict = f"{args.data_folder}/LIWC2007 Dictionary - Italian.dicx"
     elif language == "fr":
-        liwc_dict = "LIWC2007 Dictionary - French.dicx"
+        liwc_dict = f"{args.data_folder}/LIWC2007 Dictionary - French.dicx"
     elif language == "pt":
-        liwc_dict = "LIWC2015 Dictionary - Brazilian Portuguese.dicx"
+        liwc_dict = f"{args.data_folder}/LIWC2015 Dictionary - Brazilian Portuguese.dicx"
 
     for column in ["user_prompt", "model_response"]:
         if column not in df:
