@@ -7,7 +7,7 @@ import pickle
 
 
 def get_prism_turns(row):
-    return [
+    turns = [
         {
             "role": turn["role"].replace("model", "assistant"),
             "content": turn["content"],
@@ -15,6 +15,7 @@ def get_prism_turns(row):
         for turn in row.conversation_history
         if turn["role"] == "user" or turn["if_chosen"] == True
     ]
+    return turns
 
 
 def get_prism_convos(df):
@@ -61,12 +62,13 @@ def get_cad_convos(df):
 
 
 def get_chen_turns(row):
-    return [
+    turns = [
         {
             "role": "user",
             "content": f"Could you paraphrase my writing: '{row.user_prompt}'?",
         }
     ]
+    return turns
     # return [
     #     [
     #         {

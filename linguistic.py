@@ -33,12 +33,12 @@ if __name__ == "__main__":
         f"{args.data_folder}/{args.dataset}{'_utterances' if args.dataset != 'chen' else ''}_preprocessed.gz"
     )
     if args.dataset == "prism":
-        cluster_ids = pd.read_csv("opening_prompt_text_df_original.csv")[
-            ["id", "cluster_id"]
-        ]
-        clusters = pd.read_csv("opening_prompt_cluster_df_original.csv")[
-            ["cluster_id", "gpt_description"]
-        ]
+        cluster_ids = pd.read_csv(
+            f"{args.data_folder}/opening_prompt_text_df_original.csv"
+        )[["id", "cluster_id"]]
+        clusters = pd.read_csv(
+            f"{args.data_folder}/opening_prompt_cluster_df_original.csv"
+        )[["cluster_id", "gpt_description"]]
         cluster_ids = cluster_ids.merge(clusters).drop(columns=["cluster_id"])
         df = (
             df.merge(cluster_ids, left_on="conversation_id", right_on="id")
@@ -60,14 +60,18 @@ if __name__ == "__main__":
         textstat.set_lang("en")
         emotion_classifier = pipeline(
             "text-classification",
-            model="AnasAlokla/multilingual_go_emotions",
+            model="AnasAlokla/multilingual_go_emotions_V1.2",
             top_k=None,  # To return all scores for each label
             device=device,
+            max_length=512,
+            truncation=True,
         )
         politeness_classifier = pipeline(
             "text-classification",
             "Intel/polite-guard",
             device=device,
+            max_length=512,
+            truncation=True,
         )
         concreteness_df = pd.read_excel(
             f"{args.data_folder}/13428_2013_403_MOESM1_ESM.xlsx"
@@ -85,6 +89,8 @@ if __name__ == "__main__":
                     model="AnasAlokla/multilingual_go_emotions",
                     top_k=None,  # To return all scores for each label
                     device=device,
+                    max_length=512,
+                    truncation=True,
                 )
     emotions = [
         "admiration",
@@ -119,6 +125,21 @@ if __name__ == "__main__":
     for column in ["user_prompt", "model_response"]:
         if column not in df:
             continue
+
+        df[f"perplexity_{column}"] = perplexity.compute(
+            model_id="ai-forever/mGPT",
+            predictions=df[column].to_list(),
+            device=device,
+            max_length=512,
+            batch_size=16 if language not in ["fr", "en"] else 8,
+        )["perplexities"]
+
+    del perplexity
+
+    for column in ["user_prompt", "model_response"]:
+        if column not in df:
+            continue
+
         annotations = {
             "num_tokens": [],
             "num_sents": [],
@@ -215,23 +236,17 @@ if __name__ == "__main__":
         for annotation in annotations:
             df[f"{annotation}_{column}"] = annotations[annotation]
 
-        df[f"perplexity_{column}"] = perplexity.compute(
-            model_id="ai-forever/mGPT",
-            predictions=df[column].to_list(),
-            device=device,
-        )["perplexities"]
-
-        if language == "en":
-            for metric in tqdm(
-                [
-                    "humt",
-                    "sociot_status",
-                    "sociot_social_distance",
-                    "sociot_gender",
-                    "sociot_warmth",
-                ]
-            ):
-                df = calculate_td(df, column, metric)
+        # if language == "en":
+        #     for metric in tqdm(
+        #         [
+        #             "humt",
+        #             "sociot_status",
+        #             "sociot_social_distance",
+        #             "sociot_gender",
+        #             "sociot_warmth",
+        #         ]
+        #     ):
+        #         df = calculate_td(df, column, metric)
 
     df.to_pickle(
         f"{args.data_folder}/{args.dataset}{'_utterances' if args.dataset != 'chen' else ''}_linguistic.gz"
