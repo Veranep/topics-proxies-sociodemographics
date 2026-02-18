@@ -26,6 +26,7 @@ def balance_df(df, col, language):
         "unknown_token_Gender",
         "value_JSON_Gender",
         "shared_extracted_Gender",
+        "human_Gender",
     ]:
         df.loc[df[col] == "Female", col] = 0
         df.loc[df[col] == "Male", col] = 1
@@ -353,6 +354,12 @@ if __name__ == "__main__":
     df = pd.read_pickle(f"{args.data_folder}/{args.dataset}_preprocessed.gz")
 
     if os.path.isfile(
+        args.results_folder
+        + f"/{args.model.split('/')[1]}_{args.dataset}_{args.demographic}{'_balanced' if args.balanced else ''}_scores.pkl"
+    ):
+        pass
+
+    elif os.path.isfile(
         args.results_folder
         + f"/{args.model.split('/')[1]}_{args.dataset}_representations.pkl"
     ):

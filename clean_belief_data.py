@@ -3,6 +3,16 @@ import pandas as pd
 import json
 import argparse
 
+
+def get_gender(score):
+    if score < 3:
+        return "Female"
+    elif score > 3:
+        return "Male"
+    else:
+        return np.nan
+
+
 extracted_belief_mapping = {
     "Socioeconomic Status": [
         (
@@ -319,6 +329,13 @@ if __name__ == "__main__":
             )
         ).replace("", np.nan)
 
+    if args.dataset == "chen":
+        df["human_Gender"] = [
+            get_gender(score)
+            for score in np.mean(df["style_score"].tolist(), axis=1)
+        ]
+        df = df.drop(columns=["style_score"])
+
     df.to_pickle(
-        f"{args.data_folder}/{args.model.split('/')[1]}_{args.dataset}_beliefs.gz"
+        f"{args.data_folder}/{args.model.split('/')[1]}_{args.dataset}_beliefs_preprocessed.gz"
     )
