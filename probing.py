@@ -355,7 +355,7 @@ if __name__ == "__main__":
 
     if os.path.isfile(
         args.results_folder
-        + f"/{args.model.split('/')[1]}_{args.dataset}_{args.demographic}{'_balanced' if args.balanced else ''}_scores.pkl"
+        + f"/{args.model.split('/')[1]}_{args.dataset}_{args.demographic.replace(' ','')}{'_balanced' if args.balanced else ''}_scores.pkl"
     ):
         pass
 
@@ -420,7 +420,7 @@ if __name__ == "__main__":
         )
         with open(
             args.results_folder
-            + f"/{args.model.split('/')[1]}_{args.dataset}_{args.demographic}{'_balanced' if args.balanced else ''}_scores.pkl",
+            + f"/{args.model.split('/')[1]}_{args.dataset}_{args.demographic.replace(' ','')}{'_balanced' if args.balanced else ''}_scores.pkl",
             "wb",
         ) as outfile:
             pickle.dump(scores, outfile)
