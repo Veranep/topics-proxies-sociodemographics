@@ -351,7 +351,14 @@ if __name__ == "__main__":
         help="Whether to balance the dataset for the demographic attribute",
     )
     args = parser.parse_args()
-    df = pd.read_pickle(f"{args.data_folder}/{args.dataset}_preprocessed.gz")
+    if "belief" in args.data_folder:
+        df = pd.read_pickle(
+            f"{args.data_folder}/Llama-3.1-8B-Instruct_{args.dataset}_beliefs_preprocessed.gz"
+        )
+    else:
+        df = pd.read_pickle(
+            f"{args.data_folder}/{args.dataset}_preprocessed.gz"
+        )
 
     if os.path.isfile(
         args.results_folder
