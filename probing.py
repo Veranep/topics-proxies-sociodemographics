@@ -19,7 +19,62 @@ from preprocess_data import get_prism_convos, get_cad_convos, get_chen_convos
 
 
 def balance_df(df, col, language):
-    if col == "annotator_age":
+    if col in ["unknown_token_Age", "value_JSON_Age", "shared_extracted_Age"]:
+        df.loc[df[col] == "Young adult", col] = 0
+        df.loc[df[col] == "Older adult", col] = 1
+    elif col in [
+        "unknown_token_Gender",
+        "value_JSON_Gender",
+        "shared_extracted_Gender",
+    ]:
+        df.loc[df[col] == "Female", col] = 0
+        df.loc[df[col] == "Male", col] = 1
+    elif col in [
+        "unknown_token_English proficiency",
+        "value_JSON_English proficiency",
+        "shared_extracted_English proficiency",
+    ]:
+        df.loc[df[col] == "Native speaker", col] = 0
+        df.loc[df[col] == "Non-Native speaker", col] = 1
+    elif col in [
+        "unknown_token_Ethnicity",
+        "value_JSON_Ethnicity",
+        "shared_extracted_Ethnicity",
+    ]:
+        df.loc[df[col] == "White", col] = 0
+        df.loc[df[col] == "Asian", col] = 1
+    elif col in [
+        "unknown_token_Socioeconomic Status",
+        "value_JSON_Socioeconomic Status",
+        "shared_extracted_Socioeconomic Status",
+    ]:
+        df.loc[df[col] == "High income", col] = 0
+        df.loc[df[col] == "Low income", col] = 1
+    elif col in [
+        "unknown_token_Educational Background",
+        "value_JSON_Educational Background",
+        "shared_extracted_Educational Background",
+    ]:
+        df.loc[df[col] == "High", col] = 0
+        df.loc[df[col] == "Low", col] = 1
+    elif col in [
+        "unknown_token_Marital Status",
+        "value_JSON_Marital Status",
+        "shared_extracted_Marital Status",
+    ]:
+        df.loc[df[col] == "Married", col] = 0
+        df.loc[df[col] == "Never married", col] = 1
+    elif col in [
+        "unknown_token_Religion",
+        "value_JSON_Religion",
+        "shared_extracted_Religion",
+    ]:
+        df.loc[df[col] == "No Affiliation", col] = 0
+        df.loc[df[col] == "Christian", col] = 1
+    elif col == "revealed_Gender":
+        df.loc[df[col] == "male", col] = 0
+        df.loc[df[col] == "female", col] = 1
+    elif col == "annotator_age":
         df.loc[df[col] == "18-34", col] = 0
         df.loc[df[col] == "46-54", col] = 1
         df.loc[df[col] == "55+", col] = 1
@@ -315,6 +370,8 @@ if __name__ == "__main__":
                 df = df.loc[
                     ~(df[args.demographic].isna())
                     & (df[args.demographic] != "Prefer not to say")
+                    & (df[args.demographic] != "Unknown")
+                    & (df[args.demographic] != "female-male-non-binary")
                 ]
         elif "cad" in args.dataset:
             if args.balanced:
@@ -326,10 +383,18 @@ if __name__ == "__main__":
                     ~(df[args.demographic].isna())
                     & (df[args.demographic] != "Prefer not to say")
                     & (df[args.demographic] != "other")
+                    & (df[args.demographic] != "Unknown")
+                    & (df[args.demographic] != "female-male-non-binary")
                 ]
         elif args.dataset == "chen":
             if args.balanced:
                 df = balance_df(df, args.demographic, "")
+            else:
+                df = df.loc[
+                    ~(df[args.demographic].isna())
+                    & (df[args.demographic] != "Unknown")
+                    & (df[args.demographic] != "female-male-non-binary")
+                ]
 
         print(df.index, len(df.index), len(representations))
         representations = representations[df.index]
