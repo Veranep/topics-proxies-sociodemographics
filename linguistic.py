@@ -51,6 +51,7 @@ if __name__ == "__main__":
             for i in tqdm(range(len(df))):
                 text = df.iloc[i][column]
                 results = sentiment(text)
+                print(results)
                 for entry in results[0]:
                     annotations[entry["label"]].append(entry["score"])
             for annotation in annotations:
