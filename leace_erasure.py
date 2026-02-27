@@ -103,13 +103,13 @@ if __name__ == "__main__":
         ]
         evaluation_df = df.loc[df["conversation_id"].isin(eval_convos)]
 
-        leace_convos = [
+        leace_cs = [
             c_id
             for group in leace_convos[item]
             for c_id in leace_convos[item][group]
         ]
         selected_leace_df = leace_df.loc[
-            leace_df["conversation_id"].isin(leace_convos)
+            leace_df["conversation_id"].isin(leace_cs)
         ]
         reverse_label_dict = {
             c_id: group
@@ -117,8 +117,8 @@ if __name__ == "__main__":
             for c_id in leace_convos[item][group]
         }
         leace_labels = leace_df["conversation_id"].map(reverse_label_dict)
-        leace_convos = leace_convo_func(selected_leace_df)
-        leace_convos = [
+        leace_cs = leace_convo_func(selected_leace_df)
+        leace_cs = [
             tokenizer.apply_chat_template(
                 convo,
                 tokenize=True,
@@ -126,9 +126,9 @@ if __name__ == "__main__":
                 return_dict=True,
             )
             | {"label": leace_labels.iloc[i]}
-            for i, convo in enumerate(leace_convos)
+            for i, convo in enumerate(leace_cs)
         ]
-        leace_dataset = datasets.Dataset.from_list(leace_convos)
+        leace_dataset = datasets.Dataset.from_list(leace_cs)
         leace_model = scrub_llama(model, leace_dataset, z_column="label")
         leace_pipeline = pipeline(
             "text-generation",
