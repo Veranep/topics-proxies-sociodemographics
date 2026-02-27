@@ -45,13 +45,12 @@ if __name__ == "__main__":
             f"{args.data_folder}/{args.dataset}{'_utterances' if args.dataset != 'chen' else ''}_linguistic.gz"
         )
         for column in ["user_prompt", "model_response"]:
-            annotations = {"Negative": [], "Neutral": [], "Positive": []}
+            annotations = {"negative": [], "neutral": [], "positive": []}
             if column not in df:
                 continue
             for i in tqdm(range(len(df))):
                 text = df.iloc[i][column]
                 results = sentiment(text)
-                print(results)
                 for entry in results[0]:
                     annotations[entry["label"]].append(entry["score"])
             for annotation in annotations:
