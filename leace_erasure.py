@@ -109,7 +109,7 @@ if __name__ == "__main__":
             for c_id in leace_convos[item][group]
         ]
         selected_leace_df = leace_df.loc[
-            leace_df["conversation_id"].isin(leave_convos)
+            leace_df["conversation_id"].isin(leace_convos)
         ]
         reverse_label_dict = {
             c_id: group
