@@ -72,6 +72,20 @@ if __name__ == "__main__":
     device = "cuda" if torch.cuda.is_available() else "cpu"
     tokenizer = AutoTokenizer.from_pretrained(args.model, padding_side="left")
 
+    if "gemma" in args.model:
+        model = AutoModelForCausalLM.from_pretrained(
+            args.model,
+            torch_dtype=torch.bfloat16,
+            device_map="auto",
+            attn_implementation="eager",
+        )
+    else:
+        model = AutoModelForCausalLM.from_pretrained(
+            args.model,
+            torch_dtype=torch.bfloat16,
+            device_map="auto",
+        )
+
     if not tokenizer.pad_token_id:
         tokenizer.pad_token_id = tokenizer.eos_token_id
 
@@ -128,7 +142,7 @@ if __name__ == "__main__":
             | {"label": leace_labels.iloc[i]}
             for i, convo in enumerate(leace_cs)
         ]
-        leace_dataset = datasets.Dataset.from_list(leace_cs)
+        leace_dataset = datasets.Dataset.from_pandas(pd.DataFrame(leace_cs))
         leace_model = scrub_llama(model, leace_dataset, z_column="label")
         leace_pipeline = pipeline(
             "text-generation",
@@ -150,7 +164,7 @@ if __name__ == "__main__":
             outputs = [
                 answer[0]["generated_text"]
                 for answer in tqdm(
-                    model(
+                    leace_pipeline(
                         ListDataset(convos_and_questions),
                         batch_size=8,
                         max_new_tokens=tokens,
