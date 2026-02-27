@@ -12,11 +12,12 @@ import numpy as np
 import pandas as pd
 import pickle
 import torch
+from huggingface_hub import login
 from tqdm import tqdm
 from transformer_lens import HookedTransformer
 from transformers import AutoTokenizer
 
-from preprocess_data import get_prism_convos, get_cad_convos, get_chen_convos
+from preprocess_data import get_prism_convos, get_cad_convos
 
 
 if __name__ == "__main__":
@@ -80,8 +81,8 @@ if __name__ == "__main__":
     for item in evaluation:
         eval_convos = [
             c_id
-            for c_id in evaluation[item][group]
             for group in evaluation[item]
+            for c_id in evaluation[item][group]
         ]
         evaluation_df = df.loc[df["conversation_id"].isin(eval_convos)]
         for c in neurons[item]:
