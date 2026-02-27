@@ -95,7 +95,7 @@ def scrub_llama(
         k = -1
         scrubber = None
     else:
-        k = assert_type(int, train.features[z_column].feature.num_classes)
+        k = assert_type(int, train.features[z_column].num_classes)
         scrubber = ConceptScrubber()
 
     losses = []
