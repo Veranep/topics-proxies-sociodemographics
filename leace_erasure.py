@@ -80,17 +80,13 @@ if __name__ == "__main__":
     if args.dataset == "prism":
         convo_func = get_prism_convos
         leace_convos = leace_convos_prism
-        leace_df = df = pd.read_pickle(
-            f"{args.data_folder}/cad_en_preprocessed.gz"
-        )
+        leace_df = pd.read_pickle(f"{args.data_folder}/cad_en_preprocessed.gz")
         leace_convo_func = get_cad_convos
         evaluation = evaluation_prism
     elif "cad" in args.dataset:
         convo_func = get_cad_convos
         leace_convos = leace_convos_cad
-        leace_df = df = pd.read_pickle(
-            f"{args.data_folder}/prism_preprocessed.gz"
-        )
+        leace_df = pd.read_pickle(f"{args.data_folder}/prism_preprocessed.gz")
         leace_convo_func = get_prism_convos
         evaluation = evaluation_cad
 
