@@ -104,7 +104,9 @@ if __name__ == "__main__":
         evaluation_df = df.loc[df["conversation_id"].isin(eval_convos)]
 
         leace_convos = [
-            c_id for group in leace[item] for c_id in leace_convos[item][group]
+            c_id
+            for group in leace_convos[item]
+            for c_id in leace_convos[item][group]
         ]
         selected_leace_df = leace_df.loc[
             leace_df["conversation_id"].isin(leave_convos)
