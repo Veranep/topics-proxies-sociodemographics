@@ -130,7 +130,9 @@ if __name__ == "__main__":
             for group in leace_convos[item]
             for c_id in leace_convos[item][group]
         }
-        leace_labels = leace_df["conversation_id"].map(reverse_label_dict)
+        leace_labels = selected_leace_df["conversation_id"].map(
+            reverse_label_dict
+        )
         leace_cs = leace_convo_func(selected_leace_df)
         leace_cs = [
             tokenizer.apply_chat_template(
@@ -143,6 +145,7 @@ if __name__ == "__main__":
             for i, convo in enumerate(leace_cs)
         ]
         leace_dataset = datasets.Dataset.from_pandas(pd.DataFrame(leace_cs))
+        leace_dataset = leace_dataset.class_encode_column("label")
         leace_model = scrub_llama(model, leace_dataset, z_column="label")
         leace_pipeline = pipeline(
             "text-generation",
