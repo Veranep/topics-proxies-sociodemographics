@@ -110,7 +110,7 @@ if __name__ == "__main__":
                     tokens = 1
                     outputs = tm.generate_multiple(
                         convos_and_questions,
-                        batch_size=2,
+                        batch_size=1,
                         max_new_tokens=tokens,
                         do_sample=False,
                     )
