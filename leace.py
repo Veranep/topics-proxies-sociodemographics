@@ -160,8 +160,8 @@ class LeaceFitter:
     def update(self, x: Tensor, z: Tensor) -> "LeaceFitter":
         """Update the running statistics with a new batch of data."""
         d, c = self.sigma_xz_.shape
-        x = x.reshape(-1, d).type_as(self.mean_x)
-        n, d2 = x.shape
+        # x = x.reshape(-1, d).type_as(self.mean_x)
+        n, seq_len, d2 = x.shape
 
         assert d == d2, f"Unexpected number of features {d2}"
         self.n += n
