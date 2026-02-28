@@ -113,6 +113,7 @@ if __name__ == "__main__":
                         batch_size=1,
                         max_new_tokens=tokens,
                         do_sample=False,
+                        verbose=True,
                     )
 
                     result_df = pd.concat(
