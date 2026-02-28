@@ -92,7 +92,9 @@ if __name__ == "__main__":
                 features = neurons[item][c]
                 concept = Concept(name=c, k=0.4, value=36, features=features)
                 model = HookedTransformer.from_pretrained(
-                    args.model, device=device
+                    args.model,
+                    device=device,
+                    n_devices=2,
                 )
                 tm = TransformerLensModel(model)
                 result_df = evaluation_df
@@ -111,7 +113,7 @@ if __name__ == "__main__":
                         tokens = 1
                         outputs = tm.generate_multiple(
                             convos_and_questions,
-                            batch_size=1,
+                            batch_size=2,
                             max_new_tokens=tokens,
                             do_sample=False,
                             verbose=True,
