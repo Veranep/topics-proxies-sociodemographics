@@ -94,7 +94,6 @@ if __name__ == "__main__":
                 model = HookedTransformer.from_pretrained(
                     args.model,
                     device=device,
-                    n_devices=2,
                 )
                 tm = TransformerLensModel(model)
                 result_df = evaluation_df
@@ -113,7 +112,7 @@ if __name__ == "__main__":
                         tokens = 1
                         outputs = tm.generate_multiple(
                             convos_and_questions,
-                            batch_size=2,
+                            batch_size=1,
                             max_new_tokens=tokens,
                             do_sample=False,
                             verbose=True,
