@@ -85,6 +85,8 @@ if __name__ == "__main__":
             "positive",
         ]
         for column in ["user_prompt", "model_response"]:
+            if column not in df:
+                continue
             df = df.drop(columns=[f"{c}_{column}" for c in to_remove])
             annotations = {
                 "s_negative": [],
@@ -119,8 +121,6 @@ if __name__ == "__main__":
                 "e_surprise": [],
                 "e_neutral": [],
             }
-            if column not in df:
-                continue
             for i in tqdm(range(len(df))):
                 text = df.iloc[i][column]
                 results = sentiment(text)
