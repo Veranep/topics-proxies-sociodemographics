@@ -168,7 +168,7 @@ class LeaceFitter:
 
         # Welford's online algorithm
         delta_x = x - self.mean_x
-        self.mean_x += delta_x.sum(dim=0) / self.n
+        self.mean_x += delta_x.sum(dim=[0, 1]) / self.n
         delta_x2 = x - self.mean_x
 
         # Update the covariance matrix of X if needed (for LEACE)
