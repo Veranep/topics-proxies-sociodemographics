@@ -75,7 +75,6 @@ if __name__ == "__main__":
         neurons = neurons_cad
         evaluation = evaluation_cad
 
-    convos = convo_func(df)
     df_questions = pd.read_pickle(f"{args.data_folder}/questions.gz")
     df_questions = df_questions.loc[
         df_questions["q_id"].isin([f"q_{i}" for i in range(50)])
@@ -87,6 +86,7 @@ if __name__ == "__main__":
             for c_id in evaluation[item][group]
         ]
         evaluation_df = df.loc[df["conversation_id"].isin(eval_convos)]
+        convos = convo_func(evaluation_df)
         for c in neurons[item]:
             features = neurons[item][c]
             concept = Concept(name=c, k=0.4, value=36, features=features)
