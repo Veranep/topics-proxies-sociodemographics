@@ -136,6 +136,7 @@ def scrub_llama(
 
                 # Discard post-LN output and recompute during application to save RAM
                 x = layer.input_layernorm(x.to(model.device))
+                print(x, z)
                 attn_fitter.update(x, z)
 
             attn_eraser = attn_fitter.eraser
