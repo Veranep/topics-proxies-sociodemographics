@@ -12030,34 +12030,34 @@ leace_convos_prism = {
 }
 
 neurons_prism = {
-    "age": {
-        "young_age": [
-            Feature(21, 6900, False),
-            Feature(21, 1723, False),
-            Feature(23, 12707, True),
-            Feature(21, 11819, True),
-            Feature(29, 22644, True),
-            Feature(22, 26582, True),
-        ],
-        "old_age": [
-            Feature(23, 17580, True),
-            Feature(20, 3545, True),
-            Feature(0, 30026, True),
-            Feature(18, 20547, True),
-            Feature(19, 31701, True),
-            Feature(21, 1544, True),
-        ],
-    },
-    "english": {
-        "native_english": [
-            Feature(28, 7416, False),
-            Feature(25, 11773, True),
-            Feature(26, 19587, False),
-            Feature(28, 11965, False),
-            Feature(19, 14904, False),
-            Feature(14, 18757, True),
-        ]
-    },
+    # "age": {
+    #     "young_age": [
+    #         Feature(21, 6900, False),
+    #         Feature(21, 1723, False),
+    #         Feature(23, 12707, True),
+    #         Feature(21, 11819, True),
+    #         Feature(29, 22644, True),
+    #         Feature(22, 26582, True),
+    #     ],
+    #     "old_age": [
+    #         Feature(23, 17580, True),
+    #         Feature(20, 3545, True),
+    #         Feature(0, 30026, True),
+    #         Feature(18, 20547, True),
+    #         Feature(19, 31701, True),
+    #         Feature(21, 1544, True),
+    #     ],
+    # },
+    # "english": {
+    #     "native_english": [
+    #         Feature(28, 7416, False),
+    #         Feature(25, 11773, True),
+    #         Feature(26, 19587, False),
+    #         Feature(28, 11965, False),
+    #         Feature(19, 14904, False),
+    #         Feature(14, 18757, True),
+    #     ]
+    # },
     "recipe": {
         "recipe": [
             Feature(15, 15907, True),
@@ -12068,59 +12068,59 @@ neurons_prism = {
             Feature(22, 13320, False),
         ]
     },
-    "race_racism": {
-        "race_racism": [
-            Feature(26, 27259, False),
-            Feature(24, 8557, True),
-            Feature(15, 20940, True),
-            Feature(20, 28348, True),
-            Feature(19, 14312, False),
-            Feature(24, 24473, True),
-        ]
-    },
-    # unemployment interactions regulatory progressive cybersecurity
-    "avg_syllables_model": {
-        "high_num_syllables": [
-            Feature(20, 18531, False),
-            Feature(22, 29439, False),
-            Feature(29, 12287, True),
-            Feature(16, 18826, True),
-            Feature(2, 15609, True),
-            Feature(21, 24401, True),
-        ]
-    },
-    # realize curious
-    "realization_user": {
-        "realization_user": [
-            Feature(22, 31383, True),
-            Feature(28, 6255, True),
-            Feature(22, 32364, True),
-            Feature(23, 423, True),
-            Feature(22, 23063, True),
-            Feature(20, 20676, True),
-        ]
-    },
+    # "race_racism": {
+    #     "race_racism": [
+    #         Feature(26, 27259, False),
+    #         Feature(24, 8557, True),
+    #         Feature(15, 20940, True),
+    #         Feature(20, 28348, True),
+    #         Feature(19, 14312, False),
+    #         Feature(24, 24473, True),
+    #     ]
+    # },
+    # # unemployment interactions regulatory progressive cybersecurity
+    # "avg_syllables_model": {
+    #     "high_num_syllables": [
+    #         Feature(20, 18531, False),
+    #         Feature(22, 29439, False),
+    #         Feature(29, 12287, True),
+    #         Feature(16, 18826, True),
+    #         Feature(2, 15609, True),
+    #         Feature(21, 24401, True),
+    #     ]
+    # },
+    # # realize curious
+    # "realization_user": {
+    #     "realization_user": [
+    #         Feature(22, 31383, True),
+    #         Feature(28, 6255, True),
+    #         Feature(22, 32364, True),
+    #         Feature(23, 423, True),
+    #         Feature(22, 23063, True),
+    #         Feature(20, 20676, True),
+    #     ]
+    # },
     # proud
-    "pride_model": {
-        "pride_model": [
-            Feature(28, 8744, True),
-            Feature(27, 26871, True),
-            Feature(19, 17278, False),
-            Feature(16, 9808, False),
-            Feature(16, 6893, True),
-            Feature(17, 27923, True),
-        ]
-    },
-    "excitement_model": {
-        "excitement_model": [
-            Feature(19, 19948, True),
-            Feature(25, 6718, True),
-            Feature(28, 528, False),
-            Feature(21, 23585, True),
-            Feature(23, 28080, True),
-            Feature(25, 24476, True),
-        ]
-    },
+    # "pride_model": {
+    #     "pride_model": [
+    #         Feature(28, 8744, True),
+    #         Feature(27, 26871, True),
+    #         Feature(19, 17278, False),
+    #         Feature(16, 9808, False),
+    #         Feature(16, 6893, True),
+    #         Feature(17, 27923, True),
+    #     ]
+    # },
+    # "excitement_model": {
+    #     "excitement_model": [
+    #         Feature(19, 19948, True),
+    #         Feature(25, 6718, True),
+    #         Feature(28, 528, False),
+    #         Feature(21, 23585, True),
+    #         Feature(23, 28080, True),
+    #         Feature(25, 24476, True),
+    #     ]
+    # },
 }
 
 neurons_cad = {

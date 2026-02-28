@@ -87,38 +87,40 @@ if __name__ == "__main__":
         ]
         evaluation_df = df.loc[df["conversation_id"].isin(eval_convos)]
         convos = convo_func(evaluation_df)
-        for c in neurons[item]:
-            features = neurons[item][c]
-            concept = Concept(name=c, k=0.4, value=36, features=features)
-            model = HookedTransformer.from_pretrained(
-                args.model, device=device
-            )
-            tm = TransformerLensModel(model)
-            result_df = evaluation_df
+        if item in neurons:
+            for c in neurons[item]:
+                features = neurons[item][c]
+                concept = Concept(name=c, k=0.4, value=36, features=features)
+                model = HookedTransformer.from_pretrained(
+                    args.model, device=device
+                )
+                tm = TransformerLensModel(model)
+                result_df = evaluation_df
 
-            with unlearn_concept(model, concept):
-                for row in tqdm(df_questions.itertuples(index=False)):
-                    convos_and_questions = [
-                        tokenizer.apply_chat_template(
-                            convo
-                            + [{"role": "user", "content": row.question}],
-                            tokenize=False,
-                            add_generation_prompt=True,
+                with unlearn_concept(model, concept):
+                    for row in tqdm(df_questions.itertuples(index=False)):
+                        convos_and_questions = [
+                            tokenizer.apply_chat_template(
+                                convo
+                                + [{"role": "user", "content": row.question}],
+                                tokenize=False,
+                                add_generation_prompt=True,
+                            )
+                            for convo in convos
+                        ]
+                        tokens = 1
+                        outputs = tm.generate_multiple(
+                            convos_and_questions,
+                            batch_size=1,
+                            max_new_tokens=tokens,
+                            do_sample=False,
+                            verbose=True,
                         )
-                        for convo in convos
-                    ]
-                    tokens = 1
-                    outputs = tm.generate_multiple(
-                        convos_and_questions,
-                        batch_size=1,
-                        max_new_tokens=tokens,
-                        do_sample=False,
-                        verbose=True,
-                    )
 
-                    result_df = pd.concat(
-                        [result_df, pd.DataFrame({row.q_id: outputs})], axis=1
-                    )
-                    result_df.to_pickle(
-                        f"{args.results_folder}/{args.model.split('/')[1]}_{args.dataset}_pisces_{item}_{c}_answers.gz"
-                    )
+                        result_df = pd.concat(
+                            [result_df, pd.DataFrame({row.q_id: outputs})],
+                            axis=1,
+                        )
+                        result_df.to_pickle(
+                            f"{args.results_folder}/{args.model.split('/')[1]}_{args.dataset}_pisces_{item}_{c}_answers.gz"
+                        )
