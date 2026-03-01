@@ -169,7 +169,9 @@ def scrub_llama(
 
             print("pos_ids", pos_ids)
 
-            position_embeddings = base.rotary_emb(h, position_ids=pos_ids)
+            print("x", x, x.shape)
+
+            position_embeddings = base.rotary_emb(x, position_ids=pos_ids)
 
             print(
                 position_embeddings[0],
