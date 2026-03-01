@@ -159,7 +159,7 @@ def scrub_llama(
             if attn_eraser is not None and scrubber is not None:
                 h = attn_eraser(h).type_as(h)
 
-            print("h", h)
+            print("h", h, h.shape)
 
             pos_ids = torch.arange(
                 0, h.shape[-2], device=h.device, dtype=torch.long
