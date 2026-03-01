@@ -160,15 +160,15 @@ class LeaceFitter:
     def update(self, x: Tensor, z: Tensor) -> "LeaceFitter":
         """Update the running statistics with a new batch of data."""
         d, c = self.sigma_xz_.shape
-        # x = x.reshape(-1, d).type_as(self.mean_x)
-        n, seq_len, d2 = x.shape
+        x = x.reshape(-1, d).type_as(self.mean_x)
+        n, d2 = x.shape
 
         assert d == d2, f"Unexpected number of features {d2}"
         self.n += n
 
         # Welford's online algorithm
         delta_x = x - self.mean_x
-        self.mean_x += delta_x.sum(dim=[0, 1]) / self.n
+        self.mean_x += delta_x.sum(dim=0) / self.n
         delta_x2 = x - self.mean_x
 
         # Update the covariance matrix of X if needed (for LEACE)

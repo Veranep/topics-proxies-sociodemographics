@@ -114,7 +114,7 @@ def scrub_llama(
         assert isinstance(batch, dict)
 
         tokens = assert_type(torch.Tensor, batch["input_ids"])
-        x = embed_fn(tokens)
+        x = embed_fn(tokens)[:, -1, :]  # batch, seq, hid_dim
         xs.append(x.to("cpu", non_blocking=True))
 
         # We don't actually need to move these to the CPU since they're small
