@@ -149,16 +149,25 @@ def scrub_llama(
         for i, x in tqdm(enumerate(xs), desc="Applying (attn)", total=N):
             # Bring back to the accelerator
             x = x.to(model.device)
+
+            print("x", x)
             h = layer.input_layernorm(x)  # Recomputing from above
+
+            print("h", h)
 
             # Apply the eraser
             if attn_eraser is not None and scrubber is not None:
                 h = attn_eraser(h).type_as(h)
 
+            print("h", h)
+
             pos_ids = torch.arange(
                 0, h.shape[-2], device=h.device, dtype=torch.long
             )
+            print("pos_ids", pos_ids)
             pos_ids = pos_ids.unsqueeze(0).view(-1, h.shape[-2])
+
+            print("pos_ids", pos_ids)
 
             h, _, __ = layer.self_attn(h, position_ids=pos_ids)
             h = x = x + h  # Post-attention residual connection
