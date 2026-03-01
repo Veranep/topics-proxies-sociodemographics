@@ -171,6 +171,13 @@ def scrub_llama(
 
             position_embeddings = base.rotary_emb(h, position_ids=pos_ids)
 
+            print(
+                position_embeddings[0],
+                position_embeddings[0].shape,
+                position_embeddings[1],
+                position_embeddings[1].shape,
+            )
+
             h, _, __ = layer.self_attn(
                 h, position_embeddings=position_embeddings
             )
