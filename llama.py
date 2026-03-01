@@ -183,7 +183,7 @@ def scrub_llama(
             h, _, __ = layer.self_attn(
                 h,
                 position_embeddings=position_embeddings,
-                position_ids=position_ids,
+                position_ids=pos_ids,
             )
             h = x = x + h  # Post-attention residual connection
 
