@@ -114,7 +114,7 @@ def scrub_llama(
         assert isinstance(batch, dict)
 
         tokens = assert_type(torch.Tensor, batch["input_ids"])
-        x = embed_fn(tokens)[:, -1, :]  # batch, seq, hid_dim
+        x = embed_fn(tokens)  # batch, seq, hid_dim
         xs.append(x.to("cpu", non_blocking=True))
 
         # We don't actually need to move these to the CPU since they're small
@@ -139,7 +139,7 @@ def scrub_llama(
                 # Discard post-LN output and recompute during application to save RAM
                 x = layer.input_layernorm(x.to(model.device))
                 print(x.shape, z)
-                attn_fitter.update(x, z)
+                attn_fitter.update(x[:, -1, :], z)
 
             attn_eraser = attn_fitter.eraser
             scrubber.erasers[f"layers-{j}-input_layernorm"] = attn_eraser
@@ -181,7 +181,9 @@ def scrub_llama(
             )
 
             h, _, __ = layer.self_attn(
-                h, position_embeddings=position_embeddings
+                h,
+                position_embeddings=position_embeddings,
+                position_ids=position_ids,
             )
             h = x = x + h  # Post-attention residual connection
 
