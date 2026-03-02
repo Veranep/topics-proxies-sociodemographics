@@ -208,7 +208,7 @@ def scrub_llama(
 
             # Apply the eraser
             if mlp_eraser is not None and scrubber is not None:
-                h = mlp_eraser.eraser(h).type_as(h)
+                h = mlp_eraser(h).type_as(h)
 
             h = layer.mlp(h)
             h = x + h  # Post-MLP residual connection
