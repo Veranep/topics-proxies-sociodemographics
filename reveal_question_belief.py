@@ -254,7 +254,7 @@ if __name__ == "__main__":
             for answer in tqdm(
                 model(
                     ListDataset(convos_and_questions),
-                    batch_size=8,
+                    batch_size=32,
                     max_new_tokens=tokens,
                     return_full_text=False,
                     do_sample=False,
