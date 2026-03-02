@@ -96,7 +96,7 @@ if __name__ == "__main__":
                     device=device,
                 )
                 tm = TransformerLensModel(model)
-                result_df = evaluation_df
+                result_df = evaluation_df.reset_index(drop=True)
 
                 with unlearn_concept(model, concept):
                     for row in tqdm(df_questions.itertuples(index=False)):
@@ -110,13 +110,16 @@ if __name__ == "__main__":
                             for convo in convos
                         ]
                         tokens = 1
-                        outputs = tm.generate_multiple(
-                            convos_and_questions,
-                            batch_size=1,
-                            max_new_tokens=tokens,
-                            do_sample=False,
-                            verbose=True,
-                        )
+                        outputs = [
+                            o.split("<|end_header_id|>")[-1].strip()
+                            for o in tm.generate_multiple(
+                                convos_and_questions,
+                                batch_size=4,
+                                max_new_tokens=tokens,
+                                do_sample=False,
+                                verbose=True,
+                            )
+                        ]
 
                         result_df = pd.concat(
                             [result_df, pd.DataFrame({row.q_id: outputs})],

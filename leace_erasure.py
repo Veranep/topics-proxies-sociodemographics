@@ -114,7 +114,9 @@ if __name__ == "__main__":
             for group in evaluation[item]
             for c_id in evaluation[item][group]
         ]
-        evaluation_df = df.loc[df["conversation_id"].isin(eval_convos)]
+        evaluation_df = df.loc[
+            df["conversation_id"].isin(eval_convos)
+        ].reset_index(drop=True)
         convos = convo_func(evaluation_df)
         if item in leace_convos:
             leace_cs = [
