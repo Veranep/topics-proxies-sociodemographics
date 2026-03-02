@@ -180,7 +180,7 @@ def scrub_llama(
                 position_embeddings[1].shape,
             )
 
-            h, _, __ = layer.self_attn(
+            h, _ = layer.self_attn(
                 h,
                 position_embeddings=position_embeddings,
                 position_ids=pos_ids,
