@@ -104,7 +104,6 @@ if __name__ == "__main__":
         leace_convo_func = get_prism_convos
         evaluation = evaluation_cad
 
-    convos = convo_func(df)
     df_questions = pd.read_pickle(f"{args.data_folder}/questions.gz")
     df_questions = df_questions.loc[
         df_questions["q_id"].isin([f"q_{i}" for i in range(50)])
@@ -116,7 +115,7 @@ if __name__ == "__main__":
             for c_id in evaluation[item][group]
         ]
         evaluation_df = df.loc[df["conversation_id"].isin(eval_convos)]
-
+        convos = convo_func(evaluation_df)
         if item in leace_convos:
             leace_cs = [
                 c_id
