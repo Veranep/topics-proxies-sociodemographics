@@ -13,7 +13,7 @@ import pickle
 import torch
 from huggingface_hub import login
 from tqdm import tqdm
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
 
 from llama import scrub_llama
 
