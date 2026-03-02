@@ -119,19 +119,30 @@ if __name__ == "__main__":
         ].reset_index(drop=True)
         convos = convo_func(evaluation_df)
         if item in leace_convos:
-            leace_cs = [
-                c_id
-                for group in leace_convos[item]
-                for c_id in leace_convos[item][group]
-            ]
-            selected_leace_df = leace_df.loc[
-                leace_df["conversation_id"].isin(leace_cs)
-            ]
+            # use leace data
+            # leace_cs = [
+            #     c_id
+            #     for group in leace_convos[item]
+            #     for c_id in leace_convos[item][group]
+            # ]
+            # selected_leace_df = leace_df.loc[
+            #     leace_df["conversation_id"].isin(leace_cs)
+            # ]
+            # reverse_label_dict = {
+            #     c_id: group
+            #     for group in leace_convos[item]
+            #     for c_id in leace_convos[item][group]
+            # }
+
+            # use other data
+            leace_cs = eval_convos
+            selected_leace_df = evaluation_df
             reverse_label_dict = {
                 c_id: group
-                for group in leace_convos[item]
-                for c_id in leace_convos[item][group]
+                for group in eval_convos[item]
+                for c_id in eval_convos[item][group]
             }
+
             leace_labels = selected_leace_df["conversation_id"].map(
                 reverse_label_dict
             )
@@ -188,5 +199,5 @@ if __name__ == "__main__":
                         axis=1,
                     )
                     evaluation_df.to_pickle(
-                        f"{args.results_folder}/{args.model.split('/')[1]}_{args.dataset}_leace_{item}_answers.gz"
+                        f"{args.results_folder}/{args.model.split('/')[1]}_{args.dataset}_leace_samedataset_{item}_answers.gz"
                     )
