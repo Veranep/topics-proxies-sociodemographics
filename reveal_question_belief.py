@@ -138,7 +138,16 @@ if __name__ == "__main__":
     if not tokenizer.pad_token_id:
         tokenizer.pad_token_id = tokenizer.eos_token_id
 
-    df = pd.read_pickle(f"{args.data_folder}/{args.dataset}_preprocessed.gz")
+    if os.path.isfile(
+        f"{args.results_folder}/{args.model.split('/')[1]}_{args.dataset}_answers.gz"
+    ):
+        df = pd.read_pickle(
+            f"{args.results_folder}/{args.model.split('/')[1]}_{args.dataset}_answers.gz"
+        )
+    else:
+        df = pd.read_pickle(
+            f"{args.data_folder}/{args.dataset}_preprocessed.gz"
+        )
 
     if args.dataset == "prism":
         convo_func = get_prism_convos
@@ -224,7 +233,7 @@ if __name__ == "__main__":
 
     df_questions = df_questions[
         ~df_questions["q_id"].isin(df.columns.values)
-    ].reset_index()
+    ].reset_index(drop=True)
 
     ########
     model = pipeline(
