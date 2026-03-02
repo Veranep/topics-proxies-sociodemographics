@@ -235,7 +235,7 @@ if __name__ == "__main__":
         device_map="auto",
     )
     for row in tqdm(df_questions.itertuples(index=False)):
-        print(row["q_id"])
+        print(row.q_id)
         convos_and_questions = [
             tokenizer.apply_chat_template(
                 convo + [{"role": "user", "content": row.question}],
