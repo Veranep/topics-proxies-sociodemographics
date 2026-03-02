@@ -90,7 +90,6 @@ def scrub_llama(
 ) -> tuple[ConceptScrubber | None, float]:
     base = assert_type(LlamaModel, model.base_model)
     d = assert_type(int, base.config.hidden_size)
-    print(d)
 
     if z_column is None:
         k = -1
@@ -127,7 +126,6 @@ def scrub_llama(
 
         attn_eraser = None
         if scrubber is not None:
-            print("x_dim", d, "z_dim", k)
             attn_fitter = LeaceFitter(
                 d, k, affine=affine, device=model.device, method=method
             )
