@@ -17,6 +17,7 @@ from torch.utils.data import Dataset
 from tqdm import tqdm
 
 from preprocess_data import get_prism_convos, get_cad_convos, get_chen_convos
+from data.answer_key import answer_key
 
 
 class ListDataset(Dataset):
@@ -170,6 +171,44 @@ if __name__ == "__main__":
             questions += revealed_belief_questions[demo]
             revealed_belief += [demo] * len(revealed_belief_questions[demo])
             correct_answers += [None] * len(revealed_belief_questions[demo])
+
+        for domain in ["benefits", "political", "salary", "legal", "medical"]:
+            new_questions = (
+                pd.read_csv(
+                    f"{args.data_folder}/{domain}_{'llama_' if domain in ['legal', 'medical'] else ''}prompts.csv"
+                )
+                .sample(n=30)["prompts"]
+                .str.replace("additonal", "additional")
+                .tolist()
+            )
+            questions += new_questions
+            revealed_belief += [None] * len(new_questions)
+            if domain == "salary":
+                correct_answers += [None] * len(new_questions)
+            elif domain in ["political", "legal"]:
+                correct_answers += [
+                    (
+                        "yes"
+                        if any([a in q for a in answer_key[domain]["yes"]])
+                        else "no"
+                    )
+                    for q in new_questions
+                ]
+            else:
+                correct_answers += [
+                    (
+                        "yes"
+                        if (
+                            "should I treat myself at home" not in q
+                            and "should I ignore this for now" not in q
+                            and "Is there anything that might disqualify me"
+                            not in q
+                        )
+                        else "no"
+                    )
+                    for q in new_questions
+                ]
+
         q_ids = [f"q_{i}" for i in range(len(questions))]
         df_questions = pd.DataFrame(
             {
@@ -196,6 +235,7 @@ if __name__ == "__main__":
         device_map="auto",
     )
     for row in tqdm(df_questions.itertuples(index=False)):
+        print(row["q_id"])
         convos_and_questions = [
             tokenizer.apply_chat_template(
                 convo + [{"role": "user", "content": row.question}],
@@ -207,7 +247,7 @@ if __name__ == "__main__":
         tokens = 1
         if int(row.q_id.split("_")[1]) == 58:
             tokens += 3
-        elif int(row.q_id.split("_")[1]) > 58:
+        elif int(row.q_id.split("_")[1]) in [59, 60]:
             tokens += 99
         outputs = [
             answer[0]["generated_text"]
