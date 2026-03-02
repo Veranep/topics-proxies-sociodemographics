@@ -138,7 +138,6 @@ def scrub_llama(
 
                 # Discard post-LN output and recompute during application to save RAM
                 x = layer.input_layernorm(x.to(model.device))
-                print(x.shape, z)
                 attn_fitter.update(x[:, -1, :], z)
 
             attn_eraser = attn_fitter.eraser
@@ -150,35 +149,18 @@ def scrub_llama(
             # Bring back to the accelerator
             x = x.to(model.device)
 
-            print("x", x)
             h = layer.input_layernorm(x)  # Recomputing from above
-
-            print("h", h)
 
             # Apply the eraser
             if attn_eraser is not None and scrubber is not None:
                 h = attn_eraser(h).type_as(h)
 
-            print("h", h, h.shape)
-
             pos_ids = torch.arange(
                 0, h.shape[-2], device=h.device, dtype=torch.long
             )
-            print("pos_ids", pos_ids)
             pos_ids = pos_ids.unsqueeze(0).view(-1, h.shape[-2])
 
-            print("pos_ids", pos_ids)
-
-            print("x", x, x.shape)
-
             position_embeddings = base.rotary_emb(x, position_ids=pos_ids)
-
-            print(
-                position_embeddings[0],
-                position_embeddings[0].shape,
-                position_embeddings[1],
-                position_embeddings[1].shape,
-            )
 
             h, _ = layer.self_attn(
                 h,
@@ -211,7 +193,7 @@ def scrub_llama(
 
                 # Discard post-LN output and recompute during application to save RAM
                 x = layer.post_attention_layernorm(x.to(model.device))
-                mlp_fitter.update(x, z)
+                mlp_fitter.update(x[:, -1, :], z)
 
             mlp_eraser = mlp_fitter.eraser
             scrubber.erasers[f"layers-{j}-post_attention_layernorm"] = (
