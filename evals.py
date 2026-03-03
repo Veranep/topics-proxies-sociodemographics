@@ -183,6 +183,7 @@ class TransformerLensModel(AbstractModel):
             if verbose
             else range(0, len(prompts), batch_size)
         ):
+            print(tokens[i : i + batch_size])
             generation = self.model.generate(
                 tokens[i : i + batch_size],
                 max_new_tokens=max_new_tokens,
@@ -190,6 +191,7 @@ class TransformerLensModel(AbstractModel):
                 verbose=False,
             )
             text = self.model.to_string(generation)
+            print(text)
             texts.extend(text)
 
         formatted_texts = []
@@ -205,18 +207,11 @@ class TransformerLensModel(AbstractModel):
             if self.is_it():
                 if "gemma" in self.tokenizer_name().lower():
                     formatted_texts.append(
-                        x[
-                            x.find("<start_of_turn>model")
-                            + len("<start_of_turn>model") :
-                        ].strip()
+                        x.split("<start_of_turn>model")[-1].strip()
                     )
                 else:
                     formatted_texts.append(
-                        x[
-                            x.find("assistant<|end_header_id|>")
-                            + len("assistant<|end_header_id|>")
-                            + 1 :
-                        ].strip()
+                        x.split("assistant<|end_header_id|>")[-1].strip()
                     )
             else:
                 formatted_texts.append(x)

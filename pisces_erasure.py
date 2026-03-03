@@ -81,10 +81,20 @@ if __name__ == "__main__":
     # ]
     df_questions = df_questions.loc[df_questions["q_id"] == "q_0"]
     for item in evaluation:
+        # eval_convos = [
+        #     c_id
+        #     for group in evaluation[item]
+        #     for c_id in evaluation[item][group]
+        # ]
         eval_convos = [
-            c_id
-            for group in evaluation[item]
-            for c_id in evaluation[item][group]
+            "c193",
+            "c204",
+            "c229",
+            "c900",
+            "c241",
+            "c266",
+            "c7688",
+            "c5969",
         ]
         evaluation_df = df.loc[df["conversation_id"].isin(eval_convos)]
         convos = convo_func(evaluation_df)
