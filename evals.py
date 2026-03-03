@@ -128,7 +128,7 @@ class TransformerLensModel(AbstractModel):
         return self.model.to_str_tokens(tokens)
 
     def to_tokens(self, prompts) -> torch.Tensor:
-        return self.model.to_tokens(prompts)
+        return self.model.to_tokens(prompts, truncate=False)
 
     def wrap_prompt(self, prompt: str) -> str:
         if self.is_it():
