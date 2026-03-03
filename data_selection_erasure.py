@@ -12101,16 +12101,16 @@ neurons_prism = {
     #     ]
     # },
     # proud
-    # "pride_model": {
-    #     "pride_model": [
-    #         Feature(28, 8744, True),
-    #         Feature(27, 26871, True),
-    #         Feature(19, 17278, False),
-    #         Feature(16, 9808, False),
-    #         Feature(16, 6893, True),
-    #         Feature(17, 27923, True),
-    #     ]
-    # },
+    "pride_model": {
+        "pride_model": [
+            Feature(28, 8744, True),
+            Feature(27, 26871, True),
+            Feature(19, 17278, False),
+            Feature(16, 9808, False),
+            Feature(16, 6893, True),
+            Feature(17, 27923, True),
+        ]
+    },
     # "excitement_model": {
     #     "excitement_model": [
     #         Feature(19, 19948, True),

@@ -76,25 +76,14 @@ if __name__ == "__main__":
         evaluation = evaluation_cad
 
     df_questions = pd.read_pickle(f"{args.data_folder}/questions.gz")
-    # df_questions = df_questions.loc[
-    #     df_questions["q_id"].isin([f"q_{i}" for i in range(50)])
-    # ]
-    df_questions = df_questions.loc[df_questions["q_id"] == "q_0"]
+    df_questions = df_questions.loc[
+        df_questions["q_id"].isin([f"q_{i}" for i in range(50)])
+    ]
     for item in evaluation:
-        # eval_convos = [
-        #     c_id
-        #     for group in evaluation[item]
-        #     for c_id in evaluation[item][group]
-        # ]
         eval_convos = [
-            "c193",
-            "c204",
-            "c229",
-            "c900",
-            "c241",
-            "c266",
-            "c7688",
-            "c5969",
+            c_id
+            for group in evaluation[item]
+            for c_id in evaluation[item][group]
         ]
         evaluation_df = df.loc[df["conversation_id"].isin(eval_convos)]
         convos = convo_func(evaluation_df)
@@ -121,24 +110,17 @@ if __name__ == "__main__":
                             for convo in convos
                         ]
                         tokens = 1
-                        outputs = tm.generate_multiple(
-                            convos_and_questions,
-                            batch_size=4,
-                            max_new_tokens=tokens,
-                            do_sample=False,
-                            verbose=True,
-                        )
 
-                        # outputs = [
-                        #     o.split("<|end_header_id|>")[-1].strip()
-                        #     for o in tm.generate_multiple(
-                        #         convos_and_questions,
-                        #         batch_size=4,
-                        #         max_new_tokens=tokens,
-                        #         do_sample=False,
-                        #         verbose=True,
-                        #     )
-                        # ]
+                        outputs = [
+                            o.split("<|end_header_id|>")[-1].strip()
+                            for o in tm.generate_multiple(
+                                convos_and_questions,
+                                batch_size=4,
+                                max_new_tokens=tokens,
+                                do_sample=False,
+                                verbose=True,
+                            )
+                        ]
 
                         result_df = pd.concat(
                             [result_df, pd.DataFrame({row.q_id: outputs})],
