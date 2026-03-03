@@ -204,10 +204,13 @@ if __name__ == "__main__":
             evaluation_df = df.loc[
                 df["conversation_id"].isin(eval_convos)
             ].reset_index(drop=True)
-            selected_leace_df = evaluation_df
+            selected_leace_df = df.loc[
+                df["conversation_id"].isin(leace_cs)
+            ].reset_index(drop=True)
             reverse_label_dict = {
                 c_id: group
                 for group in evaluation[item]
+                if "mid_" not in group and "other" not in group
                 for c_id in evaluation[item][group]
             }
             leace_cs = convo_func(selected_leace_df)
