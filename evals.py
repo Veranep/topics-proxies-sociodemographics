@@ -128,7 +128,7 @@ class TransformerLensModel(AbstractModel):
         return self.model.to_str_tokens(tokens)
 
     def to_tokens(self, prompts) -> torch.Tensor:
-        return self.model.to_tokens(prompts, truncate=False)
+        return self.model.to_tokens(prompts)
 
     def wrap_prompt(self, prompt: str) -> str:
         if self.is_it():
@@ -176,7 +176,9 @@ class TransformerLensModel(AbstractModel):
 
             return texts
 
-        tokens = self.model.to_tokens(prompts, padding_side="left")
+        tokens = self.model.to_tokens(
+            prompts, padding_side="left", truncate=False
+        )
 
         for i in (
             _tqdm(range(0, len(prompts), batch_size))
