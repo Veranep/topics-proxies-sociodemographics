@@ -149,7 +149,6 @@ if __name__ == "__main__":
             leace_labels = selected_leace_df["conversation_id"].map(
                 reverse_label_dict
             )
-            leace_cs = leace_convo_func(selected_leace_df)
             leace_cs = [
                 tokenizer.apply_chat_template(
                     convo,
