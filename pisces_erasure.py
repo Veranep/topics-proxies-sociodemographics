@@ -111,19 +111,38 @@ if __name__ == "__main__":
                         ]
                         tokens = 1
 
-                        outputs = [
+                        short_outputs = [
                             o.split("<|end_header_id|>")[-1].strip()
                             for o in tm.generate_multiple(
                                 convos_and_questions,
-                                batch_size=4,
+                                batch_size=8,
                                 max_new_tokens=tokens,
                                 do_sample=False,
                                 verbose=True,
                             )
                         ]
 
+                        long_outputs = [
+                            o.split("<|end_header_id|>")[-1].strip()
+                            for o in tm.generate_multiple(
+                                convos_and_questions,
+                                batch_size=4,
+                                max_new_tokens=20,
+                                do_sample=False,
+                                verbose=True,
+                            )
+                        ]
+
                         result_df = pd.concat(
-                            [result_df, pd.DataFrame({row.q_id: outputs})],
+                            [
+                                result_df,
+                                pd.DataFrame(
+                                    {
+                                        f"{row.q_id}_short": short_outputs,
+                                        f"{row.q_id}_long": long_outputs,
+                                    }
+                                ),
+                            ],
                             axis=1,
                         )
                         result_df.to_pickle(
