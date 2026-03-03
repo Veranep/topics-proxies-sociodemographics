@@ -76,9 +76,10 @@ if __name__ == "__main__":
         evaluation = evaluation_cad
 
     df_questions = pd.read_pickle(f"{args.data_folder}/questions.gz")
-    df_questions = df_questions.loc[
-        df_questions["q_id"].isin([f"q_{i}" for i in range(50)])
-    ]
+    # df_questions = df_questions.loc[
+    #     df_questions["q_id"].isin([f"q_{i}" for i in range(50)])
+    # ]
+    df_questions = df_questions.loc[df_questions["q_id"] == "q_0"]
     for item in evaluation:
         eval_convos = [
             c_id
@@ -110,21 +111,29 @@ if __name__ == "__main__":
                             for convo in convos
                         ]
                         tokens = 1
-                        outputs = [
-                            o.split("<|end_header_id|>")[-1].strip()
-                            for o in tm.generate_multiple(
-                                convos_and_questions,
-                                batch_size=4,
-                                max_new_tokens=tokens,
-                                do_sample=False,
-                                verbose=True,
-                            )
-                        ]
+                        outputs = tm.generate_multiple(
+                            convos_and_questions,
+                            batch_size=4,
+                            max_new_tokens=tokens,
+                            do_sample=False,
+                            verbose=True,
+                        )
+
+                        # outputs = [
+                        #     o.split("<|end_header_id|>")[-1].strip()
+                        #     for o in tm.generate_multiple(
+                        #         convos_and_questions,
+                        #         batch_size=4,
+                        #         max_new_tokens=tokens,
+                        #         do_sample=False,
+                        #         verbose=True,
+                        #     )
+                        # ]
 
                         result_df = pd.concat(
                             [result_df, pd.DataFrame({row.q_id: outputs})],
                             axis=1,
                         )
                         result_df.to_pickle(
-                            f"{args.results_folder}/{args.model.split('/')[1]}_{args.dataset}_pisces_{item}_{c}_answers.gz"
+                            f"{args.results_folder}/{args.model.split('/')[1]}_{args.dataset}_pisces_{item}_{c}_check_answers.gz"
                         )

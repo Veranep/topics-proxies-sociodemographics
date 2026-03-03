@@ -133,15 +133,18 @@ if __name__ == "__main__":
             #     for group in leace_convos[item]
             #     for c_id in leace_convos[item][group]
             # }
+            # leace_cs = leace_convo_func(selected_leace_df)
 
             # use other data
             leace_cs = eval_convos
             selected_leace_df = evaluation_df
             reverse_label_dict = {
                 c_id: group
-                for group in eval_convos[item]
-                for c_id in eval_convos[item][group]
+                for group in evaluation[item]
+                for c_id in evaluation[item][group]
             }
+            leace_cs = convo_func(selected_leace_df)
+            ##########################################
 
             leace_labels = selected_leace_df["conversation_id"].map(
                 reverse_label_dict
