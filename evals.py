@@ -185,7 +185,6 @@ class TransformerLensModel(AbstractModel):
             if verbose
             else range(0, len(prompts), batch_size)
         ):
-            print(tokens[i : i + batch_size])
             generation = self.model.generate(
                 tokens[i : i + batch_size],
                 max_new_tokens=max_new_tokens,
@@ -193,7 +192,6 @@ class TransformerLensModel(AbstractModel):
                 verbose=False,
             )
             text = self.model.to_string(generation)
-            print(text)
             texts.extend(text)
 
         formatted_texts = []
