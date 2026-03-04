@@ -12058,16 +12058,16 @@ neurons_prism = {
     #         Feature(14, 18757, True),
     #     ]
     # },
-    "recipe": {
-        "recipe": [
-            Feature(15, 15907, True),
-            Feature(22, 6532, False),
-            Feature(24, 10128, False),
-            Feature(23, 16560, True),
-            Feature(29, 9060, True),
-            Feature(22, 13320, False),
-        ]
-    },
+    # "recipe": {
+    #     "recipe": [
+    #         Feature(15, 15907, True),
+    #         Feature(22, 6532, False),
+    #         Feature(24, 10128, False),
+    #         Feature(23, 16560, True),
+    #         Feature(29, 9060, True),
+    #         Feature(22, 13320, False),
+    #     ]
+    # },
     # "race_racism": {
     #     "race_racism": [
     #         Feature(26, 27259, False),

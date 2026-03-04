@@ -146,5 +146,5 @@ if __name__ == "__main__":
                             axis=1,
                         )
                         result_df.to_pickle(
-                            f"{args.results_folder}/{args.model.split('/')[1]}_{args.dataset}_pisces_{item}_{c}.gz"
+                            f"{args.results_folder}/{args.model.split('/')[1]}_{args.dataset}_pisces_{item}_{c}_answers.gz"
                         )
