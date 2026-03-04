@@ -68,10 +68,11 @@ if __name__ == "__main__":
     if args.dataset == "prism":
         convo_func = get_prism_convos
         evaluation = evaluation_prism
+        concepts = ["recipe", "race_racism"]
     elif "cad" in args.dataset:
         convo_func = get_cad_convos
         evaluation = evaluation_cad
-        concept = "morality"
+        concepts = ["diet", "morality"]
 
     df_questions = pd.read_pickle(f"{args.data_folder}/questions.gz")
     df_questions = df_questions.loc[
@@ -87,60 +88,61 @@ if __name__ == "__main__":
 
     df["accuracy"] = df[[f"q_{i}" for i in range(50)]].mean(axis=1) * 100
 
-    c_ids = df[
-        df["conversation_id"].isin(
-            [
-                c
-                for item in evaluation[concept]
-                for c in evaluation[concept][item]
-            ]
+    for concept in concepts:
+        c_ids = df[
+            df["conversation_id"].isin(
+                [
+                    c
+                    for item in evaluation[concept]
+                    for c in evaluation[concept][item]
+                ]
+            )
+        ][["conversation_id", "accuracy"]].sort_values(by="accuracy")
+        c_id_low = c_ids.iloc[0]["conversation_id"]
+        c_id_high = c_ids.iloc[-1]["conversation_id"]
+
+        df_convo = df[df["conversation_id"] == c_id_low]
+        convo = convo_func(df_convo)
+        tokenized_convo = tokenizer.apply_chat_template(
+            convo[0] + [{"role": "user", "content": question}],
+            tokenize=False,
+            add_generation_prompt=True,
         )
-    ][["conversation_id", "accuracy"]].sort_values(by="accuracy")
-    c_id_low = c_ids.iloc[0]["conversation_id"]
-    c_id_high = c_ids.iloc[-1]["conversation_id"]
+        out = model.attribute(
+            tokenized_convo,
+            generation_args={
+                "max_new_tokens": 100,
+                "do_sample": False,
+            },
+            n_steps=100,
+            internal_batch_size=4,
+        )
+        html = out.show(return_html=True)
+        with open(
+            f"{args.results_folder}/feature_attrb_{args.dataset}_{concept}_low_acc.html",
+            "w",
+        ) as f:
+            f.write(html)
 
-    df_convo = df[df["conversation_id"] == c_id_low]
-    convo = convo_func(df_convo)
-    tokenized_convo = tokenizer.apply_chat_template(
-        convo[0] + [{"role": "user", "content": question}],
-        tokenize=False,
-        add_generation_prompt=True,
-    )
-    out = model.attribute(
-        tokenized_convo,
-        generation_args={
-            "max_new_tokens": 100,
-            "do_sample": False,
-        },
-        n_steps=100,
-        internal_batch_size=4,
-    )
-    html = out.show(return_html=True)
-    with open(
-        f"{args.results_folder}/feature_attrb_{args.dataset}_{concept}_low_acc.html",
-        "w",
-    ) as f:
-        f.write(html)
-
-    df_convo = df[df["conversation_id"] == c_id_high]
-    convo = convo_func(df_convo)
-    tokenized_convo = tokenizer.apply_chat_template(
-        convo[0] + [{"role": "user", "content": question}],
-        tokenize=False,
-        add_generation_prompt=True,
-    )
-    out = model.attribute(
-        tokenized_convo,
-        generation_args={
-            "max_new_tokens": 100,
-            "do_sample": False,
-        },
-        n_steps=100,
-        internal_batch_size=4,
-    )
-    html = out.show(return_html=True)
-    with open(
-        f"{args.results_folder}/feature_attrb_{args.dataset}_{concept}_high_acc.html",
-        "w",
-    ) as f:
-        f.write(html)
+        df_convo = df[df["conversation_id"] == c_id_high]
+        convo = convo_func(df_convo)
+        tokenized_convo = tokenizer.apply_chat_template(
+            convo[0] + [{"role": "user", "content": question}],
+            tokenize=False,
+            add_generation_prompt=True,
+        )
+        out = model.attribute(
+            tokenized_convo,
+            generation_args={
+                "max_new_tokens": 100,
+                "do_sample": False,
+            },
+            n_steps=100,
+            internal_batch_size=4,
+        )
+        html = out.show(return_html=True)
+        with open(
+            f"{args.results_folder}/feature_attrb_{args.dataset}_{concept}_high_acc.html",
+            "w",
+        ) as f:
+            f.write(html)
