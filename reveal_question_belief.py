@@ -258,6 +258,8 @@ if __name__ == "__main__":
             tokens += 3
         elif int(row.q_id.split("_")[1]) in [59, 60]:
             tokens += 99
+        elif int(row.q_id.split("_")[1]) in list(range(121, 151)):
+            tokens += 9
         outputs = [
             answer[0]["generated_text"]
             for answer in tqdm(
