@@ -71,7 +71,7 @@ if __name__ == "__main__":
     elif "cad" in args.dataset:
         convo_func = get_cad_convos
         evaluation = evaluation_cad
-        concept = "diet"
+        concept = "morality"
 
     df_questions = pd.read_pickle(f"{args.data_folder}/questions.gz")
     df_questions = df_questions.loc[
@@ -117,7 +117,8 @@ if __name__ == "__main__":
     )
     html = out.show(return_html=True)
     with open(
-        f"{args.results_folder}/feature_attrb_{args.dataset}_low_acc.html", "w"
+        f"{args.results_folder}/feature_attrb_{args.dataset}_{concept}_low_acc.html",
+        "w",
     ) as f:
         f.write(html)
 
@@ -139,7 +140,7 @@ if __name__ == "__main__":
     )
     html = out.show(return_html=True)
     with open(
-        f"{args.results_folder}/feature_attrb_{args.dataset}_high_acc.html",
+        f"{args.results_folder}/feature_attrb_{args.dataset}_{concept}_high_acc.html",
         "w",
     ) as f:
         f.write(html)
