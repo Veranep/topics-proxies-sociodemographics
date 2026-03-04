@@ -9590,7 +9590,7 @@ leace_convos_prism = {
             2439636019703493,
         ],
     },
-    (recipe|cook|food)
+    # (recipe|cook|food)
     "recipe": {
         "recipe": [
             979836947268808,
