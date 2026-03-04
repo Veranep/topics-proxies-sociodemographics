@@ -66,6 +66,12 @@ if __name__ == "__main__":
         default="",
         help="Huggingface token that grants access to Llama model",
     )
+    parser.add_argument(
+        "-item",
+        type=str,
+        default="",
+        help="Item to run evaluation on",
+    )
     args = parser.parse_args()
     if args.token:
         login(args.token)
@@ -109,97 +115,92 @@ if __name__ == "__main__":
     df_questions = df_questions.loc[
         df_questions["q_id"].isin([f"q_{i}" for i in range(50)])
     ]
-    for item in evaluation:
-        eval_convos = [
-            c_id
-            for group in evaluation[item]
-            for c_id in evaluation[item][group]
-        ]
-        evaluation_df = df.loc[
-            df["conversation_id"].isin(eval_convos)
-        ].reset_index(drop=True)
-        convos = convo_func(evaluation_df)
-        if item in leace_convos:
-            # use leace data
-            leace_cs = [
-                c_id
-                for group in leace_convos[item]
-                for c_id in leace_convos[item][group]
-            ]
-            selected_leace_df = leace_df.loc[
-                leace_df["conversation_id"].isin(leace_cs)
-            ]
-            reverse_label_dict = {
-                c_id: group
-                for group in leace_convos[item]
-                for c_id in leace_convos[item][group]
-            }
-            leace_cs = leace_convo_func(selected_leace_df)
 
-            leace_labels = selected_leace_df["conversation_id"].map(
-                reverse_label_dict
-            )
-            leace_cs = [
+    # eval_convos = [
+    #     c_id
+    #     for group in evaluation[args.item]
+    #     for c_id in evaluation[args.item][group]
+    # ]
+    evaluation_df = df  # df.loc[
+    #     df["conversation_id"].isin(eval_convos)
+    # ].reset_index(drop=True)
+    convos = convo_func(evaluation_df)
+
+    # use leace data
+    leace_cs = [
+        c_id
+        for group in leace_convos[args.item]
+        for c_id in leace_convos[args.item][group]
+    ]
+    selected_leace_df = leace_df.loc[
+        leace_df["conversation_id"].isin(leace_cs)
+    ]
+    reverse_label_dict = {
+        c_id: group
+        for group in leace_convos[args.item]
+        for c_id in leace_convos[args.item][group]
+    }
+    leace_cs = leace_convo_func(selected_leace_df)
+
+    leace_labels = selected_leace_df["conversation_id"].map(reverse_label_dict)
+    leace_cs = [
+        tokenizer.apply_chat_template(
+            convo,
+            tokenize=True,
+            add_generation_prompt=True,
+            return_dict=True,
+        )
+        | {"label": leace_labels.iloc[i]}
+        for i, convo in enumerate(leace_cs)
+    ]
+    leace_dataset = datasets.Dataset.from_pandas(pd.DataFrame(leace_cs))
+    leace_dataset = leace_dataset.class_encode_column("label")
+    scrubber = scrub_llama(model, leace_dataset, z_column="label")
+    with scrubber.scrub(model):
+        leace_pipeline = pipeline(
+            "text-generation",
+            model=model,
+            tokenizer=tokenizer,
+            torch_dtype=torch.bfloat16,
+            device_map="auto",
+        )
+        for row in tqdm(df_questions.itertuples(index=False)):
+            convos_and_questions = [
                 tokenizer.apply_chat_template(
-                    convo,
-                    tokenize=True,
+                    convo + [{"role": "user", "content": row.question}],
+                    tokenize=False,
                     add_generation_prompt=True,
-                    return_dict=True,
                 )
-                | {"label": leace_labels.iloc[i]}
-                for i, convo in enumerate(leace_cs)
+                for convo in convos
             ]
-            leace_dataset = datasets.Dataset.from_pandas(
-                pd.DataFrame(leace_cs)
-            )
-            leace_dataset = leace_dataset.class_encode_column("label")
-            scrubber = scrub_llama(model, leace_dataset, z_column="label")
-            with scrubber.scrub(model):
-                leace_pipeline = pipeline(
-                    "text-generation",
-                    model=model,
-                    tokenizer=tokenizer,
-                    torch_dtype=torch.bfloat16,
-                    device_map="auto",
+            tokens = 1
+            outputs = [
+                answer[0]["generated_text"]
+                for answer in tqdm(
+                    leace_pipeline(
+                        ListDataset(convos_and_questions),
+                        batch_size=32,
+                        max_new_tokens=tokens,
+                        return_full_text=False,
+                        do_sample=False,
+                    )
                 )
-                for row in tqdm(df_questions.itertuples(index=False)):
-                    convos_and_questions = [
-                        tokenizer.apply_chat_template(
-                            convo
-                            + [{"role": "user", "content": row.question}],
-                            tokenize=False,
-                            add_generation_prompt=True,
-                        )
-                        for convo in convos
-                    ]
-                    tokens = 1
-                    outputs = [
-                        answer[0]["generated_text"]
-                        for answer in tqdm(
-                            leace_pipeline(
-                                ListDataset(convos_and_questions),
-                                batch_size=8,
-                                max_new_tokens=tokens,
-                                return_full_text=False,
-                                do_sample=False,
-                            )
-                        )
-                    ]
+            ]
 
-                    evaluation_df = pd.concat(
-                        [evaluation_df, pd.DataFrame({row.q_id: outputs})],
-                        axis=1,
-                    )
-                    evaluation_df.to_pickle(
-                        f"{args.results_folder}/{args.model.split('/')[1]}_{args.dataset}_leace_{item}_answers.gz"
-                    )
+            evaluation_df = pd.concat(
+                [evaluation_df, pd.DataFrame({row.q_id: outputs})],
+                axis=1,
+            )
+            evaluation_df.to_pickle(
+                f"{args.results_folder}/{args.model.split('/')[1]}_{args.dataset}_leace_{args.item}_answers.gz"
+            )
 
             # # use eval data
             # leace_cs = [
             #     c_id
-            #     for group in evaluation[item]
+            #     for group in evaluation[args.item]
             #     if "mid_" not in group and "other" not in group
-            #     for c_id in evaluation[item][group]
+            #     for c_id in evaluation[args.item][group]
             # ]
             # evaluation_df = df.loc[
             #     df["conversation_id"].isin(eval_convos)
@@ -209,9 +210,9 @@ if __name__ == "__main__":
             # ].reset_index(drop=True)
             # reverse_label_dict = {
             #     c_id: group
-            #     for group in evaluation[item]
+            #     for group in evaluation[args.item]
             #     if "mid_" not in group and "other" not in group
-            #     for c_id in evaluation[item][group]
+            #     for c_id in evaluation[args.item][group]
             # }
             # leace_cs = convo_func(selected_leace_df)
             # ##########################################
@@ -271,5 +272,5 @@ if __name__ == "__main__":
             #             axis=1,
             #         )
             #         evaluation_df.to_pickle(
-            #             f"{args.results_folder}/{args.model.split('/')[1]}_{args.dataset}_leace_samedataset_{item}_answers.gz"
+            #             f"{args.results_folder}/{args.model.split('/')[1]}_{args.dataset}_leace_samedataset_{args.item}_answers.gz"
             #         )
