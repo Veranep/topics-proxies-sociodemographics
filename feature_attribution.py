@@ -100,11 +100,9 @@ if __name__ == "__main__":
     c_id_high = c_ids.iloc[-1]["conversation_id"]
 
     df_convo = df[df["conversation_id"] == c_id_low]
-    print(df_convo)
     convo = convo_func(df_convo)
-    print(convo)
     tokenized_convo = tokenizer.apply_chat_template(
-        convo + [{"role": "user", "content": question}],
+        convo[0] + [{"role": "user", "content": question}],
         tokenize=False,
         add_generation_prompt=True,
     )
@@ -126,7 +124,7 @@ if __name__ == "__main__":
     df_convo = df[df["conversation_id"] == c_id_high]
     convo = convo_func(df_convo)
     tokenized_convo = tokenizer.apply_chat_template(
-        convo + [{"role": "user", "content": question}],
+        convo[0] + [{"role": "user", "content": question}],
         tokenize=False,
         add_generation_prompt=True,
     )
