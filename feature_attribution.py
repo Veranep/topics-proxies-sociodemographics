@@ -107,7 +107,7 @@ if __name__ == "__main__":
         add_generation_prompt=True,
     )
     out = model.attribute(
-        convo_with_question_temp,
+        tokenized_convo,
         generation_args={
             "max_new_tokens": 100,
             "do_sample": False,
@@ -129,7 +129,7 @@ if __name__ == "__main__":
         add_generation_prompt=True,
     )
     out = model.attribute(
-        convo_with_question_temp,
+        tokenized_convo,
         generation_args={
             "max_new_tokens": 100,
             "do_sample": False,
