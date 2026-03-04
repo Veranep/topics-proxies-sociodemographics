@@ -35,6 +35,12 @@ if __name__ == "__main__":
         default="",
     )
     parser.add_argument(
+        "-rf",
+        "--results_folder",
+        type=str,
+        default="",  # "/scratch/vneplen/sociodemographics-interpretability-mitigation"
+    )
+    parser.add_argument(
         "-token",
         type=str,
         default="",
@@ -108,7 +114,9 @@ if __name__ == "__main__":
         internal_batch_size=4,
     )
     html = out.show(return_html=True)
-    with open(f"feature_attrb_low_acc.html", "w") as f:
+    with open(
+        f"{args.results_folder}/feature_attrb_{args.dataset}_low_acc.html", "w"
+    ) as f:
         f.write(html)
 
     df_convo = df[df["conversation_id"] == c_id_high]
@@ -128,5 +136,8 @@ if __name__ == "__main__":
         internal_batch_size=4,
     )
     html = out.show(return_html=True)
-    with open(f"feature_attrb_high_acc.html", "w") as f:
+    with open(
+        f"{args.results_folder}/feature_attrb_{args.dataset}_high_acc.html",
+        "w",
+    ) as f:
         f.write(html)
