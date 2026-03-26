@@ -207,11 +207,13 @@ if __name__ == "__main__":
 
     leace_labels = selected_leace_df["conversation_id"].map(reverse_label_dict)
 
+    labels = list(leace_convos[args.item].keys())
+
     inputs_0 = []
     inputs_1 = []
     for i, convo in enumerate(leace_cs):
         label = leace_labels.iloc[i]
-        if label == leace_convos[args.item][0]:
+        if label == labels[0]:
             inputs_0.append(
                 tokenizer.apply_chat_template(
                     convo,
