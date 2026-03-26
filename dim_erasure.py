@@ -236,7 +236,7 @@ if __name__ == "__main__":
                 )
             )
 
-    representations_0 = torch.tensor(
+    representations_0 = np.array(
         [
             [
                 rep[-1, -1, :].detach().cpu().clone().to(torch.float)
@@ -251,7 +251,7 @@ if __name__ == "__main__":
             for inp in tqdm(inputs_0)
         ]
     )
-    representations_1 = torch.tensor(
+    representations_1 = np.array(
         [
             [
                 rep[-1, -1, :].detach().cpu().clone().to(torch.float)
@@ -270,8 +270,8 @@ if __name__ == "__main__":
     for layer_idx in range(args.n_layers):
 
         # Extract hidden states at the specified layer and position
-        hidden_0 = [r[layer_idx] for r in representations_0]
-        hidden_1 = [r[layer_idx] for r in representations_1]
+        hidden_0 = [torch.tensor(r[layer_idx]) for r in representations_0]
+        hidden_1 = [torch.tensor(r[layer_idx]) for r in representations_1]
 
         if layer_idx == (args.n_layers - 1):
             lr = LogisticRegression(max_iter=1000).fit(
