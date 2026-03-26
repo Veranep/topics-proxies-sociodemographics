@@ -10,6 +10,7 @@ from torch.utils.data import Dataset
 import torch.nn as nn
 import numpy as np
 import os
+from sklearn.linear_model import LogisticRegression
 import pandas as pd
 import pickle
 import torch
