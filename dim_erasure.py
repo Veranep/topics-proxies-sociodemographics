@@ -97,8 +97,10 @@ class AblationDecoderLayer(nn.Module):
             dtype=hidden_states.dtype, device=hidden_states.device
         )
 
-        print(hidden_states, hidden_states.dtype, hidden_states.device)
-        print(projection, projection.dtype, projection.device)
+        print(
+            "hidden", hidden_states, hidden_states.dtype, hidden_states.device
+        )
+        print("projection", projection, projection.dtype, projection.device)
 
         # apply the projection to all the hidden states
         proj = torch.matmul(hidden_states, projection)  # self.
@@ -348,7 +350,7 @@ if __name__ == "__main__":
         # Compute refusal direction as the normalized difference between harmful and harmless means
         concept_dir = mean_0 - mean_1
         concept_dir = concept_dir / concept_dir.norm()
-        concept_dir = concept_dir.to(device).to(torch.bfloat16)
+        concept_dir = concept_dir.to(device)
         model.model.layers[layer_idx] = AblationDecoderLayer(
             layers[layer_idx], concept_dir.unsqueeze(dim=0)
         )
