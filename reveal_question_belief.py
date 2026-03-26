@@ -196,7 +196,7 @@ if __name__ == "__main__":
         ).iloc[61:]
         questions += old_df_questions["question"].tolist()
         revealed_belief += old_df_questions["revealed_belief"].tolist()
-        correct_answer += old_df_questions["correct_answer"].tolist()
+        correct_answers += old_df_questions["correct_answer"].tolist()
 
         # for domain in ["benefits", "political", "salary", "legal", "medical"]:
         #     new_questions = (
