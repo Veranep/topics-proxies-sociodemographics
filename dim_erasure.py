@@ -363,6 +363,8 @@ if __name__ == "__main__":
         mean_1 = torch.stack(hidden_1).mean(dim=0)
 
         if layer_idx == 0:
+            mean_0 = mean_0.to(torch.float64)
+            mean_1 = mean_1.to(torch.float64)
             print("mean", mean_0, mean_1)
 
         # Compute refusal direction as the normalized difference between harmful and harmless means
