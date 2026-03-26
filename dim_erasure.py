@@ -283,6 +283,7 @@ if __name__ == "__main__":
     for i, convo in enumerate(leace_cs):
         label = leace_labels.iloc[i]
         if label == labels[0]:
+            print(0, convo)
             inputs_0.append(
                 tokenizer.apply_chat_template(
                     convo,
@@ -293,6 +294,7 @@ if __name__ == "__main__":
                 )
             )
         else:
+            print(1, convo)
             inputs_1.append(
                 tokenizer.apply_chat_template(
                     convo,
