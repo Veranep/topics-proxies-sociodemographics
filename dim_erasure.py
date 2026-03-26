@@ -93,11 +93,21 @@ class AblationDecoderLayer(nn.Module):
         # get the hidden states
         hidden_states = args[0]
 
+        projection = self.projection.to(
+            dtype=hidden_states.dtype, device=hidden_states.device
+        )
+
         # apply the projection to all the hidden states
-        proj = torch.matmul(hidden_states, self.projection)
+        proj = torch.matmul(hidden_states, projection)  # self.
 
         # remove the projection
         ablated = hidden_states - proj
+
+        print("any nan", torch.isnan(ablated).any())
+        if torch.isnan(ablated).any():
+            print(projection)
+            print(proj)
+            print(ablated)
 
         # apply to the first argument
         args = (ablated,) + args[1:]
