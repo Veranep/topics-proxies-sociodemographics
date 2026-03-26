@@ -337,7 +337,7 @@ if __name__ == "__main__":
     )
 
     layers = get_model_layers(model)
-    for layer_idx in range(args.n_layers):
+    for layer_idx in range(1, args.n_layers):
         print("layer:", layer_idx)
 
         # Extract hidden states at the specified layer and position
