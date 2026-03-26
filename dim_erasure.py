@@ -408,7 +408,7 @@ if __name__ == "__main__":
     )
 
     lr = LogisticRegression(max_iter=1000).fit(
-        hidden_0[: len(after_0) // 2] + after_1[: len(after_1) // 2],
+        after_0[: len(after_0) // 2] + after_1[: len(after_1) // 2],
         [0] * (len(after_0) // 2) + [1] * (len(after_1) // 2),
     )
     beta = torch.from_numpy(lr.coef_)
