@@ -3,6 +3,7 @@ from types import MethodType
 import torch
 import torch.nn.functional as F
 from datasets import Dataset
+from sklearn.linear_model import LogisticRegression
 from tqdm.auto import tqdm
 from transformers import (
     LlamaForCausalLM,
@@ -120,6 +121,11 @@ def scrub_llama(
         if z_column is not None:
             zs.append(F.one_hot(batch[z_column], num_classes=k))
 
+    real_lr = LogisticRegression(max_iter=1000).fit(xs, zs)
+    beta = torch.from_numpy(real_lr.coef_)
+    assert beta.norm(p=torch.inf) > 0.1
+    print("Start score", real_lr.score(xs, zs))
+
     # Enumerate the layers
     for j, layer in enumerate(tqdm(base.layers, unit="layer")):
         assert isinstance(layer, LlamaDecoderLayer)
@@ -211,5 +217,10 @@ def scrub_llama(
             h = layer.mlp(h)
             h = x + h  # Post-MLP residual connection
             xs[i] = h.to("cpu", non_blocking=True)
+
+    real_lr = LogisticRegression(max_iter=1000).fit(xs, zs)
+    beta = torch.from_numpy(real_lr.coef_)
+    assert beta.norm(p=torch.inf) < 1e-4
+    print("End score", real_lr.score(xs, zs))
 
     return scrubber
