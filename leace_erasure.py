@@ -176,6 +176,7 @@ if __name__ == "__main__":
             tokenize=True,
             add_generation_prompt=True,
             return_dict=True,
+            return_tensors="pt",
         )
         | {"label": leace_labels.iloc[i]}
         for i, convo in enumerate(leace_cs)
