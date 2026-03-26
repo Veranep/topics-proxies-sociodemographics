@@ -236,7 +236,7 @@ if __name__ == "__main__":
                 )
             )
 
-    representations_0 = np.array(
+    representations_0 = torch.tensor(
         [
             [
                 rep[-1, -1, :].detach().cpu().clone().to(torch.float)
@@ -251,7 +251,7 @@ if __name__ == "__main__":
             for inp in tqdm(inputs_0)
         ]
     )
-    representations_1 = np.array(
+    representations_1 = torch.tensor(
         [
             [
                 rep[-1, -1, :].detach().cpu().clone().to(torch.float)
