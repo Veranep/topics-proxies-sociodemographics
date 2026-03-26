@@ -335,7 +335,7 @@ if __name__ == "__main__":
         concept_dir = mean_0 - mean_1
         concept_dir = concept_dir / concept_dir.norm()
         concept_dir = concept_dir.to(device).to(torch.float16)
-        model.transformer.h[layer_idx] = AblationDecoderLayer(
+        model.model.layers[layer_idx] = AblationDecoderLayer(
             layers[layer_idx], concept_dir
         )
 
