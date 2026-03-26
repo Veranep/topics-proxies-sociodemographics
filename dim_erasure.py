@@ -21,6 +21,8 @@ from preprocess_data import get_prism_convos, get_cad_convos
 
 from probing import balance_df, get_representations, train_probe
 
+# Inspiration: https://github.com/fholstege/uncensoringllms/tree/main
+
 
 class ListDataset(Dataset):
     def __init__(self, original_list):
@@ -231,32 +233,38 @@ if __name__ == "__main__":
                     return_tensors="pt",
                 )
             )
-    representations_0 = [
+
+    print(inputs_0[0], inputs_1[0])
+    representations_0 = np.array(
         [
-            rep[-1, -1, :].detach().cpu().clone().to(torch.float)
-            for rep in model(
-                inp.to(device),
-                do_sample=False,
-                output_hidden_states=True,
-                max_new_tokens=1,
-                return_dict=True,
-            )["hidden_states"]
+            [
+                rep[-1, -1, :].detach().cpu().clone().to(torch.float)
+                for rep in model(
+                    inp.to(device),
+                    do_sample=False,
+                    output_hidden_states=True,
+                    max_new_tokens=1,
+                    return_dict=True,
+                )["hidden_states"]
+            ]
+            for inp in tqdm(inputs_0)
         ]
-        for inp in tqdm(inputs_0)
-    ]
-    representations_1 = [
+    )
+    representations_1 = np.array(
         [
-            rep[-1, -1, :].detach().cpu().clone().to(torch.float)
-            for rep in model(
-                inp.to(device),
-                do_sample=False,
-                output_hidden_states=True,
-                max_new_tokens=1,
-                return_dict=True,
-            )["hidden_states"]
+            [
+                rep[-1, -1, :].detach().cpu().clone().to(torch.float)
+                for rep in model(
+                    inp.to(device),
+                    do_sample=False,
+                    output_hidden_states=True,
+                    max_new_tokens=1,
+                    return_dict=True,
+                )["hidden_states"]
+            ]
+            for inp in tqdm(inputs_1)
         ]
-        for inp in tqdm(inputs_1)
-    ]
+    )
 
     for layer_idx in range(args.n_layers):
 
