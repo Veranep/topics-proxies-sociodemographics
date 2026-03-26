@@ -342,6 +342,9 @@ if __name__ == "__main__":
         hidden_0 = [torch.tensor(r[layer_idx]) for r in representations_0]
         hidden_1 = [torch.tensor(r[layer_idx]) for r in representations_1]
 
+        if layer_idx == 0:
+            print("hidden", hidden_0, hidden_1)
+
         if layer_idx == (args.n_layers - 1):
             lr = LogisticRegression(max_iter=1000).fit(
                 hidden_0 + hidden_1, [0] * len(hidden_0) + [1] * len(hidden_1)
@@ -359,9 +362,16 @@ if __name__ == "__main__":
         mean_0 = torch.stack(hidden_0).mean(dim=0)
         mean_1 = torch.stack(hidden_1).mean(dim=0)
 
+        if layer_idx == 0:
+            print("mean", mean_0, mean_1)
+
         # Compute refusal direction as the normalized difference between harmful and harmless means
         concept_dir = mean_0 - mean_1
+        if layer_idx == 0:
+            print("dir", concept_dir, concept_dir.dtype)
         concept_dir = concept_dir / concept_dir.norm()
+        if layer_idx == 0:
+            print("dir", concept_dir, concept_dir.dtype)
         concept_dir = concept_dir.to(device)
         model.model.layers[layer_idx] = AblationDecoderLayer(
             layers[layer_idx], concept_dir.unsqueeze(dim=0)
