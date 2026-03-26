@@ -314,7 +314,6 @@ if __name__ == "__main__":
 
     layers = get_model_layers(model)
     for layer_idx in range(1, args.n_layers):
-        print("layer:", layer_idx)
 
         # Extract hidden states at the specified layer and position
         hidden_0 = [torch.tensor(r[layer_idx]) for r in representations_0]
@@ -330,6 +329,20 @@ if __name__ == "__main__":
                 lr.score(
                     hidden_0 + hidden_1,
                     [0] * len(hidden_0) + [1] * len(hidden_1),
+                )
+            )
+            lr = LogisticRegression(max_iter=1000).fit(
+                hidden_0[: len(hidden_0) // 2]
+                + hidden_1[: len(hidden_1) // 2],
+                [0] * (len(hidden_0) // 2) + [1] * (len(hidden_1) // 2),
+            )
+            beta = torch.from_numpy(lr.coef_)
+            print(beta.norm(p=torch.inf))
+            print(
+                lr.score(
+                    hidden_0[len(hidden_0) // 2 :]
+                    + hidden_1[len(hidden_1) // 2 :],
+                    [0] * (len(hidden_0) // 2) + [1] * (len(hidden_1) // 2),
                 )
             )
 
@@ -391,6 +404,19 @@ if __name__ == "__main__":
         lr.score(
             after_0 + after_1,
             [0] * len(after_0) + [1] * len(after_1),
+        )
+    )
+
+    lr = LogisticRegression(max_iter=1000).fit(
+        hidden_0[: len(after_0) // 2] + after_1[: len(after_1) // 2],
+        [0] * (len(after_0) // 2) + [1] * (len(after_1) // 2),
+    )
+    beta = torch.from_numpy(lr.coef_)
+    print(beta.norm(p=torch.inf))
+    print(
+        lr.score(
+            after_0[len(after_0) // 2 :] + after_1[len(after_1) // 2 :],
+            [0] * (len(after_0) // 2) + [1] * (len(after_1) // 2),
         )
     )
 
