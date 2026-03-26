@@ -103,6 +103,8 @@ def scrub_llama(
 
     xs = []
     zs = []
+    lr_xs = []
+    lr_zs = []
     N = len(train) // batch_size
     train = train.with_format("torch", device=model.device)
 
@@ -116,15 +118,18 @@ def scrub_llama(
         tokens = assert_type(torch.Tensor, batch["input_ids"])
         x = embed_fn(tokens)  # batch, seq, hid_dim
         xs.append(x.to("cpu", non_blocking=True))
+        lr_xs += [x[j, :, :] for j in range(x.shape[0])]
+        lr_zs += batch[z_column]
 
         # We don't actually need to move these to the CPU since they're small
         if z_column is not None:
             zs.append(F.one_hot(batch[z_column], num_classes=k))
 
-    real_lr = LogisticRegression(max_iter=1000).fit(xs, zs)
+    print(lr_xs[0], lr_zs[0])
+    real_lr = LogisticRegression(max_iter=1000).fit(lr_xs, lr_zs)
     beta = torch.from_numpy(real_lr.coef_)
     assert beta.norm(p=torch.inf) > 0.1
-    print("Start score", real_lr.score(xs, zs))
+    print("Start score", real_lr.score(lr_xs, lr_zs))
 
     # Enumerate the layers
     for j, layer in enumerate(tqdm(base.layers, unit="layer")):
@@ -218,9 +223,11 @@ def scrub_llama(
             h = x + h  # Post-MLP residual connection
             xs[i] = h.to("cpu", non_blocking=True)
 
-    real_lr = LogisticRegression(max_iter=1000).fit(xs, zs)
+    lr_xs = [batch[i, :, :] for batch in xs for i in range(batch.shape[0])]
+
+    real_lr = LogisticRegression(max_iter=1000).fit(lr_xs, lr_zs)
     beta = torch.from_numpy(real_lr.coef_)
     assert beta.norm(p=torch.inf) < 1e-4
-    print("End score", real_lr.score(xs, zs))
+    print("End score", real_lr.score(lr_xs, lr_zs))
 
     return scrubber
