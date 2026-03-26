@@ -350,7 +350,7 @@ if __name__ == "__main__":
             inputs_0[0].to(device),
             do_sample=False,
             max_new_tokens=1,
-        )
+        )["logits"].shape
     )
     with torch.no_grad():
         after_0 = [
@@ -358,7 +358,9 @@ if __name__ == "__main__":
                 inp.to(device),
                 do_sample=False,
                 max_new_tokens=1,
-            )[-1, -1, :]
+            )[
+                "logits"
+            ][-1, -1, :]
             .detach()
             .cpu()
             .clone()
@@ -370,7 +372,9 @@ if __name__ == "__main__":
                 inp.to(device),
                 do_sample=False,
                 max_new_tokens=1,
-            )[-1, -1, :]
+            )[
+                "logits"
+            ][-1, -1, :]
             .detach()
             .cpu()
             .clone()
