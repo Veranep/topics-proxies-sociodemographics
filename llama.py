@@ -125,7 +125,7 @@ def scrub_llama(
         if z_column is not None:
             zs.append(F.one_hot(batch[z_column], num_classes=k))
 
-    print(lr_xs[0], lr_xs[1])
+    print(lr_xs[0][-25:], lr_xs[1][-25:])
     real_lr = LogisticRegression(max_iter=1000).fit(lr_xs, lr_zs)
     beta = torch.from_numpy(real_lr.coef_)
     print(beta.norm(p=torch.inf))
@@ -225,7 +225,7 @@ def scrub_llama(
             xs[i] = h.to("cpu", non_blocking=True)
 
     lr_xs = [
-        batch[i, :, :].float().cpu().numpy()
+        batch[i, -1, :].float().cpu().numpy()
         for batch in xs
         for i in range(batch.shape[0])
     ]
