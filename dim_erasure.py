@@ -319,7 +319,7 @@ if __name__ == "__main__":
             lr = LogisticRegression(max_iter=1000).fit(
                 hidden_0 + hidden_1, [0] * len(hidden_0) + [1] * len(hidden_1)
             )
-            beta = torch.from_numpy(real_lr.coef_)
+            beta = torch.from_numpy(lr.coef_)
             print(beta.norm(p=torch.inf))
             print(
                 lr.score(
@@ -368,7 +368,7 @@ if __name__ == "__main__":
     lr = LogisticRegression(max_iter=1000).fit(
         after_0 + after_1, [0] * len(after_0) + [1] * len(after_1)
     )
-    beta = torch.from_numpy(real_lr.coef_)
+    beta = torch.from_numpy(lr.coef_)
     print(beta.norm(p=torch.inf))
     print(
         lr.score(
