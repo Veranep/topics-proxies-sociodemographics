@@ -458,6 +458,8 @@ for dataset in [
     #     ]
     # )
 
+    print("df finished")
+
     cols = [
         # "accuracy",
         "benefits",
