@@ -242,7 +242,7 @@ if __name__ == "__main__":
                 return_dict=True,
             )["hidden_states"]
         ]
-        for i in tqdm(inputs_0)
+        for inp in tqdm(inputs_0)
     ]
     representations_1 = [
         [
@@ -255,7 +255,7 @@ if __name__ == "__main__":
                 return_dict=True,
             )["hidden_states"]
         ]
-        for i in tqdm(inputs_1)
+        for inp in tqdm(inputs_1)
     ]
 
     for layer_idx in range(args.n_layers):
@@ -299,7 +299,7 @@ if __name__ == "__main__":
         .cpu()
         .clone()
         .to(torch.float)
-        for i in tqdm(inputs_0)
+        for inp in tqdm(inputs_0)
     ]
     after_1 = [
         model(
@@ -311,7 +311,7 @@ if __name__ == "__main__":
         .cpu()
         .clone()
         .to(torch.float)
-        for i in tqdm(inputs_1)
+        for inp in tqdm(inputs_1)
     ]
 
     lr = LogisticRegression(max_iter=1000).fit(
