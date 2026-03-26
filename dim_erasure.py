@@ -342,7 +342,8 @@ if __name__ == "__main__":
                 lr.score(
                     hidden_0[len(hidden_0) // 2 :]
                     + hidden_1[len(hidden_1) // 2 :],
-                    [0] * (len(hidden_0) // 2) + [1] * (len(hidden_1) // 2),
+                    [0] * len(hidden_0[len(hidden_0) // 2 :])
+                    + [1] * len(hidden_1[len(hidden_1) // 2 :]),
                 )
             )
 
@@ -358,13 +359,6 @@ if __name__ == "__main__":
             layers[layer_idx], concept_dir.unsqueeze(dim=0)
         )
 
-    print(
-        model(
-            inputs_0[0].to(device),
-            do_sample=False,
-            max_new_tokens=1,
-        )["logits"].shape
-    )
     with torch.no_grad():
         after_0 = [
             model(
@@ -416,7 +410,8 @@ if __name__ == "__main__":
     print(
         lr.score(
             after_0[len(after_0) // 2 :] + after_1[len(after_1) // 2 :],
-            [0] * (len(after_0) // 2) + [1] * (len(after_1) // 2),
+            [0] * len(after_0[len(after_0) // 2 :])
+            + [1] * len(after_1[len(after_1) // 2 :]),
         )
     )
 
