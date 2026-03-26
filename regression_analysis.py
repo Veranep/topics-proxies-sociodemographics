@@ -4,7 +4,7 @@
 # In[1]:
 
 
-load_ext jupyter_black
+# load_ext jupyter_black
 
 
 # In[2]:
@@ -19,8 +19,10 @@ import matplotlib.pyplot as plt
 import statsmodels.api as sm
 from statsmodels.multivariate.multivariate_ols import _MultivariateOLS
 import statsmodels.formula.api as smf
-from sklearn.preprocessing import minmax_scale
-import pyfixest as pf
+
+# from sklearn.preprocessing import minmax_scale
+
+# import pyfixest as pf
 
 
 # In[3]:
@@ -152,7 +154,9 @@ def balance_df(df, col):
 
 questions = pd.read_pickle("data/Llama-3.1-8B-Instruct_questions.gz")
 questions_correct_answers = dict(zip(questions.q_id, questions.correct_answer))
-questions_baseline_answers = dict(zip(questions.q_id, questions.baseline_answer))
+questions_baseline_answers = dict(
+    zip(questions.q_id, questions.baseline_answer)
+)
 
 
 # In[5]:
@@ -266,25 +270,46 @@ for dataset in [
     "prism",
 ]:
     all_cols = deepcopy(demographics[dataset])
-    df = pd.read_pickle(f"llama_beliefs/Llama-3.1-8B-Instruct_{dataset}_answers.gz")
+    df = pd.read_pickle(
+        f"llama_beliefs/Llama-3.1-8B-Instruct_{dataset}_answers.gz"
+    )
     df = df.rename(columns={"label": "Gender"})
     for c in (
-        #[f"q_{i}" for i in range(50)]
-        #+
+        # [f"q_{i}" for i in range(50)]
+        # +
         [f"q_{i}" for i in range(61, 121)]
         + [f"q_{i}" for i in range(151, 211)]
     ):
-        df[c] = 1*(df[c].str.lower() == questions_correct_answers[c])
+        df[c] = 1 * (df[c].str.lower() == questions_correct_answers[c])
 
     for c in [f"q_{i}" for i in range(121, 151)]:
-        df[c] = df[c].str.replace(",", "").str.extract(r"^[^\d]*(\d+)").astype(float)
+        df[c] = (
+            df[c]
+            .str.replace(",", "")
+            .str.extract(r"^[^\d]*(\d+)")
+            .astype(float)
+        )
 
     for domain in ["benefits", "political", "salary", "legal", "medical"]:
-        qrange = {"benefits": (61, 91), "political": (91,121), "salary": (121, 151), "legal": (151, 181), "medical": (181,211)}[domain]
-        df = df.melt(id_vars=[c for c in df.columns if c not in [f'q_{qid}' for qid in range(*qrange)]], var_name="Question", value_name=domain)
+        qrange = {
+            "benefits": (61, 91),
+            "political": (91, 121),
+            "salary": (121, 151),
+            "legal": (151, 181),
+            "medical": (181, 211),
+        }[domain]
+        df = df.melt(
+            id_vars=[
+                c
+                for c in df.columns
+                if c not in [f"q_{qid}" for qid in range(*qrange)]
+            ],
+            var_name="Question",
+            value_name=domain,
+        )
 
     print(df)
-    #df["accuracy"] = df[[f"q_{i}" for i in range(50)]].mean(axis=1)
+    # df["accuracy"] = df[[f"q_{i}" for i in range(50)]].mean(axis=1)
     # df["benefits"] = df[[f"q_{i}" for i in range(61, 91)]].mean(axis=1)
     # df["political"] = df[[f"q_{i}" for i in range(91, 121)]].mean(axis=1)
     # df["legal"] = df[[f"q_{i}" for i in range(151, 181)]].mean(axis=1)
@@ -352,12 +377,18 @@ for dataset in [
     df_linguistic = pd.read_pickle(
         f"data/{dataset + '_utterances' if dataset != 'chen' else dataset}_linguistic.gz"
     ).drop(
-        columns=["s_neutral_model_response", "s_neutral_user_prompt"], errors="ignore"
+        columns=["s_neutral_model_response", "s_neutral_user_prompt"],
+        errors="ignore",
     )
     for c in ["politeness_user_prompt", "politeness_model_response"]:
         if c in df_linguistic:
             df_linguistic[c] = df_linguistic[c].replace(
-                {"impolite": 0, "neutral": 0.5, "polite": 1, "somewhat polite": 0.75}
+                {
+                    "impolite": 0,
+                    "neutral": 0.5,
+                    "polite": 1,
+                    "somewhat polite": 0.75,
+                }
             )
     df_linguistic = df_linguistic.rename(columns={"gpt_description": "topic"})
     if dataset != "chen":
@@ -401,7 +432,9 @@ for dataset in [
     cols = [
         c
         for c in df_beliefs.columns
-        if "shared_extracted_" in c or "value_JSON_" in c or "unknown_token_" in c
+        if "shared_extracted_" in c
+        or "value_JSON_" in c
+        or "unknown_token_" in c
     ] + ["revealed_Gender"]
     if "human_Gender" in df_beliefs.columns:
         cols += ["human_Gender"]
@@ -426,7 +459,7 @@ for dataset in [
     # )
 
     cols = [
-        #"accuracy",
+        # "accuracy",
         "benefits",
         "political",
         "legal",
@@ -445,16 +478,23 @@ for dataset in [
 
     for demographic in demographics[dataset]:
         if not os.path.isfile(
-                f"figures_regression/{dataset}_{demographic}_1.png"
+            f"figures_regression/{dataset}_{demographic}_1.png"
         ):
             filtered_df_demo = balance_df(df, demographic)
-            filtered_df_demo[demographic] = filtered_df_demo[demographic].astype(float)
+            filtered_df_demo[demographic] = filtered_df_demo[
+                demographic
+            ].astype(float)
             demo_cols = [
                 c
                 for c in all_cols
-                if "_model_response" in c or "_user_prompt" in c or c == "model_name"
+                if "_model_response" in c
+                or "_user_prompt" in c
+                or c == "model_name"
             ]
-            mod = smf.ols(formula=f"{demographic} ~ {' + '.join(demo_cols)}", data=filtered_df_demo)
+            mod = smf.ols(
+                formula=f"{demographic} ~ {' + '.join(demo_cols)}",
+                data=filtered_df_demo,
+            )
             res = mod.fit()
             result_df = pd.read_html(
                 res.summary().tables[1].as_html(), header=0, index_col=0
@@ -462,14 +502,16 @@ for dataset in [
             fig = plt.figure(figsize=(6.5, 5))
             ax = sns.barplot(
                 result_df.loc[
-                    (result_df["P>|t|"] < 0.05) & (result_df["index"] != "Intercept")
+                    (result_df["P>|t|"] < 0.05)
+                    & (result_df["index"] != "Intercept")
                 ].sort_values(by="coef"),
                 x="index",
                 y="coef",
             )
             ax.tick_params(axis="x", labelrotation=90)
             fig.savefig(
-                f"figures_regression/{dataset}_{demographic}_1.png", bbox_inches="tight"
+                f"figures_regression/{dataset}_{demographic}_1.png",
+                bbox_inches="tight",
             )
             plt.show()
             print(res.summary())
@@ -477,7 +519,7 @@ for dataset in [
             filtered_df_demo = filtered_df_demo.loc[
                 filtered_df_demo.duplicated(subset=["topic"], keep=False)
             ]
-            
+
             demo_cols = [
                 c
                 for c in all_cols
@@ -486,7 +528,10 @@ for dataset in [
                 or c == "topic"
                 or c == "model_name"
             ]
-            mod = smf.ols(formula=f"{demographic} ~ {' + '.join(demo_cols)}", data=filtered_df_demo)
+            mod = smf.ols(
+                formula=f"{demographic} ~ {' + '.join(demo_cols)}",
+                data=filtered_df_demo,
+            )
             res = mod.fit()
             result_df = pd.read_html(
                 res.summary().tables[1].as_html(), header=0, index_col=0
@@ -495,7 +540,8 @@ for dataset in [
             fig = plt.figure(figsize=(40, 5))
             ax = sns.barplot(
                 result_df.loc[
-                    (result_df["P>|t|"] < 0.05) & (result_df["index"] != "Intercept")
+                    (result_df["P>|t|"] < 0.05)
+                    & (result_df["index"] != "Intercept")
                 ].sort_values(by="coef"),
                 x="index",
                 y="coef",
@@ -503,21 +549,27 @@ for dataset in [
             )
             ax.tick_params(axis="x", labelrotation=90)
             fig.savefig(
-                f"figures_regression/{dataset}_{demographic}_2.png", bbox_inches="tight"
+                f"figures_regression/{dataset}_{demographic}_2.png",
+                bbox_inches="tight",
             )
             plt.show()
             print(res.summary())
-            
 
     for col in cols:
         filtered_df = df.loc[~df[col].isna()]
-        if not os.path.isfile(f"figures_regression/{dataset}_{col}_correct_1.png"):
+        if not os.path.isfile(
+            f"figures_regression/{dataset}_{col}_correct_1.png"
+        ):
             demo_cols = [
                 c
                 for c in all_cols
-                if "_model_response" in c or "_user_prompt" in c or c == "model_name"
+                if "_model_response" in c
+                or "_user_prompt" in c
+                or c == "model_name"
             ]
-            mod = smf.ols(formula=f"{col} ~ {' + '.join(demo_cols)}", data=filtered_df)
+            mod = smf.ols(
+                formula=f"{col} ~ {' + '.join(demo_cols)}", data=filtered_df
+            )
             res = mod.fit()
             result_df = pd.read_html(
                 res.summary().tables[1].as_html(), header=0, index_col=0
@@ -525,23 +577,27 @@ for dataset in [
             fig = plt.figure(figsize=(6.5, 5))
             ax = sns.barplot(
                 result_df.loc[
-                    (result_df["P>|t|"] < 0.05) & (result_df["index"] != "Intercept")
+                    (result_df["P>|t|"] < 0.05)
+                    & (result_df["index"] != "Intercept")
                 ].sort_values(by="coef"),
                 x="index",
                 y="coef",
             )
             ax.tick_params(axis="x", labelrotation=90)
             fig.savefig(
-                f"figures_regression/{dataset}_{col}_correct_1.png", bbox_inches="tight"
+                f"figures_regression/{dataset}_{col}_correct_1.png",
+                bbox_inches="tight",
             )
             plt.show()
             print(res.summary())
-                
+
         if "topic" in filtered_df:
             filtered_df = filtered_df.loc[
                 filtered_df.duplicated(subset=["topic"], keep=False)
             ]
-        if not os.path.isfile(f"figures_regression/{dataset}_{col}_correct_2.png"):
+        if not os.path.isfile(
+            f"figures_regression/{dataset}_{col}_correct_2.png"
+        ):
             demo_cols = [
                 c
                 for c in all_cols
@@ -550,7 +606,9 @@ for dataset in [
                 or c == "topic"
                 or c == "model_name"
             ]
-            mod = smf.ols(formula=f"{col} ~ {' + '.join(demo_cols)}", data=filtered_df)
+            mod = smf.ols(
+                formula=f"{col} ~ {' + '.join(demo_cols)}", data=filtered_df
+            )
             res = mod.fit()
             result_df = pd.read_html(
                 res.summary().tables[1].as_html(), header=0, index_col=0
@@ -559,7 +617,8 @@ for dataset in [
             fig = plt.figure(figsize=(40, 5))
             ax = sns.barplot(
                 result_df.loc[
-                    (result_df["P>|t|"] < 0.05) & (result_df["index"] != "Intercept")
+                    (result_df["P>|t|"] < 0.05)
+                    & (result_df["index"] != "Intercept")
                 ].sort_values(by="coef"),
                 x="index",
                 y="coef",
@@ -567,7 +626,8 @@ for dataset in [
             )
             ax.tick_params(axis="x", labelrotation=90)
             fig.savefig(
-                f"figures_regression/{dataset}_{col}_correct_2.png", bbox_inches="tight"
+                f"figures_regression/{dataset}_{col}_correct_2.png",
+                bbox_inches="tight",
             )
             plt.show()
             print(res.summary())
@@ -596,7 +656,8 @@ for dataset in [
                 ]
 
                 mod = smf.ols(
-                    formula=f"{col} ~ {' + '.join(demo_cols)}", data=filtered_df
+                    formula=f"{col} ~ {' + '.join(demo_cols)}",
+                    data=filtered_df,
                 )
                 res = mod.fit()
                 result_df = pd.read_html(
@@ -643,25 +704,46 @@ for dataset in [
     "prism",
 ]:
     all_cols = demographics[dataset]
-    df = pd.read_pickle(f"llama_beliefs/Llama-3.1-8B-Instruct_{dataset}_answers.gz")
+    df = pd.read_pickle(
+        f"llama_beliefs/Llama-3.1-8B-Instruct_{dataset}_answers.gz"
+    )
     df = df.rename(columns={"label": "Gender"})
     for c in (
-        #[f"q_{i}" for i in range(50)]
-        #+
+        # [f"q_{i}" for i in range(50)]
+        # +
         [f"q_{i}" for i in range(61, 121)]
         + [f"q_{i}" for i in range(151, 211)]
     ):
-        df[c] = 1*(df[c].str.lower() == questions_baseline_answers[c])
+        df[c] = 1 * (df[c].str.lower() == questions_baseline_answers[c])
 
     for c in [f"q_{i}" for i in range(121, 151)]:
-        df[c] = df[c].str.replace(",", "").str.extract(r"^[^\d]*(\d+)").astype(float)
+        df[c] = (
+            df[c]
+            .str.replace(",", "")
+            .str.extract(r"^[^\d]*(\d+)")
+            .astype(float)
+        )
 
     for domain in ["benefits", "political", "salary", "legal", "medical"]:
-        qrange = {"benefits": (61, 91), "political": (91,121), "salary": (121, 151), "legal": (151, 181), "medical": (181,211)}[domain]
-        df = df.melt(id_vars=[c for c in df.columns if c not in [f'q_{qid}' for qid in range(*qrange)]], var_name="Question", value_name=domain)
+        qrange = {
+            "benefits": (61, 91),
+            "political": (91, 121),
+            "salary": (121, 151),
+            "legal": (151, 181),
+            "medical": (181, 211),
+        }[domain]
+        df = df.melt(
+            id_vars=[
+                c
+                for c in df.columns
+                if c not in [f"q_{qid}" for qid in range(*qrange)]
+            ],
+            var_name="Question",
+            value_name=domain,
+        )
 
     print(df)
-    #df["accuracy"] = df[[f"q_{i}" for i in range(50)]].mean(axis=1)
+    # df["accuracy"] = df[[f"q_{i}" for i in range(50)]].mean(axis=1)
     # df["benefits"] = df[[f"q_{i}" for i in range(61, 91)]].mean(axis=1)
     # df["political"] = df[[f"q_{i}" for i in range(91, 121)]].mean(axis=1)
     # df["legal"] = df[[f"q_{i}" for i in range(151, 181)]].mean(axis=1)
@@ -723,19 +805,25 @@ for dataset in [
     df = df.drop(
         columns=[f"q_{i}" for i in range(50)]
         + ["q_59", "q_60"]
-        #+ [f"q_{i}" for i in range(61, 121)]
-        #+ [f"q_{i}" for i in range(151, 211)]
+        # + [f"q_{i}" for i in range(61, 121)]
+        # + [f"q_{i}" for i in range(151, 211)]
     )
 
     df_linguistic = pd.read_pickle(
         f"data/{dataset + '_utterances' if dataset != 'chen' else dataset}_linguistic.gz"
     ).drop(
-        columns=["s_neutral_model_response", "s_neutral_user_prompt"], errors="ignore"
+        columns=["s_neutral_model_response", "s_neutral_user_prompt"],
+        errors="ignore",
     )
     for c in ["politeness_user_prompt", "politeness_model_response"]:
         if c in df_linguistic:
             df_linguistic[c] = df_linguistic[c].replace(
-                {"impolite": 0, "neutral": 0.5, "polite": 1, "somewhat polite": 0.75}
+                {
+                    "impolite": 0,
+                    "neutral": 0.5,
+                    "polite": 1,
+                    "somewhat polite": 0.75,
+                }
             )
     df_linguistic = df_linguistic.rename(columns={"gpt_description": "topic"})
     if dataset != "chen":
@@ -779,7 +867,9 @@ for dataset in [
     cols = [
         c
         for c in df_beliefs.columns
-        if "shared_extracted_" in c or "value_JSON_" in c or "unknown_token_" in c
+        if "shared_extracted_" in c
+        or "value_JSON_" in c
+        or "unknown_token_" in c
     ] + ["revealed_Gender"]
     if "human_Gender" in df_beliefs.columns:
         cols += ["human_Gender"]
@@ -804,7 +894,7 @@ for dataset in [
     # )
 
     cols = [
-        #"accuracy",
+        # "accuracy",
         "benefits",
         "political",
         "legal",
@@ -823,13 +913,19 @@ for dataset in [
 
     for col in cols:
         filtered_df = df.loc[~df[col].isna()]
-        if not os.path.isfile(f"figures_regression/{dataset}_{col}_baseline_1.png"):
+        if not os.path.isfile(
+            f"figures_regression/{dataset}_{col}_baseline_1.png"
+        ):
             demo_cols = [
                 c
                 for c in all_cols
-                if "_model_response" in c or "_user_prompt" in c or c == "model_name"
+                if "_model_response" in c
+                or "_user_prompt" in c
+                or c == "model_name"
             ]
-            mod = smf.ols(formula=f"{col} ~ {' + '.join(demo_cols)}", data=filtered_df)
+            mod = smf.ols(
+                formula=f"{col} ~ {' + '.join(demo_cols)}", data=filtered_df
+            )
             res = mod.fit()
             result_df = pd.read_html(
                 res.summary().tables[1].as_html(), header=0, index_col=0
@@ -837,14 +933,16 @@ for dataset in [
             fig = plt.figure(figsize=(6.5, 5))
             ax = sns.barplot(
                 result_df.loc[
-                    (result_df["P>|t|"] < 0.05) & (result_df["index"] != "Intercept")
+                    (result_df["P>|t|"] < 0.05)
+                    & (result_df["index"] != "Intercept")
                 ].sort_values(by="coef"),
                 x="index",
                 y="coef",
             )
             ax.tick_params(axis="x", labelrotation=90)
             fig.savefig(
-                f"figures_regression/{dataset}_{col}_baseline_1.png", bbox_inches="tight"
+                f"figures_regression/{dataset}_{col}_baseline_1.png",
+                bbox_inches="tight",
             )
             plt.show()
             print(res.summary())
@@ -852,7 +950,9 @@ for dataset in [
             filtered_df = filtered_df.loc[
                 filtered_df.duplicated(subset=["topic"], keep=False)
             ]
-        if not os.path.isfile(f"figures_regression/{dataset}_{col}_baseline_2.png"):
+        if not os.path.isfile(
+            f"figures_regression/{dataset}_{col}_baseline_2.png"
+        ):
             demo_cols = [
                 c
                 for c in all_cols
@@ -861,7 +961,9 @@ for dataset in [
                 or c == "topic"
                 or c == "model_name"
             ]
-            mod = smf.ols(formula=f"{col} ~ {' + '.join(demo_cols)}", data=filtered_df)
+            mod = smf.ols(
+                formula=f"{col} ~ {' + '.join(demo_cols)}", data=filtered_df
+            )
             res = mod.fit()
             result_df = pd.read_html(
                 res.summary().tables[1].as_html(), header=0, index_col=0
@@ -870,7 +972,8 @@ for dataset in [
             fig = plt.figure(figsize=(40, 5))
             ax = sns.barplot(
                 result_df.loc[
-                    (result_df["P>|t|"] < 0.05) & (result_df["index"] != "Intercept")
+                    (result_df["P>|t|"] < 0.05)
+                    & (result_df["index"] != "Intercept")
                 ].sort_values(by="coef"),
                 x="index",
                 y="coef",
@@ -878,7 +981,8 @@ for dataset in [
             )
             ax.tick_params(axis="x", labelrotation=90)
             fig.savefig(
-                f"figures_regression/{dataset}_{col}_baseline_2.png", bbox_inches="tight"
+                f"figures_regression/{dataset}_{col}_baseline_2.png",
+                bbox_inches="tight",
             )
             plt.show()
             print(res.summary())
@@ -907,7 +1011,8 @@ for dataset in [
                 ]
 
                 mod = smf.ols(
-                    formula=f"{col} ~ {' + '.join(demo_cols)}", data=filtered_df
+                    formula=f"{col} ~ {' + '.join(demo_cols)}",
+                    data=filtered_df,
                 )
                 res = mod.fit()
                 result_df = pd.read_html(
@@ -944,4 +1049,3 @@ for dataset in [
                     or "_user_prompt" in c
                     or c == "model_name"
                 ]
-
