@@ -118,7 +118,7 @@ def scrub_llama(
         tokens = assert_type(torch.Tensor, batch["input_ids"])
         x = embed_fn(tokens)  # batch, seq, hid_dim
         xs.append(x.to("cpu", non_blocking=True))
-        lr_xs += [x[j, :, :].cpu().numpy() for j in range(x.shape[0])]
+        lr_xs += [x[j, :, :].float().cpu().numpy() for j in range(x.shape[0])]
         lr_zs += batch[z_column].cpu().numpy()
 
         # We don't actually need to move these to the CPU since they're small
@@ -224,7 +224,7 @@ def scrub_llama(
             xs[i] = h.to("cpu", non_blocking=True)
 
     lr_xs = [
-        batch[i, :, :].cpu().numpy()
+        batch[i, :, :].float().cpu().numpy()
         for batch in xs
         for i in range(batch.shape[0])
     ]
