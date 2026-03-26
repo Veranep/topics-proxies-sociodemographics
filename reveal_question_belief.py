@@ -138,6 +138,14 @@ if __name__ == "__main__":
     if not tokenizer.pad_token_id:
         tokenizer.pad_token_id = tokenizer.eos_token_id
 
+    model = pipeline(
+        "text-generation",
+        model=model,
+        tokenizer=tokenizer,
+        torch_dtype=torch.bfloat16,
+        device_map="auto",
+    )
+
     if os.path.isfile(
         f"{args.results_folder}/{args.model.split('/')[1]}_{args.dataset}_answers.gz"
     ):
@@ -158,7 +166,9 @@ if __name__ == "__main__":
 
     convos = convo_func(df)
 
-    if not os.path.isfile(f"{args.data_folder}/questions.gz"):
+    if not os.path.isfile(
+        f"{args.data_folder}/{args.model.split('/')[1]}_questions.gz"
+    ):
         questions = [
             clean_health_misinfo_data(topic.find("question").text)
             for topic in ET.parse(
@@ -181,68 +191,95 @@ if __name__ == "__main__":
             revealed_belief += [demo] * len(revealed_belief_questions[demo])
             correct_answers += [None] * len(revealed_belief_questions[demo])
 
-        for domain in ["benefits", "political", "salary", "legal", "medical"]:
-            new_questions = (
-                pd.read_csv(
-                    f"{args.data_folder}/{domain}_{'llama_' if domain in ['legal', 'medical'] else ''}prompts.csv"
-                )
-                .sample(n=30)["prompts"]
-                .str.replace("additonal", "additional")
-                .tolist()
-            )
-            questions += new_questions
-            revealed_belief += [None] * len(new_questions)
-            if domain == "salary":
-                correct_answers += [None] * len(new_questions)
-            elif domain in ["political", "legal"]:
-                correct_answers += [
-                    (
-                        "yes"
-                        if any([a in q for a in answer_key[domain]["yes"]])
-                        else "no"
-                    )
-                    for q in new_questions
-                ]
-            else:
-                correct_answers += [
-                    (
-                        "yes"
-                        if (
-                            "should I treat myself at home" not in q
-                            and "should I ignore this for now" not in q
-                            and "Is there anything that might disqualify me"
-                            not in q
-                        )
-                        else "no"
-                    )
-                    for q in new_questions
-                ]
+        old_df_questions = pd.read_pickle(
+            f"{args.data_folder}/questions.gz"
+        ).iloc[61:]
+        questions += old_df_questions["question"].tolist()
+        revealed_belief += old_df_questions["revealed_belief"].tolist()
+        correct_answer += old_df_questions["correct_answer"].tolist()
+
+        # for domain in ["benefits", "political", "salary", "legal", "medical"]:
+        #     new_questions = (
+        #         pd.read_csv(
+        #             f"{args.data_folder}/{domain}_{'llama_' if domain in ['legal', 'medical'] else ''}prompts.csv"
+        #         )
+        #         .sample(n=30)["prompts"]
+        #         .str.replace("additonal", "additional")
+        #         .tolist()
+        #     )
+        #     questions += new_questions
+        #     revealed_belief += [None] * len(new_questions)
+        #     if domain == "salary":
+        #         correct_answers += [None] * len(new_questions)
+        #     elif domain in ["political", "legal"]:
+        #         correct_answers += [
+        #             (
+        #                 "yes"
+        #                 if any([a in q for a in answer_key[domain]["yes"]])
+        #                 else "no"
+        #             )
+        #             for q in new_questions
+        #         ]
+        #     else:
+        #         correct_answers += [
+        #             (
+        #                 "yes"
+        #                 if (
+        #                     "should I treat myself at home" not in q
+        #                     and "should I ignore this for now" not in q
+        #                     and "Is there anything that might disqualify me"
+        #                     not in q
+        #                 )
+        #                 else "no"
+        #             )
+        #             for q in new_questions
+        #         ]
 
         q_ids = [f"q_{i}" for i in range(len(questions))]
+        baseline_answers = []
+        for q, q_id in zip(questions, q_ids):
+            tokens = 1
+            if int(q_id.split("_")[1]) == 58:
+                tokens += 3
+            elif int(q_id.split("_")[1]) in [59, 60]:
+                tokens += 99
+            elif int(q_id.split("_")[1]) in list(range(121, 151)):
+                tokens += 9
+            baseline_answers.append(
+                model(
+                    [{"role": "user", "content": q}],
+                    max_new_tokens=tokens,
+                    return_full_text=False,
+                    do_sample=False,
+                )[0]["generated_text"]
+            )
         df_questions = pd.DataFrame(
             {
                 "q_id": q_ids,
                 "question": questions,
                 "revealed_belief": revealed_belief,
                 "correct_answer": correct_answers,
+                "baseline_answer": baseline_answers,
             }
         )
-        df_questions.to_pickle(f"{args.data_folder}/questions.gz")
+        df_questions.to_pickle(
+            f"{args.data_folder}/{args.model.split('/')[1]}_questions.gz"
+        )
     else:
-        df_questions = pd.read_pickle(f"{args.data_folder}/questions.gz")
+        df_questions = pd.read_pickle(
+            f"{args.data_folder}/{args.model.split('/')[1]}_questions.gz"
+        )
+
+    # drop accuracy questions
+    df_questions = df_questions[
+        ~df_questions["q_id"].isin([f"q_{i}" for i in range(50)])
+    ].reset_index(drop=True)
 
     df_questions = df_questions[
         ~df_questions["q_id"].isin(df.columns.values)
     ].reset_index(drop=True)
 
     ########
-    model = pipeline(
-        "text-generation",
-        model=model,
-        tokenizer=tokenizer,
-        torch_dtype=torch.bfloat16,
-        device_map="auto",
-    )
     for row in tqdm(df_questions.itertuples(index=False)):
         print(row.q_id)
         convos_and_questions = [
