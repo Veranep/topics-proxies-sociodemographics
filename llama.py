@@ -125,7 +125,7 @@ def scrub_llama(
         if z_column is not None:
             zs.append(F.one_hot(batch[z_column], num_classes=k))
 
-    print(lr_xs[0][-25:], lr_xs[1][-25:])
+    print(lr_xs, len(lr_xs), lr_zs[:: len(lr_xs) // 2])
     real_lr = LogisticRegression(max_iter=1000).fit(
         lr_xs[:: len(lr_xs) // 2], lr_zs[:: len(lr_xs) // 2]
     )
