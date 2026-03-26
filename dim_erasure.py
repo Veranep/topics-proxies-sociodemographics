@@ -81,7 +81,7 @@ class AblationDecoderLayer(nn.Module):
         super(AblationDecoderLayer, self).__init__()
         self.original_layer = original_layer
 
-        print("direction", self.direction)
+        print("direction", direction)
 
         # Store the direction in the correct device and dtype upfront
         self.r = direction.T
