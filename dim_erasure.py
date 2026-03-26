@@ -81,17 +81,28 @@ class AblationDecoderLayer(nn.Module):
         super(AblationDecoderLayer, self).__init__()
         self.original_layer = original_layer
 
+        print("direction", self.direction)
+
         # Store the direction in the correct device and dtype upfront
         self.r = direction.T
 
         # take the unit
         self.r_unit = self.r / torch.norm(self.r)
 
+        print("r_unit", self.r_unit)
+
         self.projection = torch.matmul(self.r_unit, self.r_unit.T)
 
     def forward(self, *args, **kwargs):
         # get the hidden states
         hidden_states = args[0]
+
+        print(
+            "pre-projection",
+            self.projection,
+            self.projection.dtype,
+            self.projection.device,
+        )
 
         projection = self.projection.to(
             dtype=hidden_states.dtype, device=hidden_states.device
@@ -325,6 +336,7 @@ if __name__ == "__main__":
 
     layers = get_model_layers(model)
     for layer_idx in range(args.n_layers):
+        print("layer:", layer_idx)
 
         # Extract hidden states at the specified layer and position
         hidden_0 = [torch.tensor(r[layer_idx]) for r in representations_0]
