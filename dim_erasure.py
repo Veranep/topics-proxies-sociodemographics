@@ -84,18 +84,18 @@ class AblationDecoderLayer(nn.Module):
         # Store the direction in the correct device and dtype upfront
         self.r = direction.T
 
-        print("r shape", self.r.shape)
+        print("r dtype", self.r.dtype)
 
         # take the unit
         self.r_unit = self.r / torch.norm(self.r)
 
-        print("r unit shape", self.r_unit.shape)
+        print("r unit dtype", self.r_unit.dtype)
 
-        print("r unit T shape", self.r_unit.T.shape)
+        print("r unit T dtype", self.r_unit.T.dtype)
 
         self.projection = torch.matmul(self.r_unit, self.r_unit.T)
 
-        print("projection shape", self.projection.shape)
+        print("projection dtype", self.projection.dtype)
 
     def forward(self, *args, **kwargs):
         # get the hidden states
@@ -344,7 +344,7 @@ if __name__ == "__main__":
         concept_dir = mean_0 - mean_1
         concept_dir = concept_dir / concept_dir.norm()
         concept_dir = concept_dir.to(device).to(torch.float16)
-        print("shape", concept_dir.shape)
+        print("dtype", concept_dir.dtype)
         model.model.layers[layer_idx] = AblationDecoderLayer(
             layers[layer_idx], concept_dir.unsqueeze(dim=0)
         )
