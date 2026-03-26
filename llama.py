@@ -119,7 +119,7 @@ def scrub_llama(
         x = embed_fn(tokens)  # batch, seq, hid_dim
         xs.append(x.to("cpu", non_blocking=True))
         lr_xs += [x[j, -1, :].float().cpu().numpy() for j in range(x.shape[0])]
-        lr_zs.append(batch[z_column][0].cpu().numpy())
+        lr_zs += [batch[z_column][j].cpu().numpy() for j in range(x.shape[0])]
 
         # We don't actually need to move these to the CPU since they're small
         if z_column is not None:
