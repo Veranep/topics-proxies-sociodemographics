@@ -119,13 +119,13 @@ def scrub_llama(
         x = embed_fn(tokens)  # batch, seq, hid_dim
         xs.append(x.to("cpu", non_blocking=True))
         lr_xs += [x[j, :, :].float().cpu().numpy() for j in range(x.shape[0])]
-        lr_zs += batch[z_column].cpu().numpy()
+        lr_zs.append(batch[z_column].cpu().numpy())
 
         # We don't actually need to move these to the CPU since they're small
         if z_column is not None:
             zs.append(F.one_hot(batch[z_column], num_classes=k))
 
-    print(lr_xs[0], lr_zs[0])
+    print(lr_xs, lr_zs)
     real_lr = LogisticRegression(max_iter=1000).fit(lr_xs, lr_zs)
     beta = torch.from_numpy(real_lr.coef_)
     assert beta.norm(p=torch.inf) > 0.1
