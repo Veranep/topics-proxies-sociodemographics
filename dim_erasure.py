@@ -346,7 +346,7 @@ if __name__ == "__main__":
         concept_dir = concept_dir.to(device).to(torch.float16)
         print("shape", concept_dir.shape)
         model.model.layers[layer_idx] = AblationDecoderLayer(
-            layers[layer_idx], concept_dir
+            layers[layer_idx], concept_dir.unsqueeze(dim=0)
         )
 
     after_0 = [
