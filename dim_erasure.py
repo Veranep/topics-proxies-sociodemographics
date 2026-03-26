@@ -340,30 +340,38 @@ if __name__ == "__main__":
             layers[layer_idx], concept_dir.unsqueeze(dim=0)
         )
 
-    after_0 = [
+    print(
         model(
-            inp.to(device),
+            inputs_0[0].to(device),
             do_sample=False,
             max_new_tokens=1,
-        )[-1, -1, :]
-        .detach()
-        .cpu()
-        .clone()
-        .to(torch.float)
-        for inp in tqdm(inputs_0)
-    ]
-    after_1 = [
-        model(
-            inp.to(device),
-            do_sample=False,
-            max_new_tokens=1,
-        )[-1, -1, :]
-        .detach()
-        .cpu()
-        .clone()
-        .to(torch.float)
-        for inp in tqdm(inputs_1)
-    ]
+        )
+    )
+    with torch.no_grad():
+        after_0 = [
+            model(
+                inp.to(device),
+                do_sample=False,
+                max_new_tokens=1,
+            )[-1, -1, :]
+            .detach()
+            .cpu()
+            .clone()
+            .to(torch.float)
+            for inp in tqdm(inputs_0)
+        ]
+        after_1 = [
+            model(
+                inp.to(device),
+                do_sample=False,
+                max_new_tokens=1,
+            )[-1, -1, :]
+            .detach()
+            .cpu()
+            .clone()
+            .to(torch.float)
+            for inp in tqdm(inputs_1)
+        ]
 
     lr = LogisticRegression(max_iter=1000).fit(
         after_0 + after_1, [0] * len(after_0) + [1] * len(after_1)
