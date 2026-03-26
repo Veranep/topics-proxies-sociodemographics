@@ -118,8 +118,8 @@ def scrub_llama(
         tokens = assert_type(torch.Tensor, batch["input_ids"])
         x = embed_fn(tokens)  # batch, seq, hid_dim
         xs.append(x.to("cpu", non_blocking=True))
-        lr_xs += [x[j, :, :] for j in range(x.shape[0])]
-        lr_zs += batch[z_column]
+        lr_xs += [x[j, :, :].cpu().numpy() for j in range(x.shape[0])]
+        lr_zs += batch[z_column].cpu().numpy()
 
         # We don't actually need to move these to the CPU since they're small
         if z_column is not None:
@@ -223,7 +223,11 @@ def scrub_llama(
             h = x + h  # Post-MLP residual connection
             xs[i] = h.to("cpu", non_blocking=True)
 
-    lr_xs = [batch[i, :, :] for batch in xs for i in range(batch.shape[0])]
+    lr_xs = [
+        batch[i, :, :].cpu().numpy()
+        for batch in xs
+        for i in range(batch.shape[0])
+    ]
 
     real_lr = LogisticRegression(max_iter=1000).fit(lr_xs, lr_zs)
     beta = torch.from_numpy(real_lr.coef_)
