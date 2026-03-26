@@ -101,6 +101,9 @@ class AblationDecoderLayer(nn.Module):
         # get the hidden states
         hidden_states = args[0]
 
+        print("hidden_states dtype", hidden_states.dtype)
+        print("projection dtype", self.projection.dtype)
+
         # apply the projection to all the hidden states
         proj = torch.matmul(hidden_states, self.projection)
 
