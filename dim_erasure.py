@@ -222,6 +222,7 @@ if __name__ == "__main__":
                     tokenize=True,
                     add_generation_prompt=True,
                     return_tensors="pt",
+                    return_dict=False,
                 )
             )
         else:
@@ -231,10 +232,10 @@ if __name__ == "__main__":
                     tokenize=True,
                     add_generation_prompt=True,
                     return_tensors="pt",
+                    return_dict=False,
                 )
             )
 
-    print(inputs_0[0], inputs_1[0])
     representations_0 = np.array(
         [
             [
