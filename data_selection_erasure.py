@@ -12030,34 +12030,34 @@ leace_convos_prism = {
 }
 
 neurons_prism = {
-    # "age": {
-    #     "young_age": [
-    #         Feature(21, 6900, False),
-    #         Feature(21, 1723, False),
-    #         Feature(23, 12707, True),
-    #         Feature(21, 11819, True),
-    #         Feature(29, 22644, True),
-    #         Feature(22, 26582, True),
-    #     ],
-    #     "old_age": [
-    #         Feature(23, 17580, True),
-    #         Feature(20, 3545, True),
-    #         Feature(0, 30026, True),
-    #         Feature(18, 20547, True),
-    #         Feature(19, 31701, True),
-    #         Feature(21, 1544, True),
-    #     ],
-    # },
-    # "english": {
-    #     "native_english": [
-    #         Feature(28, 7416, False),
-    #         Feature(25, 11773, True),
-    #         Feature(26, 19587, False),
-    #         Feature(28, 11965, False),
-    #         Feature(19, 14904, False),
-    #         Feature(14, 18757, True),
-    #     ]
-    # },
+    "age": {
+        "young_age": [
+            Feature(21, 6900, False),
+            Feature(21, 1723, False),
+            Feature(23, 12707, True),
+            Feature(21, 11819, True),
+            Feature(29, 22644, True),
+            Feature(22, 26582, True),
+        ],
+        "old_age": [
+            Feature(23, 17580, True),
+            Feature(20, 3545, True),
+            Feature(0, 30026, True),
+            Feature(18, 20547, True),
+            Feature(19, 31701, True),
+            Feature(21, 1544, True),
+        ],
+    },
+    "english": {
+        "native_english": [
+            Feature(28, 7416, False),
+            Feature(25, 11773, True),
+            Feature(26, 19587, False),
+            Feature(28, 11965, False),
+            Feature(19, 14904, False),
+            Feature(14, 18757, True),
+        ]
+    },
     # "recipe": {
     #     "recipe": [
     #         Feature(15, 15907, True),
@@ -12101,16 +12101,16 @@ neurons_prism = {
     #     ]
     # },
     # proud
-    "pride_model": {
-        "pride_model": [
-            Feature(28, 8744, True),
-            Feature(27, 26871, True),
-            # Feature(19, 17278, False),
-            # Feature(16, 9808, False),
-            # Feature(16, 6893, True),
-            # Feature(17, 27923, True),
-        ]
-    },
+    # "pride_model": {
+    #     "pride_model": [
+    #         Feature(28, 8744, True),
+    #         Feature(27, 26871, True),
+    #         # Feature(19, 17278, False),
+    #         # Feature(16, 9808, False),
+    #         # Feature(16, 6893, True),
+    #         # Feature(17, 27923, True),
+    #     ]
+    # },
     # "excitement_model": {
     #     "excitement_model": [
     #         Feature(19, 19948, True),

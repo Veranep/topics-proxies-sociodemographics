@@ -77,7 +77,7 @@ if __name__ == "__main__":
 
     df_questions = pd.read_pickle(f"{args.data_folder}/questions.gz")
     df_questions = df_questions.loc[
-        df_questions["q_id"].isin([f"q_{i}" for i in range(50)])
+        df_questions["q_id"].isin([f"q_{i}" for i in range(10)])
     ]
     for item in evaluation:
         eval_convos = [
