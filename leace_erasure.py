@@ -182,7 +182,6 @@ if __name__ == "__main__":
     ]
     leace_dataset = datasets.Dataset.from_pandas(pd.DataFrame(leace_cs))
     leace_dataset = leace_dataset.class_encode_column("label")
-    print(leace_dataset[:5])
     scrubber = scrub_llama(model, leace_dataset, z_column="label")
     with scrubber.scrub(model):
         if args.domain:

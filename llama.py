@@ -235,7 +235,7 @@ def scrub_llama(
     ]
 
     real_lr = LogisticRegression(max_iter=1000).fit(
-        lr_xs[:: len(lr_xs) // 2], lr_zs[:: len(lr_xs) // 2]
+        lr_xs[: len(lr_xs) // 2], lr_zs[: len(lr_xs) // 2]
     )
     beta = torch.from_numpy(real_lr.coef_)
     print(beta.norm(p=torch.inf))
