@@ -81,15 +81,11 @@ class AblationDecoderLayer(nn.Module):
         super(AblationDecoderLayer, self).__init__()
         self.original_layer = original_layer
 
-        print("direction", direction)
-
         # Store the direction in the correct device and dtype upfront
         self.r = direction.T
 
         # take the unit
         self.r_unit = self.r / torch.norm(self.r)
-
-        print("r_unit", self.r_unit)
 
         self.projection = torch.matmul(self.r_unit, self.r_unit.T)
 
@@ -97,33 +93,15 @@ class AblationDecoderLayer(nn.Module):
         # get the hidden states
         hidden_states = args[0]
 
-        print(
-            "pre-projection",
-            self.projection,
-            self.projection.dtype,
-            self.projection.device,
-        )
-
         projection = self.projection.to(
             dtype=hidden_states.dtype, device=hidden_states.device
         )
-
-        print(
-            "hidden", hidden_states, hidden_states.dtype, hidden_states.device
-        )
-        print("projection", projection, projection.dtype, projection.device)
 
         # apply the projection to all the hidden states
         proj = torch.matmul(hidden_states, projection)  # self.
 
         # remove the projection
         ablated = hidden_states - proj
-
-        print("any nan", torch.isnan(ablated).any())
-        if torch.isnan(ablated).any():
-            print(projection)
-            print(proj)
-            print(ablated)
 
         # apply to the first argument
         args = (ablated,) + args[1:]
@@ -283,7 +261,6 @@ if __name__ == "__main__":
     for i, convo in enumerate(leace_cs):
         label = leace_labels.iloc[i]
         if label == labels[0]:
-            print(0, convo)
             inputs_0.append(
                 tokenizer.apply_chat_template(
                     convo,
@@ -294,7 +271,6 @@ if __name__ == "__main__":
                 )
             )
         else:
-            print(1, convo)
             inputs_1.append(
                 tokenizer.apply_chat_template(
                     convo,
@@ -344,9 +320,6 @@ if __name__ == "__main__":
         hidden_0 = [torch.tensor(r[layer_idx]) for r in representations_0]
         hidden_1 = [torch.tensor(r[layer_idx]) for r in representations_1]
 
-        if layer_idx == 0:
-            print("hidden", hidden_0, hidden_1)
-
         if layer_idx == (args.n_layers - 1):
             lr = LogisticRegression(max_iter=1000).fit(
                 hidden_0 + hidden_1, [0] * len(hidden_0) + [1] * len(hidden_1)
@@ -364,18 +337,9 @@ if __name__ == "__main__":
         mean_0 = torch.stack(hidden_0).mean(dim=0)
         mean_1 = torch.stack(hidden_1).mean(dim=0)
 
-        if layer_idx == 0:
-            mean_0 = mean_0.to(torch.float64)
-            mean_1 = mean_1.to(torch.float64)
-            print("mean", mean_0, mean_1)
-
         # Compute refusal direction as the normalized difference between harmful and harmless means
         concept_dir = mean_0 - mean_1
-        if layer_idx == 0:
-            print("dir", concept_dir, concept_dir.dtype)
         concept_dir = concept_dir / concept_dir.norm()
-        if layer_idx == 0:
-            print("dir", concept_dir, concept_dir.dtype)
         concept_dir = concept_dir.to(device)
         model.model.layers[layer_idx] = AblationDecoderLayer(
             layers[layer_idx], concept_dir.unsqueeze(dim=0)
