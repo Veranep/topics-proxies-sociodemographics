@@ -126,11 +126,16 @@ def scrub_llama(
             zs.append(F.one_hot(batch[z_column], num_classes=k))
 
     print(lr_xs[0][-25:], lr_xs[1][-25:])
-    real_lr = LogisticRegression(max_iter=1000).fit(lr_xs, lr_zs)
+    real_lr = LogisticRegression(max_iter=1000).fit(
+        lr_xs[:: len(lr_xs) // 2], lr_zs[:: len(lr_xs) // 2]
+    )
     beta = torch.from_numpy(real_lr.coef_)
     print(beta.norm(p=torch.inf))
     # assert beta.norm(p=torch.inf) > 0.1
-    print("Start score", real_lr.score(lr_xs, lr_zs))
+    print(
+        "Start score",
+        real_lr.score(lr_xs[len(lr_xs) // 2 :], lr_zs[len(lr_xs) // 2 :]),
+    )
 
     # Enumerate the layers
     for j, layer in enumerate(tqdm(base.layers, unit="layer")):
@@ -230,10 +235,15 @@ def scrub_llama(
         for i in range(batch.shape[0])
     ]
 
-    real_lr = LogisticRegression(max_iter=1000).fit(lr_xs, lr_zs)
+    real_lr = LogisticRegression(max_iter=1000).fit(
+        lr_xs[:: len(lr_xs) // 2], lr_zs[:: len(lr_xs) // 2]
+    )
     beta = torch.from_numpy(real_lr.coef_)
     print(beta.norm(p=torch.inf))
     # assert beta.norm(p=torch.inf) < 1e-4
-    print("End score", real_lr.score(lr_xs, lr_zs))
+    print(
+        "End score",
+        real_lr.score(lr_xs[len(lr_xs) // 2 :], lr_zs[len(lr_xs) // 2 :]),
+    )
 
     return scrubber
