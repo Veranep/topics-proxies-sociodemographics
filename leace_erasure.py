@@ -228,7 +228,7 @@ if __name__ == "__main__":
     print(beta.norm(p=torch.inf))
     print(
         "start score half",
-        lr.score(logits[test_ids], y_test),
+        lr.score(np.array(logits)[test_ids], y_test),
     )
 
     scrubber = scrub_llama(
