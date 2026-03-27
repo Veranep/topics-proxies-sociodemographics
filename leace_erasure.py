@@ -221,7 +221,9 @@ if __name__ == "__main__":
         stratify=labels,
     )
 
-    lr = LogisticRegression(max_iter=1000).fit(logits[train_ids], y_train)
+    lr = LogisticRegression(max_iter=1000).fit(
+        np.array(logits)[train_ids], y_train
+    )
     beta = torch.from_numpy(lr.coef_)
     print(beta.norm(p=torch.inf))
     print(

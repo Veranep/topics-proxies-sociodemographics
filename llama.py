@@ -225,14 +225,14 @@ def scrub_llama(
     ]
 
     real_lr = LogisticRegression(max_iter=1000).fit(
-        lr_xs[train_ids], lr_zs[train_ids]
+        np.array(lr_xs)[train_ids], np.array(lr_zs)[train_ids]
     )
     beta = torch.from_numpy(real_lr.coef_)
     print(beta.norm(p=torch.inf))
     # assert beta.norm(p=torch.inf) < 1e-4
     print(
         "end score half",
-        real_lr.score(lr_xs[test_ids], lr_zs[test_ids]),
+        real_lr.score(np.array(lr_xs)[test_ids], np.array(lr_zs)[test_ids]),
     )
 
     return scrubber

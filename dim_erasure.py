@@ -326,10 +326,10 @@ if __name__ == "__main__":
                 [0] * len(hidden_0) + [1] * len(hidden_1),
                 test_size=0.33,
                 random_state=42,
-                stratify=labels,
+                stratify=[0] * len(hidden_0) + [1] * len(hidden_1),
             )
             lr = LogisticRegression(max_iter=1000).fit(
-                (hidden_0 + hidden_1)[train_ids],
+                np.array(hidden_0 + hidden_1)[train_ids],
                 y_train,
             )
             beta = torch.from_numpy(lr.coef_)
@@ -337,7 +337,7 @@ if __name__ == "__main__":
             print(
                 "start score half",
                 lr.score(
-                    (hidden_0 + hidden_1)[test_ids],
+                    np.array(hidden_0 + hidden_1)[test_ids],
                     y_test,
                 ),
             )
@@ -385,13 +385,13 @@ if __name__ == "__main__":
         ]
 
     lr = LogisticRegression(max_iter=1000).fit(
-        (after_0 + after_1)[train_ids], y_train
+        np.array(after_0 + after_1)[train_ids], y_train
     )
     beta = torch.from_numpy(lr.coef_)
     print(beta.norm(p=torch.inf))
     print(
         "end score half",
-        lr.score((after_0 + after_1)[test_ids], y_test),
+        lr.score(np.array(after_0 + after_1)[test_ids], y_test),
     )
 
     # with scrubber.scrub(model):
