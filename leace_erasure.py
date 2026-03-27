@@ -171,6 +171,18 @@ if __name__ == "__main__":
     leace_cs = leace_convo_func(selected_leace_df)
 
     leace_labels = selected_leace_df["conversation_id"].map(reverse_label_dict)
+    inputs = [
+        tokenizer.apply_chat_template(
+            convo,
+            tokenize=True,
+            add_generation_prompt=True,
+            return_tensors="pt",
+            return_dict=False,
+        )
+        for convo in leace_cs
+    ]
+    labels = [leace_labels.iloc[i] for i in range(len(leace_cs))]
+
     leace_cs = [
         tokenizer.apply_chat_template(
             convo,
@@ -184,17 +196,6 @@ if __name__ == "__main__":
     leace_dataset = datasets.Dataset.from_pandas(pd.DataFrame(leace_cs))
     leace_dataset = leace_dataset.class_encode_column("label")
 
-    inputs = [
-        tokenizer.apply_chat_template(
-            convo,
-            tokenize=True,
-            add_generation_prompt=True,
-            return_tensors="pt",
-            return_dict=False,
-        )
-        for convo in leace_cs
-    ]
-    labels = [leace_labels.iloc[i] for i in range(len(leace_cs))]
     with torch.no_grad():
         logits = [
             model(
