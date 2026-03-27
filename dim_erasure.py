@@ -326,10 +326,11 @@ if __name__ == "__main__":
             beta = torch.from_numpy(lr.coef_)
             print(beta.norm(p=torch.inf))
             print(
+                "start score full",
                 lr.score(
                     hidden_0 + hidden_1,
                     [0] * len(hidden_0) + [1] * len(hidden_1),
-                )
+                ),
             )
             lr = LogisticRegression(max_iter=1000).fit(
                 hidden_0[: len(hidden_0) // 2]
@@ -339,12 +340,13 @@ if __name__ == "__main__":
             beta = torch.from_numpy(lr.coef_)
             print(beta.norm(p=torch.inf))
             print(
+                "start score half",
                 lr.score(
                     hidden_0[len(hidden_0) // 2 :]
                     + hidden_1[len(hidden_1) // 2 :],
                     [0] * len(hidden_0[len(hidden_0) // 2 :])
                     + [1] * len(hidden_1[len(hidden_1) // 2 :]),
-                )
+                ),
             )
 
         # Compute mean of hidden states for each category
@@ -395,10 +397,11 @@ if __name__ == "__main__":
     beta = torch.from_numpy(lr.coef_)
     print(beta.norm(p=torch.inf))
     print(
+        "end score full",
         lr.score(
             after_0 + after_1,
             [0] * len(after_0) + [1] * len(after_1),
-        )
+        ),
     )
 
     lr = LogisticRegression(max_iter=1000).fit(
@@ -408,11 +411,12 @@ if __name__ == "__main__":
     beta = torch.from_numpy(lr.coef_)
     print(beta.norm(p=torch.inf))
     print(
+        "end score half",
         lr.score(
             after_0[len(after_0) // 2 :] + after_1[len(after_1) // 2 :],
             [0] * len(after_0[len(after_0) // 2 :])
             + [1] * len(after_1[len(after_1) // 2 :]),
-        )
+        ),
     )
 
     # with scrubber.scrub(model):

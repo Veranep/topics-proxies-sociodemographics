@@ -9,6 +9,7 @@ import datasets
 from torch.utils.data import Dataset
 import numpy as np
 import os
+from sklearn.linear_model import LogisticRegression
 import pandas as pd
 import pickle
 import torch
@@ -176,15 +177,68 @@ if __name__ == "__main__":
             tokenize=True,
             add_generation_prompt=True,
             return_dict=True,
-            return_tensors="pt",
         )
         | {"label": leace_labels.iloc[i]}
         for i, convo in enumerate(leace_cs)
     ]
     leace_dataset = datasets.Dataset.from_pandas(pd.DataFrame(leace_cs))
     leace_dataset = leace_dataset.class_encode_column("label")
+
+    inputs = [
+        tokenizer.apply_chat_template(
+            convo,
+            tokenize=True,
+            add_generation_prompt=True,
+            return_tensors="pt",
+            return_dict=False,
+        )
+        for convo in leace_cs
+    ]
+    labels = [leace_labels.iloc[i] for i in range(len(leace_cs))]
+    with torch.no_grad():
+        logits = [
+            model(
+                inp.to(device),
+                do_sample=False,
+                max_new_tokens=1,
+            )[
+                "logits"
+            ][-1, -1, :]
+            .detach()
+            .cpu()
+            .clone()
+            .to(torch.float)
+            for inp in tqdm(inputs)
+        ]
+    lr = LogisticRegression(max_iter=1000).fit(logits, labels)
+    beta = torch.from_numpy(lr.coef_)
+    print(beta.norm(p=torch.inf))
+    print(
+        "start score full",
+        lr.score(
+            logits,
+            labels,
+        ),
+    )
+
+    lr = LogisticRegression(max_iter=1000).fit(
+        logits[: len(logits) // 2],
+        labels[: len(labels) // 2],
+    )
+    beta = torch.from_numpy(lr.coef_)
+    print(beta.norm(p=torch.inf))
+    print(
+        "start score half",
+        lr.score(
+            logits[len(logits) // 2 :],
+            labels[len(labels) // 2 :],
+        ),
+    )
+
     scrubber = scrub_llama(
-        model, leace_dataset, z_column="label", batch_size=2
+        model,
+        leace_dataset,
+        z_column="label",
     )
     with scrubber.scrub(model):
         if args.domain:
