@@ -10,6 +10,7 @@ from torch.utils.data import Dataset
 import torch.nn as nn
 import numpy as np
 import os
+from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
 import pandas as pd
 import pickle
@@ -320,32 +321,24 @@ if __name__ == "__main__":
         hidden_1 = [torch.tensor(r[layer_idx]) for r in representations_1]
 
         if layer_idx == (args.n_layers - 1):
-            lr = LogisticRegression(max_iter=1000).fit(
-                hidden_0 + hidden_1, [0] * len(hidden_0) + [1] * len(hidden_1)
-            )
-            beta = torch.from_numpy(lr.coef_)
-            print(beta.norm(p=torch.inf))
-            print(
-                "start score full",
-                lr.score(
-                    hidden_0 + hidden_1,
-                    [0] * len(hidden_0) + [1] * len(hidden_1),
-                ),
+            train_ids, test_ids, y_train, y_test = train_test_split(
+                range(len(hidden_0 + hidden_1)),
+                [0] * len(hidden_0) + [1] * len(hidden_1),
+                test_size=0.33,
+                random_state=42,
+                stratified=labels,
             )
             lr = LogisticRegression(max_iter=1000).fit(
-                hidden_0[: len(hidden_0) // 2]
-                + hidden_1[: len(hidden_1) // 2],
-                [0] * (len(hidden_0) // 2) + [1] * (len(hidden_1) // 2),
+                (hidden_0 + hidden_1)[train_ids],
+                y_train,
             )
             beta = torch.from_numpy(lr.coef_)
             print(beta.norm(p=torch.inf))
             print(
                 "start score half",
                 lr.score(
-                    hidden_0[len(hidden_0) // 2 :]
-                    + hidden_1[len(hidden_1) // 2 :],
-                    [0] * len(hidden_0[len(hidden_0) // 2 :])
-                    + [1] * len(hidden_1[len(hidden_1) // 2 :]),
+                    (hidden_0 + hidden_1)[test_ids],
+                    y_test,
                 ),
             )
 
@@ -392,31 +385,13 @@ if __name__ == "__main__":
         ]
 
     lr = LogisticRegression(max_iter=1000).fit(
-        after_0 + after_1, [0] * len(after_0) + [1] * len(after_1)
-    )
-    beta = torch.from_numpy(lr.coef_)
-    print(beta.norm(p=torch.inf))
-    print(
-        "end score full",
-        lr.score(
-            after_0 + after_1,
-            [0] * len(after_0) + [1] * len(after_1),
-        ),
-    )
-
-    lr = LogisticRegression(max_iter=1000).fit(
-        after_0[: len(after_0) // 2] + after_1[: len(after_1) // 2],
-        [0] * (len(after_0) // 2) + [1] * (len(after_1) // 2),
+        (after_0 + after_1)[train_ids], y_train
     )
     beta = torch.from_numpy(lr.coef_)
     print(beta.norm(p=torch.inf))
     print(
         "end score half",
-        lr.score(
-            after_0[len(after_0) // 2 :] + after_1[len(after_1) // 2 :],
-            [0] * len(after_0[len(after_0) // 2 :])
-            + [1] * len(after_1[len(after_1) // 2 :]),
-        ),
+        lr.score((after_0 + after_1)[test_ids], y_test),
     )
 
     # with scrubber.scrub(model):

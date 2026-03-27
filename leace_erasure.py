@@ -9,6 +9,7 @@ import datasets
 from torch.utils.data import Dataset
 import numpy as np
 import os
+from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
 import pandas as pd
 import pickle
@@ -211,35 +212,29 @@ if __name__ == "__main__":
             .to(torch.float)
             for inp in tqdm(inputs)
         ]
-    lr = LogisticRegression(max_iter=1000).fit(logits, labels)
-    beta = torch.from_numpy(lr.coef_)
-    print(beta.norm(p=torch.inf))
-    print(
-        "start score full",
-        lr.score(
-            logits,
-            labels,
-        ),
+
+    train_ids, test_ids, y_train, y_test = train_test_split(
+        range(len(logits)),
+        labels,
+        test_size=0.33,
+        random_state=42,
+        stratified=labels,
     )
 
-    lr = LogisticRegression(max_iter=1000).fit(
-        logits[: len(logits) // 2],
-        labels[: len(labels) // 2],
-    )
+    lr = LogisticRegression(max_iter=1000).fit(logits[train_ids], y_train)
     beta = torch.from_numpy(lr.coef_)
     print(beta.norm(p=torch.inf))
     print(
         "start score half",
-        lr.score(
-            logits[len(logits) // 2 :],
-            labels[len(labels) // 2 :],
-        ),
+        lr.score(logits[test_ids], y_test),
     )
 
     scrubber = scrub_llama(
         model,
         leace_dataset,
         z_column="label",
+        train_ids=train_ids,
+        test_ids=test_ids,
     )
     with scrubber.scrub(model):
         if args.domain:

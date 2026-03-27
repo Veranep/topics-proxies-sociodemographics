@@ -3,6 +3,7 @@ from types import MethodType
 import torch
 import torch.nn.functional as F
 from datasets import Dataset
+from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
 from tqdm.auto import tqdm
 from transformers import (
@@ -88,6 +89,8 @@ def scrub_llama(
     method: ErasureMethod = "leace",
     sublayers: bool = True,
     affine: bool = True,
+    train_ids=None,
+    test_ids=None,
 ) -> tuple[ConceptScrubber | None, float]:
     base = assert_type(LlamaModel, model.base_model)
     d = assert_type(int, base.config.hidden_size)
@@ -103,7 +106,6 @@ def scrub_llama(
 
     xs = []
     zs = []
-    lr_xs = []
     lr_zs = []
     N = len(train) // batch_size
     train = train.with_format("torch", device=model.device)
@@ -118,7 +120,6 @@ def scrub_llama(
         tokens = assert_type(torch.Tensor, batch["input_ids"])
         x = embed_fn(tokens)  # batch, seq, hid_dim
         xs.append(x.to("cpu", non_blocking=True))
-        lr_xs += [x[j, -1, :].float().cpu().numpy() for j in range(x.shape[0])]
         lr_zs += [batch[z_column][j].cpu().numpy() for j in range(x.shape[0])]
 
         # We don't actually need to move these to the CPU since they're small
@@ -223,24 +224,15 @@ def scrub_llama(
         for i in range(batch.shape[0])
     ]
 
-    real_lr = LogisticRegression(max_iter=1000).fit(lr_xs, lr_zs)
-    beta = torch.from_numpy(real_lr.coef_)
-    print(beta.norm(p=torch.inf))
-    # assert beta.norm(p=torch.inf) < 1e-4
-    print(
-        "end score full",
-        real_lr.score(lr_xs, lr_zs),
-    )
-
     real_lr = LogisticRegression(max_iter=1000).fit(
-        lr_xs[: len(lr_xs) // 2], lr_zs[: len(lr_xs) // 2]
+        lr_xs[train_ids], lr_zs[train_ids]
     )
     beta = torch.from_numpy(real_lr.coef_)
     print(beta.norm(p=torch.inf))
     # assert beta.norm(p=torch.inf) < 1e-4
     print(
         "end score half",
-        real_lr.score(lr_xs[len(lr_xs) // 2 :], lr_zs[len(lr_xs) // 2 :]),
+        real_lr.score(lr_xs[test_ids], lr_zs[test_ids]),
     )
 
     return scrubber
