@@ -1,5 +1,6 @@
 from types import MethodType
 
+import numpy as np
 import torch
 import torch.nn.functional as F
 from datasets import Dataset
