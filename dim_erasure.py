@@ -326,7 +326,7 @@ if __name__ == "__main__":
                 [0] * len(hidden_0) + [1] * len(hidden_1),
                 test_size=0.33,
                 random_state=42,
-                stratified=labels,
+                stratify=labels,
             )
             lr = LogisticRegression(max_iter=1000).fit(
                 (hidden_0 + hidden_1)[train_ids],

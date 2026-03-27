@@ -218,7 +218,7 @@ if __name__ == "__main__":
         labels,
         test_size=0.33,
         random_state=42,
-        stratified=labels,
+        stratify=labels,
     )
 
     lr = LogisticRegression(max_iter=1000).fit(logits[train_ids], y_train)
