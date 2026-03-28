@@ -452,11 +452,11 @@ if __name__ == "__main__":
                 )
             ]
 
-            evaluation_df = pd.concat(
-                [evaluation_df, pd.DataFrame({row.q_id: outputs})],
+            df = pd.concat(
+                [df, pd.DataFrame({row.q_id: outputs})],
                 axis=1,
             )
-            evaluation_df.to_pickle(
+            df.to_pickle(
                 f"{args.results_folder}/{args.model.split('/')[1]}_{args.dataset}_dim_{args.domain}_{args.item}_answers.gz"
             )
     elif args.demographic:
