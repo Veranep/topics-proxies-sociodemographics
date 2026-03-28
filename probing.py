@@ -372,7 +372,7 @@ if __name__ == "__main__":
 
     if os.path.isfile(
         args.results_folder
-        + f"/{args.model.split('/')[1]}_{args.dataset}_{args.demographic.replace(' ','')}{'_balanced' if args.balanced else ''}_scores.pkl"
+        + f"/{args.model.split('/')[1]}_{args.dataset}_{args.demographic.replace(' ','')}{'_balanced' if args.balanced else ''}{'_mlp' if args.mlp else ''}_scores.pkl"
     ):
         pass
 
