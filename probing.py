@@ -7,6 +7,7 @@ import torch
 from tqdm import tqdm
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from sklearn.linear_model import LogisticRegression
+from sklearn.neural_network import MLPClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import f1_score
 from huggingface_hub import login
@@ -218,6 +219,7 @@ def train_probe(
     demographic,
     save,
     save_file,
+    mlp,
 ):
     scores = {
         n: {"f1": [], "majority f1": [], "random f1": []}
@@ -260,7 +262,10 @@ def train_probe(
         for l in tqdm(range(n_layers)):
             X_train = [rep[l] for rep in train_representations]
             X_test = [rep[l] for rep in test_representations]
-            clf = LogisticRegression(random_state=42)
+            if mlp:
+                clf = MLPClassifier(random_state=42)
+            else:
+                LogisticRegression(random_state=42)
             clf = clf.fit(X_train, y_train)
             # if save:
             #     with open(
@@ -350,6 +355,11 @@ if __name__ == "__main__":
         action="store_true",
         help="Whether to balance the dataset for the demographic attribute",
     )
+    parser.add_argument(
+        "--mlp",
+        action="store_true",
+        help="Whether to an MLP probe instead of a linear probe",
+    )
     args = parser.parse_args()
     if "belief" in args.data_folder:
         df = pd.read_pickle(
@@ -424,10 +434,11 @@ if __name__ == "__main__":
             args.demographic,
             save=args.save,
             save_file=args.results_folder + f"/{args.model.split('/')[1]}",
+            mlp=args.mlp,
         )
         with open(
             args.results_folder
-            + f"/{args.model.split('/')[1]}_{args.dataset}_{args.demographic.replace(' ','')}{'_balanced' if args.balanced else ''}_scores.pkl",
+            + f"/{args.model.split('/')[1]}_{args.dataset}_{args.demographic.replace(' ','')}{'_balanced' if args.balanced else ''}{'_mlp' if args.mlp else ''}_scores.pkl",
             "wb",
         ) as outfile:
             pickle.dump(scores, outfile)
