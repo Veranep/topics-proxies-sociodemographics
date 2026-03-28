@@ -175,6 +175,7 @@ def get_representations(df, convo_func, tokenizer, model, device):
                 tokenize=True,
                 add_generation_prompt=True,
                 return_tensors="pt",
+                return_dict=False,
             )
             for convo in convos
         ]
