@@ -28,8 +28,9 @@ def get_example_ids(df, item, is_prism):
             in_ids = df[df["topic"] == keywords[0]]["conversation_id"]
         else:
             in_ids = []
+            print(keywords)
             for k in keywords:
-                in_ids += df[df["topic"].str.contains(f" {k} ")][
+                in_ids += df[df["topic"].str.contains(f" {k} ", na=False)][
                     "conversation_id"
                 ].tolist()
         out_ids = [cid for cid in all_ids if cid not in in_ids]
