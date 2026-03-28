@@ -1,10 +1,4 @@
 import argparse
-from data_selection_erasure import (
-    leace_convos_prism,
-    leace_convos_cad,
-    evaluation_prism,
-    evaluation_cad,
-)
 import datasets
 from torch.utils.data import Dataset
 import torch.nn as nn
@@ -24,6 +18,44 @@ from preprocess_data import get_prism_convos, get_cad_convos
 from probing import balance_df, get_representations, train_probe
 
 # Inspiration: https://github.com/fholstege/uncensoringllms/tree/main
+
+
+def get_example_ids(df, item, is_prism):
+    all_ids = df["conversation_id"].unique()
+    if "topic" in item:
+        keywords = item.split(":")[1].split(",")
+        if is_prism:
+            in_ids = df[df["topic"] == keywords[0]]["conversation_id"]
+        else:
+            in_ids = []
+            for k in keywords:
+                in_ids += df[df["topic"].str.contains(f" {k} ")][
+                    "conversation_id"
+                ].tolist()
+        out_ids = [cid for cid in all_ids if cid not in in_ids]
+        np.random.shuffle(in_ids)
+        np.random.shuffle(out_ids)
+        in_ids = in_ids[:200]
+        out_ids = out_ids[:200]
+    else:
+        if item not in df.columns:
+            raise Exception(f"Column {item} is not in the data")
+        df = (
+            df.groupby(["conversation_id", "topic"])[
+                [
+                    c
+                    for c in df.columns
+                    if ("model_response" in c or "user_prompt" in c)
+                    and (c not in ["model_response", "user_prompt"])
+                ]
+            ]
+            .mean()
+            .reset_index()
+        )
+        df = df.sort_values(by=item)
+        in_ids = df.iloc[:200]["conversation_id"].tolist()
+        out_ids = df.iloc[-200:]["conversation_id"].tolist()
+    return in_ids, out_ids
 
 
 def get_model_layers(model):
@@ -170,11 +202,6 @@ if __name__ == "__main__":
         default="",
         help="Demographic to probe for",
     )
-    parser.add_argument(
-        "--balanced",
-        action="store_true",
-        help="Whether to balance the dataset for the demographic attribute",
-    )
     args = parser.parse_args()
     if args.token:
         login(args.token)
@@ -203,16 +230,40 @@ if __name__ == "__main__":
 
     if args.dataset == "prism":
         convo_func = get_prism_convos
-        leace_convos = leace_convos_prism
-        leace_df = pd.read_pickle(f"{args.data_folder}/cad_en_preprocessed.gz")
-        leace_convo_func = get_cad_convos
-        evaluation = evaluation_prism
+        dim_dataset = "cad_en"
+        dim_convo_func = get_cad_convos
+
     elif "cad" in args.dataset:
         convo_func = get_cad_convos
-        leace_convos = leace_convos_cad
-        leace_df = pd.read_pickle(f"{args.data_folder}/prism_preprocessed.gz")
-        leace_convo_func = get_prism_convos
-        evaluation = evaluation_cad
+        dim_dataset = "prism"
+        dim_convo_func = get_prism_convos
+
+    dim_df = pd.read_pickle(
+        f"{args.data_folder}/{dim_dataset}_preprocessed.gz"
+    )
+    dim_linguistic_df = pd.read_pickle(
+        f"data/{dim_dataset}_utterances_linguistic.gz"
+    ).drop(
+        columns=["s_neutral_model_response", "s_neutral_user_prompt"],
+        errors="ignore",
+    )
+    for c in ["politeness_user_prompt", "politeness_model_response"]:
+        if c in dim_linguistic_df:
+            dim_linguistic_df[c] = dim_linguistic_df[c].replace(
+                {
+                    "impolite": 0,
+                    "neutral": 0.5,
+                    "polite": 1,
+                    "somewhat polite": 0.75,
+                }
+            )
+    dim_linguistic_df = dim_linguistic_df.rename(
+        columns={"gpt_description": "topic"}
+    )
+
+    in_ids, out_ids = get_example_ids(
+        dim_linguistic_df, args.item, "cad" in args.dataset
+    )
 
     if args.domain:
         df_questions = pd.read_pickle(f"{args.data_folder}/questions.gz")
@@ -227,60 +278,35 @@ if __name__ == "__main__":
             df_questions["q_id"].isin([f"q_{i}" for i in range(*qrange)])
         ]
 
-        eval_convos = [
-            c_id
-            for group in evaluation[args.item]
-            for c_id in evaluation[args.item][group]
-        ]
-        evaluation_df = df.loc[
-            df["conversation_id"].isin(eval_convos)
-        ].reset_index(drop=True)
-        convos = convo_func(evaluation_df)
+        convos = convo_func(df)
 
-    # use leace data
-    leace_cs = [
-        c_id
-        for group in leace_convos[args.item]
-        for c_id in leace_convos[args.item][group]
+    dim_in_convos = dim_convo_func(
+        dim_df[dim_df["conversation_id"].isin(in_ids)]
+    )
+    dim_out_convos = dim_convo_func(
+        dim_df[dim_df["conversation_id"].isin(out_ids)]
+    )
+
+    inputs_0 = [
+        tokenizer.apply_chat_template(
+            convo,
+            tokenize=True,
+            add_generation_prompt=True,
+            return_tensors="pt",
+            return_dict=False,
+        )
+        for convo in dim_in_convos
     ]
-    selected_leace_df = leace_df.loc[
-        leace_df["conversation_id"].isin(leace_cs)
+    inputs_1 = [
+        tokenizer.apply_chat_template(
+            convo,
+            tokenize=True,
+            add_generation_prompt=True,
+            return_tensors="pt",
+            return_dict=False,
+        )
+        for convo in dim_out_convos
     ]
-    reverse_label_dict = {
-        c_id: group
-        for group in leace_convos[args.item]
-        for c_id in leace_convos[args.item][group]
-    }
-    leace_cs = leace_convo_func(selected_leace_df)
-
-    leace_labels = selected_leace_df["conversation_id"].map(reverse_label_dict)
-
-    labels = list(leace_convos[args.item].keys())
-
-    inputs_0 = []
-    inputs_1 = []
-    for i, convo in enumerate(leace_cs):
-        label = leace_labels.iloc[i]
-        if label == labels[0]:
-            inputs_0.append(
-                tokenizer.apply_chat_template(
-                    convo,
-                    tokenize=True,
-                    add_generation_prompt=True,
-                    return_tensors="pt",
-                    return_dict=False,
-                )
-            )
-        else:
-            inputs_1.append(
-                tokenizer.apply_chat_template(
-                    convo,
-                    tokenize=True,
-                    add_generation_prompt=True,
-                    return_tensors="pt",
-                    return_dict=False,
-                )
-            )
 
     representations_0 = np.array(
         [
@@ -394,94 +420,87 @@ if __name__ == "__main__":
         lr.score(np.array(after_0 + after_1)[test_ids], y_test),
     )
 
-    # with scrubber.scrub(model):
-    #     if args.domain:
-    #         leace_pipeline = pipeline(
-    #             "text-generation",
-    #             model=model,
-    #             tokenizer=tokenizer,
-    #             torch_dtype=torch.bfloat16,
-    #             device_map="auto",
-    #         )
-    #         for row in tqdm(df_questions.itertuples(index=False)):
-    #             convos_and_questions = [
-    #                 tokenizer.apply_chat_template(
-    #                     convo + [{"role": "user", "content": row.question}],
-    #                     tokenize=False,
-    #                     add_generation_prompt=True,
-    #                 )
-    #                 for convo in convos
-    #             ]
-    #             tokens = 1
-    #             outputs = [
-    #                 answer[0]["generated_text"]
-    #                 for answer in tqdm(
-    #                     leace_pipeline(
-    #                         ListDataset(convos_and_questions),
-    #                         batch_size=32,
-    #                         max_new_tokens=tokens,
-    #                         return_full_text=False,
-    #                         do_sample=False,
-    #                     )
-    #                 )
-    #             ]
+    if args.domain:
+        dim_pipeline = pipeline(
+            "text-generation",
+            model=model,
+            tokenizer=tokenizer,
+            torch_dtype=torch.bfloat16,
+            device_map="auto",
+        )
+        for row in tqdm(df_questions.itertuples(index=False)):
+            convos_and_questions = [
+                tokenizer.apply_chat_template(
+                    convo + [{"role": "user", "content": row.question}],
+                    tokenize=False,
+                    add_generation_prompt=True,
+                )
+                for convo in convos
+            ]
+            tokens = 1
+            outputs = [
+                answer[0]["generated_text"]
+                for answer in tqdm(
+                    dim_pipeline(
+                        ListDataset(convos_and_questions),
+                        batch_size=32,
+                        max_new_tokens=tokens,
+                        return_full_text=False,
+                        do_sample=False,
+                    )
+                )
+            ]
 
-    #             evaluation_df = pd.concat(
-    #                 [evaluation_df, pd.DataFrame({row.q_id: outputs})],
-    #                 axis=1,
-    #             )
-    #             evaluation_df.to_pickle(
-    #                 f"{args.results_folder}/{args.model.split('/')[1]}_{args.dataset}_leace_{args.domain}_{args.item}_answers.gz"
-    #             )
-    #     elif args.demographic:
-    #         representations = get_representations(
-    #             df, convo_func, tokenizer, model, device
-    #         )
-    #         if args.dataset == "prism":
-    #             if args.balanced:
-    #                 df = balance_df(df, args.demographic, "")
-    #             else:
-    #                 df = df.loc[
-    #                     ~(df[args.demographic].isna())
-    #                     & (df[args.demographic] != "Prefer not to say")
-    #                     & (df[args.demographic] != "Unknown")
-    #                     & (df[args.demographic] != "female-male-non-binary")
-    #                 ]
-    #         elif "cad" in args.dataset:
-    #             if args.balanced:
-    #                 df = balance_df(
-    #                     df, args.demographic, args.dataset.split("_")[-1]
-    #                 )
-    #             else:
-    #                 df = df.loc[
-    #                     ~(df[args.demographic].isna())
-    #                     & (df[args.demographic] != "Prefer not to say")
-    #                     & (df[args.demographic] != "other")
-    #                     & (df[args.demographic] != "Unknown")
-    #                     & (df[args.demographic] != "female-male-non-binary")
-    #                 ]
-    #         elif args.dataset == "chen":
-    #             if args.balanced:
-    #                 df = balance_df(df, args.demographic, "")
-    #             else:
-    #                 df = df.loc[
-    #                     ~(df[args.demographic].isna())
-    #                     & (df[args.demographic] != "Unknown")
-    #                     & (df[args.demographic] != "female-male-non-binary")
-    #                 ]
-    #         representations = representations[df.index]
-    #         scores = train_probe(
-    #             df[args.demographic].tolist(),
-    #             representations,
-    #             args.dataset,
-    #             args.n_layers,
-    #             args.demographic,
-    #             save=args.save,
-    #             save_file=args.results_folder + f"/{args.model.split('/')[1]}",
-    #         )
-    #         with open(
-    #             args.results_folder
-    #             + f"/{args.model.split('/')[1]}_{args.dataset}_leace_{args.demographic.replace(' ','')}{'_balanced' if args.balanced else ''}_{args.item}_scores.pkl",
-    #             "wb",
-    #         ) as outfile:
-    #             pickle.dump(scores, outfile)
+            evaluation_df = pd.concat(
+                [evaluation_df, pd.DataFrame({row.q_id: outputs})],
+                axis=1,
+            )
+            evaluation_df.to_pickle(
+                f"{args.results_folder}/{args.model.split('/')[1]}_{args.dataset}_dim_{args.domain}_{args.item}_answers.gz"
+            )
+    elif args.demographic:
+        representations = get_representations(
+            df, convo_func, tokenizer, model, device
+        )
+        if args.dataset == "prism":
+            non_balanced_df = df.loc[
+                ~(df[args.demographic].isna())
+                & (df[args.demographic] != "Prefer not to say")
+                & (df[args.demographic] != "Unknown")
+                & (df[args.demographic] != "female-male-non-binary")
+            ]
+            balanced_df = balance_df(df, args.demographic, "")
+
+        elif "cad" in args.dataset:
+            non_balanced_df = df.loc[
+                ~(df[args.demographic].isna())
+                & (df[args.demographic] != "Prefer not to say")
+                & (df[args.demographic] != "other")
+                & (df[args.demographic] != "Unknown")
+                & (df[args.demographic] != "female-male-non-binary")
+            ]
+            balanced_df = balance_df(
+                df, args.demographic, args.dataset.split("_")[-1]
+            )
+
+        for specific_df, specific_label in [
+            (non_balanced_df, ""),
+            (balanced_df, "balanced"),
+        ]:
+            specific_representations = representations[specific_df.index]
+            scores = train_probe(
+                specific_df[args.demographic].tolist(),
+                specific_representations,
+                args.dataset,
+                args.n_layers,
+                args.demographic,
+                save=False,
+                save_file=args.results_folder + f"/{args.model.split('/')[1]}",
+                mlp=True,
+            )
+            with open(
+                args.results_folder
+                + f"/{args.model.split('/')[1]}_{args.dataset}_dim_{args.demographic.replace(' ','')}{specific_label}_{args.item}_mlp_scores.pkl",
+                "wb",
+            ) as outfile:
+                pickle.dump(scores, outfile)
