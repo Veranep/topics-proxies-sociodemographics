@@ -488,6 +488,11 @@ if __name__ == "__main__":
             (non_balanced_df, ""),
             (balanced_df, "balanced"),
         ]:
+            if os.path.isfile(
+                args.results_folder
+                + f"/{args.model.split('/')[1]}_{args.dataset}_dim_{args.demographic.replace(' ','')}{specific_label}_{args.item}_mlp_scores.pkl"
+            ):
+                pass
             specific_representations = representations[specific_df.index]
             scores = train_probe(
                 specific_df[args.demographic].tolist(),
