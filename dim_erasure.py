@@ -192,6 +192,12 @@ if __name__ == "__main__":
         help="Item to run evaluation on",
     )
     parser.add_argument(
+        "-item2",
+        type=str,
+        default="",
+        help="Item to run evaluation on",
+    )
+    parser.add_argument(
         "-domain",
         type=str,
         default="",
@@ -265,6 +271,11 @@ if __name__ == "__main__":
     in_ids, out_ids = get_example_ids(
         dim_linguistic_df, args.item, "cad" in args.dataset
     )
+
+    if args.item2:
+        in_ids2, out_ids2 = get_example_ids(
+            dim_linguistic_df, args.item2, "cad" in args.dataset
+        )
 
     if args.domain:
         df_questions = pd.read_pickle(f"{args.data_folder}/questions.gz")
@@ -421,6 +432,147 @@ if __name__ == "__main__":
         lr.score(np.array(after_0 + after_1)[test_ids], y_test),
     )
 
+    if args.item2:
+        dim_in_convos = dim_convo_func(
+            dim_df[dim_df["conversation_id"].isin(in_ids2)]
+        )
+        dim_out_convos = dim_convo_func(
+            dim_df[dim_df["conversation_id"].isin(out_ids2)]
+        )
+
+        inputs_0 = [
+            tokenizer.apply_chat_template(
+                convo,
+                tokenize=True,
+                add_generation_prompt=True,
+                return_tensors="pt",
+                return_dict=False,
+            )
+            for convo in dim_in_convos
+        ]
+        inputs_1 = [
+            tokenizer.apply_chat_template(
+                convo,
+                tokenize=True,
+                add_generation_prompt=True,
+                return_tensors="pt",
+                return_dict=False,
+            )
+            for convo in dim_out_convos
+        ]
+
+        representations_0 = np.array(
+            [
+                [
+                    rep[-1, -1, :].detach().cpu().clone().to(torch.float)
+                    for rep in model(
+                        inp.to(device),
+                        do_sample=False,
+                        output_hidden_states=True,
+                        max_new_tokens=1,
+                        return_dict=True,
+                    )["hidden_states"]
+                ]
+                for inp in tqdm(inputs_0)
+            ]
+        )
+        representations_1 = np.array(
+            [
+                [
+                    rep[-1, -1, :].detach().cpu().clone().to(torch.float)
+                    for rep in model(
+                        inp.to(device),
+                        do_sample=False,
+                        output_hidden_states=True,
+                        max_new_tokens=1,
+                        return_dict=True,
+                    )["hidden_states"]
+                ]
+                for inp in tqdm(inputs_1)
+            ]
+        )
+
+        layers = get_model_layers(model)
+        for layer_idx in range(1, args.n_layers):
+
+            # Extract hidden states at the specified layer and position
+            hidden_0 = [torch.tensor(r[layer_idx]) for r in representations_0]
+            hidden_1 = [torch.tensor(r[layer_idx]) for r in representations_1]
+
+            if layer_idx == (args.n_layers - 1):
+                train_ids, test_ids, y_train, y_test = train_test_split(
+                    range(len(hidden_0 + hidden_1)),
+                    [0] * len(hidden_0) + [1] * len(hidden_1),
+                    test_size=0.33,
+                    random_state=42,
+                    stratify=[0] * len(hidden_0) + [1] * len(hidden_1),
+                )
+                lr = LogisticRegression(max_iter=1000).fit(
+                    np.array(hidden_0 + hidden_1)[train_ids],
+                    y_train,
+                )
+                beta = torch.from_numpy(lr.coef_)
+                print(beta.norm(p=torch.inf))
+                print(
+                    "start score half",
+                    lr.score(
+                        np.array(hidden_0 + hidden_1)[test_ids],
+                        y_test,
+                    ),
+                )
+
+            # Compute mean of hidden states for each category
+            mean_0 = torch.stack(hidden_0).mean(dim=0)
+            mean_1 = torch.stack(hidden_1).mean(dim=0)
+
+            # Compute refusal direction as the normalized difference between harmful and harmless means
+            concept_dir = mean_0 - mean_1
+            concept_dir = concept_dir / concept_dir.norm()
+            concept_dir = concept_dir.to(device)
+            model.model.layers[layer_idx] = AblationDecoderLayer(
+                layers[layer_idx], concept_dir.unsqueeze(dim=0)
+            )
+
+        with torch.no_grad():
+            after_0 = [
+                model(
+                    inp.to(device),
+                    do_sample=False,
+                    max_new_tokens=1,
+                )[
+                    "logits"
+                ][-1, -1, :]
+                .detach()
+                .cpu()
+                .clone()
+                .to(torch.float)
+                for inp in tqdm(inputs_0)
+            ]
+            after_1 = [
+                model(
+                    inp.to(device),
+                    do_sample=False,
+                    max_new_tokens=1,
+                )[
+                    "logits"
+                ][-1, -1, :]
+                .detach()
+                .cpu()
+                .clone()
+                .to(torch.float)
+                for inp in tqdm(inputs_1)
+            ]
+
+        lr = LogisticRegression(max_iter=1000).fit(
+            np.array(after_0 + after_1)[train_ids], y_train
+        )
+        beta = torch.from_numpy(lr.coef_)
+        print(beta.norm(p=torch.inf))
+        print(
+            "end score half",
+            lr.score(np.array(after_0 + after_1)[test_ids], y_test),
+        )
+
     if args.domain:
         dim_pipeline = pipeline(
             "text-generation",
@@ -457,7 +609,7 @@ if __name__ == "__main__":
                 axis=1,
             )
             df.to_pickle(
-                f"{args.results_folder}/{args.model.split('/')[1]}_{args.dataset}_dim_{args.domain}_{args.item}_answers.gz"
+                f"{args.results_folder}/{args.model.split('/')[1]}_{args.dataset}_dim_{args.domain}_{args.item}{'_'+ args.item2 if args.item2 else ''}_answers.gz"
             )
     elif args.demographic:
         representations = get_representations(
@@ -490,7 +642,7 @@ if __name__ == "__main__":
         ]:
             if os.path.isfile(
                 args.results_folder
-                + f"/{args.model.split('/')[1]}_{args.dataset}_dim_{args.demographic.replace(' ','')}{specific_label}_{args.item}_mlp_scores.pkl"
+                + f"/{args.model.split('/')[1]}_{args.dataset}_dim_{args.demographic.replace(' ','')}{specific_label}_{args.item}{'_'+ args.item2 if args.item2 else ''}_mlp_scores.pkl"
             ):
                 pass
             specific_representations = representations[specific_df.index]
@@ -506,7 +658,7 @@ if __name__ == "__main__":
             )
             with open(
                 args.results_folder
-                + f"/{args.model.split('/')[1]}_{args.dataset}_dim_{args.demographic.replace(' ','')}{specific_label}_{args.item}_mlp_scores.pkl",
+                + f"/{args.model.split('/')[1]}_{args.dataset}_dim_{args.demographic.replace(' ','')}{specific_label}_{args.item}{'_'+ args.item2 if args.item2 else ''}_mlp_scores.pkl",
                 "wb",
             ) as outfile:
                 pickle.dump(scores, outfile)
