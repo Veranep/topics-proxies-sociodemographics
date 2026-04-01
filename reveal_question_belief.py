@@ -204,12 +204,13 @@ if __name__ == "__main__":
                 "additonal", "additional"
             )
             old_questions = [
-                q for q in old_df["question"] if q in new_questions["prompts"]
+                q
+                for q in old_df["question"]
+                if q in new_questions["prompts"].tolist()
             ]
             new_questions = new_questions.loc[
                 ~new_questions["prompts"].isin(old_questions)
             ]
-            print(domain, old_questions, new_questions)
             new_questions = new_questions.sample(n=20)["prompts"].tolist()
             questions += new_questions + old_questions
             revealed_belief += [None] * len(new_questions + old_questions)
