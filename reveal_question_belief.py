@@ -267,6 +267,7 @@ if __name__ == "__main__":
                 "revealed_belief": revealed_belief,
                 "correct_answer": correct_answers,
                 "baseline_answer": baseline_answers,
+                "domain", q_domain
             }
         )
         df_questions.to_pickle(
