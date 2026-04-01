@@ -208,6 +208,7 @@ if __name__ == "__main__":
                 .str.replace("additonal", "additional")
                 .isin(old_questions)
             ]
+            print(domain, old_questions, new_questions)
             new_questions = (
                 new_questions.sample(n=20)["prompts"]
                 .str.replace("additonal", "additional")
