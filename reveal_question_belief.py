@@ -200,20 +200,17 @@ if __name__ == "__main__":
             new_questions = pd.read_csv(
                 f"{args.data_folder}/{domain}_{'llama_' if domain in ['legal', 'medical'] else ''}prompts.csv"
             )
+            new_questions["prompts"] = new_questions["prompts"].str.replace(
+                "additonal", "additional"
+            )
             old_questions = [
                 q for q in old_df["question"] if q in new_questions["prompts"]
             ]
             new_questions = new_questions.loc[
-                ~new_questions["prompts"]
-                .str.replace("additonal", "additional")
-                .isin(old_questions)
+                ~new_questions["prompts"].isin(old_questions)
             ]
             print(domain, old_questions, new_questions)
-            new_questions = (
-                new_questions.sample(n=20)["prompts"]
-                .str.replace("additonal", "additional")
-                .tolist()
-            )
+            new_questions = new_questions.sample(n=20)["prompts"].tolist()
             questions += new_questions + old_questions
             revealed_belief += [None] * len(new_questions + old_questions)
             q_domain += [domain] * len(new_questions + old_questions)
