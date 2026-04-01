@@ -77,6 +77,12 @@ if __name__ == "__main__":
         help="Item to run evaluation on",
     )
     parser.add_argument(
+        "-item2",
+        type=str,
+        default="",
+        help="Item to run evaluation on",
+    )
+    parser.add_argument(
         "-domain",
         type=str,
         default="",
@@ -87,11 +93,6 @@ if __name__ == "__main__":
         type=str,
         default="",
         help="Demographic to probe for",
-    )
-    parser.add_argument(
-        "--balanced",
-        action="store_true",
-        help="Whether to balance the dataset for the demographic attribute",
     )
     args = parser.parse_args()
     if args.token:
@@ -121,16 +122,45 @@ if __name__ == "__main__":
 
     if args.dataset == "prism":
         convo_func = get_prism_convos
-        leace_convos = leace_convos_prism
-        leace_df = pd.read_pickle(f"{args.data_folder}/cad_en_preprocessed.gz")
+        leace_dataset = "cad_en"
         leace_convo_func = get_cad_convos
-        evaluation = evaluation_prism
     elif "cad" in args.dataset:
         convo_func = get_cad_convos
-        leace_convos = leace_convos_cad
-        leace_df = pd.read_pickle(f"{args.data_folder}/prism_preprocessed.gz")
+        leace_dataset = "prism"
         leace_convo_func = get_prism_convos
-        evaluation = evaluation_cad
+
+    leace_df = pd.read_pickle(
+        f"{args.data_folder}/{leace_dataset}_preprocessed.gz"
+    )
+    leace_linguistic_df = pd.read_pickle(
+        f"data/{leace_dataset}_utterances_linguistic.gz"
+    ).drop(
+        columns=["s_neutral_model_response", "s_neutral_user_prompt"],
+        errors="ignore",
+    )
+
+    for c in ["politeness_user_prompt", "politeness_model_response"]:
+        if c in leace_linguistic_df:
+            leace_linguistic_df[c] = leace_linguistic_df[c].replace(
+                {
+                    "impolite": 0,
+                    "neutral": 0.5,
+                    "polite": 1,
+                    "somewhat polite": 0.75,
+                }
+            )
+    leace_linguistic_df = leace_linguistic_df.rename(
+        columns={"gpt_description": "topic"}
+    )
+
+    in_ids, out_ids = get_example_ids(
+        leace_linguistic_df, args.item, "cad" in args.dataset
+    )
+
+    if args.item2:
+        in_ids2, out_ids2 = get_example_ids(
+            leace_linguistic_df, args.item2, "cad" in args.dataset
+        )
 
     if args.domain:
         df_questions = pd.read_pickle(f"{args.data_folder}/questions.gz")
@@ -144,34 +174,18 @@ if __name__ == "__main__":
         df_questions = df_questions.loc[
             df_questions["q_id"].isin([f"q_{i}" for i in range(*qrange)])
         ]
-
-        eval_convos = [
-            c_id
-            for group in evaluation[args.item]
-            for c_id in evaluation[args.item][group]
-        ]
-        evaluation_df = df.loc[
-            df["conversation_id"].isin(eval_convos)
-        ].reset_index(drop=True)
-        convos = convo_func(evaluation_df)
+        convos = convo_func(df)
 
     # use leace data
-    leace_cs = [
-        c_id
-        for group in leace_convos[args.item]
-        for c_id in leace_convos[args.item][group]
-    ]
+
     selected_leace_df = leace_df.loc[
-        leace_df["conversation_id"].isin(leace_cs)
+        leace_df["conversation_id"].isin(in_ids + out_ids)
     ]
-    reverse_label_dict = {
-        c_id: group
-        for group in leace_convos[args.item]
-        for c_id in leace_convos[args.item][group]
-    }
+    selected_leace_df["label"] = 1 * leace_df["conversation_id"].isin(out_ids)
+    selected_leace_df = selected_leace_df.sort_values(by="label")
+
     leace_cs = leace_convo_func(selected_leace_df)
 
-    leace_labels = selected_leace_df["conversation_id"].map(reverse_label_dict)
     inputs = [
         tokenizer.apply_chat_template(
             convo,
@@ -182,7 +196,6 @@ if __name__ == "__main__":
         )
         for convo in leace_cs
     ]
-    labels = [leace_labels.iloc[i] for i in range(len(leace_cs))]
 
     leace_cs = [
         tokenizer.apply_chat_template(
@@ -191,7 +204,7 @@ if __name__ == "__main__":
             add_generation_prompt=True,
             return_dict=True,
         )
-        | {"label": leace_labels.iloc[i]}
+        | {"label": selected_leace_df["label"].iloc[i]}
         for i, convo in enumerate(leace_cs)
     ]
     leace_dataset = datasets.Dataset.from_pandas(pd.DataFrame(leace_cs))
@@ -231,101 +244,188 @@ if __name__ == "__main__":
         lr.score(np.array(logits)[test_ids], y_test),
     )
 
-    scrubber = scrub_llama(
+    scrubber1 = scrub_llama(
         model,
         leace_dataset,
         z_column="label",
         train_ids=train_ids,
         test_ids=test_ids,
     )
-    with scrubber.scrub(model):
-        if args.domain:
-            leace_pipeline = pipeline(
-                "text-generation",
-                model=model,
-                tokenizer=tokenizer,
-                torch_dtype=torch.bfloat16,
-                device_map="auto",
+
+    with scrubber1.scrub(model):
+
+        if args.item2:
+            selected_leace_df = leace_df.loc[
+                leace_df["conversation_id"].isin(in_ids2 + out_ids2)
+            ]
+            selected_leace_df["label"] = 1 * leace_df["conversation_id"].isin(
+                in_ids2
             )
-            for row in tqdm(df_questions.itertuples(index=False)):
-                convos_and_questions = [
-                    tokenizer.apply_chat_template(
-                        convo + [{"role": "user", "content": row.question}],
-                        tokenize=False,
-                        add_generation_prompt=True,
-                    )
-                    for convo in convos
-                ]
-                tokens = 1
-                outputs = [
-                    answer[0]["generated_text"]
-                    for answer in tqdm(
-                        leace_pipeline(
-                            ListDataset(convos_and_questions),
-                            batch_size=32,
-                            max_new_tokens=tokens,
-                            return_full_text=False,
-                            do_sample=False,
-                        )
-                    )
+
+            leace_cs = leace_convo_func(selected_leace_df)
+
+            inputs = [
+                tokenizer.apply_chat_template(
+                    convo,
+                    tokenize=True,
+                    add_generation_prompt=True,
+                    return_tensors="pt",
+                    return_dict=False,
+                )
+                for convo in leace_cs
+            ]
+
+            leace_cs = [
+                tokenizer.apply_chat_template(
+                    convo,
+                    tokenize=True,
+                    add_generation_prompt=True,
+                    return_dict=True,
+                )
+                | {"label": selected_leace_df["label"].iloc[i]}
+                for i, convo in enumerate(leace_cs)
+            ]
+            leace_dataset = datasets.Dataset.from_pandas(
+                pd.DataFrame(leace_cs)
+            )
+            leace_dataset = leace_dataset.class_encode_column("label")
+
+            with torch.no_grad():
+                logits = [
+                    model(
+                        inp.to(device),
+                        do_sample=False,
+                        max_new_tokens=1,
+                    )[
+                        "logits"
+                    ][-1, -1, :]
+                    .detach()
+                    .cpu()
+                    .clone()
+                    .to(torch.float)
+                    for inp in tqdm(inputs)
                 ]
 
-                evaluation_df = pd.concat(
-                    [evaluation_df, pd.DataFrame({row.q_id: outputs})],
-                    axis=1,
-                )
-                evaluation_df.to_pickle(
-                    f"{args.results_folder}/{args.model.split('/')[1]}_{args.dataset}_leace_{args.domain}_{args.item}_answers.gz"
-                )
-        elif args.demographic:
-            representations = get_representations(
-                df, convo_func, tokenizer, model, device
+            train_ids, test_ids, y_train, y_test = train_test_split(
+                range(len(logits)),
+                labels,
+                test_size=0.33,
+                random_state=42,
+                stratify=labels,
             )
-            if args.dataset == "prism":
-                if args.balanced:
-                    df = balance_df(df, args.demographic, "")
-                else:
-                    df = df.loc[
+
+            lr = LogisticRegression(max_iter=1000).fit(
+                np.array(logits)[train_ids], y_train
+            )
+            beta = torch.from_numpy(lr.coef_)
+            print(beta.norm(p=torch.inf))
+            print(
+                "start score half",
+                lr.score(np.array(logits)[test_ids], y_test),
+            )
+
+            scrubber2 = scrub_llama(
+                model,
+                leace_dataset,
+                z_column="label",
+                train_ids=train_ids,
+                test_ids=test_ids,
+            )
+            scrub2 = scrubber2.scrub
+        else:
+            scrub2 = lambda x: x
+
+        with scrub2(model):
+            if args.domain:
+                leace_pipeline = pipeline(
+                    "text-generation",
+                    model=model,
+                    tokenizer=tokenizer,
+                    torch_dtype=torch.bfloat16,
+                    device_map="auto",
+                )
+                for row in tqdm(df_questions.itertuples(index=False)):
+                    convos_and_questions = [
+                        tokenizer.apply_chat_template(
+                            convo
+                            + [{"role": "user", "content": row.question}],
+                            tokenize=False,
+                            add_generation_prompt=True,
+                        )
+                        for convo in convos
+                    ]
+                    tokens = 1 if args.domain != "salary" else 10
+                    outputs = [
+                        answer[0]["generated_text"]
+                        for answer in tqdm(
+                            leace_pipeline(
+                                ListDataset(convos_and_questions),
+                                batch_size=32,
+                                max_new_tokens=tokens,
+                                return_full_text=False,
+                                do_sample=False,
+                            )
+                        )
+                    ]
+
+                    df = pd.concat(
+                        [df, pd.DataFrame({row.q_id: outputs})],
+                        axis=1,
+                    )
+                    df.to_pickle(
+                        f"{args.results_folder}/{args.model.split('/')[1]}_{args.dataset}_leace_{args.domain}_{args.item}{'_'+ args.item2 if args.item2 else ''}_answers.gz"
+                    )
+            elif args.demographic:
+                representations = get_representations(
+                    df, convo_func, tokenizer, model, device
+                )
+                if args.dataset == "prism":
+                    non_balanced_df = df.loc[
                         ~(df[args.demographic].isna())
                         & (df[args.demographic] != "Prefer not to say")
                         & (df[args.demographic] != "Unknown")
                         & (df[args.demographic] != "female-male-non-binary")
                     ]
-            elif "cad" in args.dataset:
-                if args.balanced:
-                    df = balance_df(
-                        df, args.demographic, args.dataset.split("_")[-1]
-                    )
-                else:
-                    df = df.loc[
+                    balanced_df = balance_df(df, args.demographic, "")
+
+                elif "cad" in args.dataset:
+                    non_balanced_df = df.loc[
                         ~(df[args.demographic].isna())
                         & (df[args.demographic] != "Prefer not to say")
                         & (df[args.demographic] != "other")
                         & (df[args.demographic] != "Unknown")
                         & (df[args.demographic] != "female-male-non-binary")
                     ]
-            elif args.dataset == "chen":
-                if args.balanced:
-                    df = balance_df(df, args.demographic, "")
-                else:
-                    df = df.loc[
-                        ~(df[args.demographic].isna())
-                        & (df[args.demographic] != "Unknown")
-                        & (df[args.demographic] != "female-male-non-binary")
+                    balanced_df = balance_df(
+                        df, args.demographic, args.dataset.split("_")[-1]
+                    )
+
+                for specific_df, specific_label in [
+                    (non_balanced_df, ""),
+                    (balanced_df, "balanced"),
+                ]:
+                    if os.path.isfile(
+                        args.results_folder
+                        + f"/{args.model.split('/')[1]}_{args.dataset}_leace_{args.demographic.replace(' ','')}{specific_label}_{args.item}{'_'+ args.item2 if args.item2 else ''}_mlp_scores.pkl"
+                    ):
+                        pass
+                    specific_representations = representations[
+                        specific_df.index
                     ]
-            representations = representations[df.index]
-            scores = train_probe(
-                df[args.demographic].tolist(),
-                representations,
-                args.dataset,
-                args.n_layers,
-                args.demographic,
-                save=args.save,
-                save_file=args.results_folder + f"/{args.model.split('/')[1]}",
-            )
-            with open(
-                args.results_folder
-                + f"/{args.model.split('/')[1]}_{args.dataset}_leace_{args.demographic.replace(' ','')}{'_balanced' if args.balanced else ''}_{args.item}_scores.pkl",
-                "wb",
-            ) as outfile:
-                pickle.dump(scores, outfile)
+                    scores = train_probe(
+                        specific_df[args.demographic].tolist(),
+                        specific_representations,
+                        args.dataset,
+                        args.n_layers,
+                        args.demographic,
+                        save=False,
+                        save_file=args.results_folder
+                        + f"/{args.model.split('/')[1]}",
+                        mlp=True,
+                    )
+                    with open(
+                        args.results_folder
+                        + f"/{args.model.split('/')[1]}_{args.dataset}_leace_{args.demographic.replace(' ','')}{specific_label}_{args.item}{'_'+ args.item2 if args.item2 else ''}_mlp_scores.pkl",
+                        "wb",
+                    ) as outfile:
+                        pickle.dump(scores, outfile)

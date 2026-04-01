@@ -20,19 +20,22 @@ from probing import balance_df, get_representations, train_probe
 # Inspiration: https://github.com/fholstege/uncensoringllms/tree/main
 
 
-def get_example_ids(df, item, is_prism):
+def get_example_ids(df, item):
     all_ids = df["conversation_id"].unique()
-    if "topic" in item:
+    if item == "random":
+        ids = np.random.choice(all_ids, 400, replace=False)
+        in_ids = ids[:200]
+        out_ids = ids[-200:]
+    elif "topic" in item:
         keywords = item.split(":")[1].split(",")
-        if is_prism:
-            in_ids = df[df["topic"] == keywords[0]]["conversation_id"]
-        else:
+        if "," in item:
             in_ids = []
-            print(keywords)
             for k in keywords:
                 in_ids += df[df["topic"].str.contains(f" {k} ", na=False)][
                     "conversation_id"
                 ].tolist()
+        else:
+            in_ids = df[df["topic"] == f'"{keywords[0]}"']["conversation_id"]
         out_ids = [cid for cid in all_ids if cid not in in_ids]
         np.random.shuffle(in_ids)
         np.random.shuffle(out_ids)
@@ -403,12 +406,14 @@ if __name__ == "__main__":
     )
 
     in_ids, out_ids = get_example_ids(
-        dim_linguistic_df, args.item, "cad" in args.dataset
+        dim_linguistic_df,
+        args.item,
     )
 
     if args.item2:
         in_ids2, out_ids2 = get_example_ids(
-            dim_linguistic_df, args.item2, "cad" in args.dataset
+            dim_linguistic_df,
+            args.item2,
         )
 
     if args.domain:
@@ -527,72 +532,45 @@ if __name__ == "__main__":
             layers[layer_idx], concept_dir.unsqueeze(dim=0)
         )
 
-    best_alpha = 0
-    best_acc = 1
-    for alpha in [
-        0.5,
-        0.6,
-        0.7,
-        0.8,
-        0.9,
-        1.0,
-        1.1,
-        1.2,
-        1.3,
-        1.4,
-        1.5,
-        1.6,
-        1.7,
-        1.8,
-        1.9,
-    ]:
-        for layer_indx in range(1, args.n_layers):
-            model.model.layers[layer_idx].alpha = alpha
-        with torch.no_grad():
-            after_0 = [
-                model(
-                    inp.to(device),
-                    do_sample=False,
-                    max_new_tokens=1,
-                )[
-                    "logits"
-                ][-1, -1, :]
-                .detach()
-                .cpu()
-                .clone()
-                .to(torch.float)
-                for inp in tqdm(inputs_0)
-            ]
-            after_1 = [
-                model(
-                    inp.to(device),
-                    do_sample=False,
-                    max_new_tokens=1,
-                )[
-                    "logits"
-                ][-1, -1, :]
-                .detach()
-                .cpu()
-                .clone()
-                .to(torch.float)
-                for inp in tqdm(inputs_1)
-            ]
-        lr = LogisticRegression(max_iter=1000).fit(
-            np.array(after_0 + after_1)[train_ids], y_train
-        )
-        beta = torch.from_numpy(lr.coef_)
-        end_score = lr.score(np.array(after_0 + after_1)[test_ids], y_test)
-        print(alpha)
-        print(beta.norm(p=torch.inf))
-        print(
-            "end score half",
-            end_score,
-        )
-        if end_score < best_acc:
-            best_alpha = alpha
-            best_acc = end_score
-
-    print("best alpha", best_alpha, best, acc)
+    with torch.no_grad():
+        after_0 = [
+            model(
+                inp.to(device),
+                do_sample=False,
+                max_new_tokens=1,
+            )[
+                "logits"
+            ][-1, -1, :]
+            .detach()
+            .cpu()
+            .clone()
+            .to(torch.float)
+            for inp in tqdm(inputs_0)
+        ]
+        after_1 = [
+            model(
+                inp.to(device),
+                do_sample=False,
+                max_new_tokens=1,
+            )[
+                "logits"
+            ][-1, -1, :]
+            .detach()
+            .cpu()
+            .clone()
+            .to(torch.float)
+            for inp in tqdm(inputs_1)
+        ]
+    lr = LogisticRegression(max_iter=1000).fit(
+        np.array(after_0 + after_1)[train_ids], y_train
+    )
+    beta = torch.from_numpy(lr.coef_)
+    end_score = lr.score(np.array(after_0 + after_1)[test_ids], y_test)
+    print(beta.norm(p=torch.inf))
+    print(
+        "end score half",
+        end_score,
+    )
 
     if args.item2:
         dim_in_convos = dim_convo_func(
@@ -777,26 +755,15 @@ if __name__ == "__main__":
         representations = get_representations(
             df, convo_func, tokenizer, model, device
         )
-        if args.dataset == "prism":
-            non_balanced_df = df.loc[
-                ~(df[args.demographic].isna())
-                & (df[args.demographic] != "Prefer not to say")
-                & (df[args.demographic] != "Unknown")
-                & (df[args.demographic] != "female-male-non-binary")
-            ]
-            balanced_df = balance_df(df, args.demographic, "")
-
-        elif "cad" in args.dataset:
-            non_balanced_df = df.loc[
-                ~(df[args.demographic].isna())
-                & (df[args.demographic] != "Prefer not to say")
-                & (df[args.demographic] != "other")
-                & (df[args.demographic] != "Unknown")
-                & (df[args.demographic] != "female-male-non-binary")
-            ]
-            balanced_df = balance_df(
-                df, args.demographic, args.dataset.split("_")[-1]
-            )
+        non_balanced_df = df.loc[
+            ~(df[args.demographic].isna())
+            & (df[args.demographic] != "Prefer not to say")
+            & (df[args.demographic] != "Other")
+            & (df[args.demographic] != "Unknown")
+        ]
+        balanced_df = balance_df(
+            df, args.demographic, args.dataset.split("_")[-1]
+        )
 
         for specific_df, specific_label in [
             (non_balanced_df, ""),
