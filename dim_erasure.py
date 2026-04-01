@@ -38,6 +38,11 @@ def get_example_ids(df, item, is_prism):
         np.random.shuffle(out_ids)
         in_ids = in_ids[:200]
         out_ids = out_ids[:200]
+    elif "demographic" in item:
+        df = binarize_df(df, item.split(":")[1])
+        df = df.sort_values(by=item.split(":")[1])
+        in_ids = df.iloc[:200]["conversation_id"].tolist()
+        out_ids = df.iloc[-200:]["conversation_id"].tolist()
     else:
         if item not in df.columns:
             raise Exception(f"Column {item} is not in the data")
@@ -57,6 +62,133 @@ def get_example_ids(df, item, is_prism):
         in_ids = df.iloc[:200]["conversation_id"].tolist()
         out_ids = df.iloc[-200:]["conversation_id"].tolist()
     return in_ids, out_ids
+
+
+def binarize_df(df, col):
+    if col in ["unknown_token_Age", "value_JSON_Age", "shared_extracted_Age"]:
+        df.loc[df[col] == "Young adult", col] = 0
+        df.loc[df[col] == "Older adult", col] = 1
+    elif col in [
+        "unknown_token_Gender",
+        "value_JSON_Gender",
+        "shared_extracted_Gender",
+        "human_Gender",
+    ]:
+        df.loc[df[col] == "Female", col] = 0
+        df.loc[df[col] == "Male", col] = 1
+    elif col in [
+        "unknown_token_English proficiency",
+        "value_JSON_English proficiency",
+        "shared_extracted_English proficiency",
+    ]:
+        df.loc[df[col] == "Native speaker", col] = 0
+        df.loc[df[col] == "Non-Native speaker", col] = 1
+    elif col in [
+        "unknown_token_Ethnicity",
+        "value_JSON_Ethnicity",
+        "shared_extracted_Ethnicity",
+    ]:
+        df.loc[df[col] == "White", col] = 0
+        df.loc[df[col] == "Asian", col] = 1
+    elif col in [
+        "unknown_token_Socioeconomic Status",
+        "value_JSON_Socioeconomic Status",
+        "shared_extracted_Socioeconomic Status",
+    ]:
+        df.loc[df[col] == "High income", col] = 0
+        df.loc[df[col] == "Low income", col] = 1
+    elif col in [
+        "unknown_token_Educational Background",
+        "value_JSON_Educational Background",
+        "shared_extracted_Educational Background",
+    ]:
+        df.loc[df[col] == "High", col] = 0
+        df.loc[df[col] == "Low", col] = 1
+    elif col in [
+        "unknown_token_Marital Status",
+        "value_JSON_Marital Status",
+        "shared_extracted_Marital Status",
+    ]:
+        df.loc[df[col] == "Married", col] = 0
+        df.loc[df[col] == "Never married", col] = 1
+    elif col in [
+        "unknown_token_Religion",
+        "value_JSON_Religion",
+        "shared_extracted_Religion",
+    ]:
+        df.loc[df[col] == "No Affiliation", col] = 0
+        df.loc[df[col] == "Christian", col] = 1
+    elif col == "revealed_Gender":
+        df.loc[df[col] == "male", col] = 0
+        df.loc[df[col] == "female", col] = 1
+    elif col == "annotator_age":
+        df.loc[df[col] == "18-34", col] = 0
+        df.loc[df[col] == "46-54", col] = 1
+        df.loc[df[col] == "55+", col] = 1
+    elif col in ["annotator_gender", "label"]:
+        df.loc[df[col] == "male", col] = 0
+        df.loc[df[col] == "female", col] = 1
+    elif col == "annotator_education_level":
+        df.loc[df[col] == "Some or complete graduate degree"] = 0
+        df.loc[df[col] == "(At most) Complete Secondary"] = 1
+        df.loc[df[col] == "Some post-secondary"] = 1
+    elif col == "annotator_political":
+        df.loc[df[col] == "Somewhat left-leaning"] = 0
+        df.loc[df[col] == "Very left-leaning"] = 0
+        df.loc[df[col] == "Somewhat right-leaning"] = 1
+        df.loc[df[col] == "Very right-leaning"] = 1
+    elif col == "annotator_ethnicity":
+        df.loc[df[col] == "White"] = 0
+        df.loc[df[col] == "Black or African American"] = 1
+
+    elif col == "age":
+        df.loc[df[col] == "18-24 years old", col] = 0
+        df.loc[df[col] == "55-64 years old", col] = 1
+        df.loc[df[col] == "65+ years old", col] = 1
+    elif col == "gender":
+        df.loc[df[col] == "Male", col] = 0
+        df.loc[df[col] == "Female", col] = 1
+    elif col == "religion":
+        df.loc[df[col] == "No Affiliation", col] = 0
+        df.loc[df[col] == "Christian", col] = 1
+        # df.loc[df[col] == "Jewish", col] = 1
+        # df.loc[df[col] == "Muslim", col] = 1
+    elif col == "ethnicity":
+        df.loc[df[col] == "White", col] = 0
+        # df.loc[df[col] == "Hispanic", col] = 1
+        df.loc[df[col] == "Black", col] = 1
+        # df.loc[df[col] == "Asian", col] = 1
+        # df.loc[df[col] == "Mixed", col] = 1
+    elif col == "employment_status":
+        df.loc[df[col] == "Unemployed, seeking work", col] = 0
+        df.loc[df[col] == "Unemployed, not seeking work", col] = 0
+        df.loc[df[col] == "Homemaker / Stay-at-home parent", col] = 0
+        df.loc[df[col] == "Working full-time", col] = 1
+    elif col == "education":
+        df.loc[df[col] == "Some Primary", col] = 0
+        df.loc[df[col] == "Completed Primary School", col] = 0
+        df.loc[df[col] == "Some Secondary", col] = 0
+        df.loc[df[col] == "Completed Secondary School", col] = 0
+        df.loc[df[col] == "Graduate / Professional degree", col] = 1
+    elif col == "birth_region":
+        df.loc[df[col] == "Europe", col] = 0
+        df.loc[df[col] == "Americas", col] = 1
+    elif col == "reside_region":
+        df.loc[df[col] == "Europe", col] = 0
+        df.loc[df[col] == "Americas", col] = 1
+    elif col == "marital_status":
+        df.loc[df[col] == "Never been married", col] = 0
+        df.loc[df[col] == "Married", col] = 1
+    elif col == "english_proficiency":
+        df.loc[df[col] == "Native speaker", col] = 0
+        df.loc[df[col] == "Advanced", col] = 1
+        df.loc[df[col] == "Intermediate", col] = 1
+        df.loc[df[col] == "Basic", col] = 1
+    elif col == "lm_familiarity":
+        df.loc[df[col] == "Not familiar at all"] = 0
+        df.loc[df[col] == "Very familiar"] = 1
+    selected_df = df[df[col].isin([0, 1])]
+    return selected_df
 
 
 def get_model_layers(model):
@@ -111,9 +243,11 @@ class ListDataset(Dataset):
 
 
 class AblationDecoderLayer(nn.Module):
-    def __init__(self, original_layer, direction):
+    def __init__(self, original_layer, direction, alpha=1.0):
         super(AblationDecoderLayer, self).__init__()
         self.original_layer = original_layer
+
+        self.alpha = alpha
 
         # Store the direction in the correct device and dtype upfront
         self.r = direction.T
@@ -135,7 +269,7 @@ class AblationDecoderLayer(nn.Module):
         proj = torch.matmul(hidden_states, projection)  # self.
 
         # remove the projection
-        ablated = hidden_states - proj
+        ablated = hidden_states - self.alpha * proj
 
         # apply to the first argument
         args = (ablated,) + args[1:]
@@ -388,49 +522,77 @@ if __name__ == "__main__":
         concept_dir = mean_0 - mean_1
         concept_dir = concept_dir / concept_dir.norm()
         concept_dir = concept_dir.to(device)
+
         model.model.layers[layer_idx] = AblationDecoderLayer(
             layers[layer_idx], concept_dir.unsqueeze(dim=0)
         )
 
-    with torch.no_grad():
-        after_0 = [
-            model(
-                inp.to(device),
-                do_sample=False,
-                max_new_tokens=1,
-            )[
-                "logits"
-            ][-1, -1, :]
-            .detach()
-            .cpu()
-            .clone()
-            .to(torch.float)
-            for inp in tqdm(inputs_0)
-        ]
-        after_1 = [
-            model(
-                inp.to(device),
-                do_sample=False,
-                max_new_tokens=1,
-            )[
-                "logits"
-            ][-1, -1, :]
-            .detach()
-            .cpu()
-            .clone()
-            .to(torch.float)
-            for inp in tqdm(inputs_1)
-        ]
+    best_alpha = 0
+    best_acc = 1
+    for alpha in [
+        0.5,
+        0.6,
+        0.7,
+        0.8,
+        0.9,
+        1.0,
+        1.1,
+        1.2,
+        1.3,
+        1.4,
+        1.5,
+        1.6,
+        1.7,
+        1.8,
+        1.9,
+    ]:
+        for layer_indx in range(1, args.n_layers):
+            model.model.layers[layer_idx].alpha = alpha
+        with torch.no_grad():
+            after_0 = [
+                model(
+                    inp.to(device),
+                    do_sample=False,
+                    max_new_tokens=1,
+                )[
+                    "logits"
+                ][-1, -1, :]
+                .detach()
+                .cpu()
+                .clone()
+                .to(torch.float)
+                for inp in tqdm(inputs_0)
+            ]
+            after_1 = [
+                model(
+                    inp.to(device),
+                    do_sample=False,
+                    max_new_tokens=1,
+                )[
+                    "logits"
+                ][-1, -1, :]
+                .detach()
+                .cpu()
+                .clone()
+                .to(torch.float)
+                for inp in tqdm(inputs_1)
+            ]
+        lr = LogisticRegression(max_iter=1000).fit(
+            np.array(after_0 + after_1)[train_ids], y_train
+        )
+        beta = torch.from_numpy(lr.coef_)
+        end_score = lr.score(np.array(after_0 + after_1)[test_ids], y_test)
+        print(alpha)
+        print(beta.norm(p=torch.inf))
+        print(
+            "end score half",
+            end_score,
+        )
+        if end_score < best_acc:
+            best_alpha = alpha
+            best_acc = end_score
 
-    lr = LogisticRegression(max_iter=1000).fit(
-        np.array(after_0 + after_1)[train_ids], y_train
-    )
-    beta = torch.from_numpy(lr.coef_)
-    print(beta.norm(p=torch.inf))
-    print(
-        "end score half",
-        lr.score(np.array(after_0 + after_1)[test_ids], y_test),
-    )
+    print("best alpha", best_alpha, best, acc)
 
     if args.item2:
         dim_in_convos = dim_convo_func(
@@ -590,7 +752,7 @@ if __name__ == "__main__":
                 )
                 for convo in convos
             ]
-            tokens = 1
+            tokens = 1 if args.domain != "salary" else 10
             outputs = [
                 answer[0]["generated_text"]
                 for answer in tqdm(
