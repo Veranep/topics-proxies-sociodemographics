@@ -266,7 +266,7 @@ def train_probe(
             if mlp:
                 clf = MLPClassifier(random_state=42)
             else:
-                LogisticRegression(random_state=42)
+                clf = LogisticRegression(random_state=42)
             clf = clf.fit(X_train, y_train)
             # if save:
             #     with open(
