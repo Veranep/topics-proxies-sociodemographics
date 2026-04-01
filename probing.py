@@ -388,38 +388,20 @@ if __name__ == "__main__":
         ) as infile:
             representations = pickle.load(infile)
 
-        if args.dataset == "prism":
-            if args.balanced:
-                df = balance_df(df, args.demographic, "")
-            else:
-                df = df.loc[
-                    ~(df[args.demographic].isna())
-                    & (df[args.demographic] != "Prefer not to say")
-                    & (df[args.demographic] != "Unknown")
-                    & (df[args.demographic] != "female-male-non-binary")
-                ]
-        elif "cad" in args.dataset:
-            if args.balanced:
-                df = balance_df(
-                    df, args.demographic, args.dataset.split("_")[-1]
-                )
-            else:
-                df = df.loc[
-                    ~(df[args.demographic].isna())
-                    & (df[args.demographic] != "Prefer not to say")
-                    & (df[args.demographic] != "other")
-                    & (df[args.demographic] != "Unknown")
-                    & (df[args.demographic] != "female-male-non-binary")
-                ]
-        elif args.dataset == "chen":
-            if args.balanced:
-                df = balance_df(df, args.demographic, "")
-            else:
-                df = df.loc[
-                    ~(df[args.demographic].isna())
-                    & (df[args.demographic] != "Unknown")
-                    & (df[args.demographic] != "female-male-non-binary")
-                ]
+        if args.balanced:
+            df = balance_df(
+                df,
+                args.demographic,
+                args.dataset.split("_")[-1] if "cad" in args.dataset else "",
+            )
+        else:
+            df = df.loc[
+                ~(df[args.demographic].isna())
+                & (df[args.demographic] != "Prefer not to say")
+                & (df[args.demographic] != "Other")
+                & (df[args.demographic] != "Unknown")
+                & (df[args.demographic] != "female-male-non-binary")
+            ]
 
         print(df.index, len(df.index), len(representations))
         representations = representations[df.index]
