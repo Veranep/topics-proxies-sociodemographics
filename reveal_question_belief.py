@@ -286,6 +286,8 @@ if __name__ == "__main__":
         ~df_questions["q_id"].isin(df.columns.values)
     ].reset_index(drop=True)
 
+    print("n questions": df_questions.shape[0])
+
     ########
     for row in tqdm(df_questions.itertuples(index=False)):
         print(row.q_id)
