@@ -417,17 +417,10 @@ if __name__ == "__main__":
         )
 
     if args.domain:
-        df_questions = pd.read_pickle(f"{args.data_folder}/questions.gz")
-        qrange = {
-            "benefits": (61, 91),
-            "political": (91, 121),
-            "salary": (121, 151),
-            "legal": (151, 181),
-            "medical": (181, 211),
-        }[args.domain]
-        df_questions = df_questions.loc[
-            df_questions["q_id"].isin([f"q_{i}" for i in range(*qrange)])
-        ]
+        df_questions = pd.read_pickle(
+            f"{args.data_folder}/{args.model.split('/')[1]}_questions.gz"
+        )
+        df_questions = df_questions.loc[df_questions["domain"] == args.domain]
 
         convos = convo_func(df)
 
