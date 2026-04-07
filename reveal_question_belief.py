@@ -243,13 +243,13 @@ if __name__ == "__main__":
 
         q_ids = [f"q_{i}" for i in range(len(questions))]
         baseline_answers = []
-        for q, q_id in zip(questions, q_ids):
+        for q, q_id, domain in zip(questions, q_ids, q_domain):
             tokens = 1
             if int(q_id.split("_")[1]) == 58:
                 tokens += 3
             elif int(q_id.split("_")[1]) in [59, 60]:
                 tokens += 99
-            elif int(q_id.split("_")[1]) in list(range(121, 151)):
+            elif domain == "salary":
                 tokens += 9
             baseline_answers.append(
                 model(
