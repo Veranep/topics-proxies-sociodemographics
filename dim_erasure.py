@@ -35,7 +35,9 @@ def get_example_ids(df, item):
                     "conversation_id"
                 ].tolist()
         else:
-            in_ids = df[df["topic"] == f'"{keywords[0]}"']["conversation_id"]
+            in_ids = df[df["topic"] == f'"{keywords[0]}"'][
+                "conversation_id"
+            ].tolist()
         out_ids = [cid for cid in all_ids if cid not in in_ids]
         np.random.shuffle(in_ids)
         np.random.shuffle(out_ids)
