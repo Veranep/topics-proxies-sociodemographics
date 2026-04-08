@@ -44,8 +44,8 @@ def get_example_ids(df, item):
         in_ids = in_ids[:200]
         out_ids = out_ids[:200]
     elif "demographic" in item:
-        df = binarize_df(df, item.split(":")[1])
-        df = df.sort_values(by=item.split(":")[1])
+        df, col = binarize_df(df, item.split(":")[1])
+        df = df.sort_values(by=col)
         in_ids = df.iloc[:200]["conversation_id"].tolist()
         out_ids = df.iloc[-200:]["conversation_id"].tolist()
     else:
@@ -153,6 +153,11 @@ def binarize_df(df, col):
     elif col == "gender":
         df.loc[df[col] == "Male", col] = 0
         df.loc[df[col] == "Female", col] = 1
+    elif col == "gender_nonbinary":
+        col = "gender"
+        df.loc[df[col] == "Male", col] = 0
+        df.loc[df[col] == "Female", col] = 0
+        df.loc[df[col] == "Non-binary / third gender", col] = 1
     elif col == "religion":
         df.loc[df[col] == "No Affiliation", col] = 0
         df.loc[df[col] == "Christian", col] = 1
@@ -193,7 +198,7 @@ def binarize_df(df, col):
         df.loc[df[col] == "Not familiar at all"] = 0
         df.loc[df[col] == "Very familiar"] = 1
     selected_df = df[df[col].isin([0, 1])]
-    return selected_df
+    return selected_df, col
 
 
 def get_model_layers(model):
