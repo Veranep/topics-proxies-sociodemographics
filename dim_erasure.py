@@ -134,17 +134,17 @@ def binarize_df(df, col):
         df.loc[df[col] == "male", col] = 0
         df.loc[df[col] == "female", col] = 1
     elif col == "annotator_education_level":
-        df.loc[df[col] == "Some or complete graduate degree"] = 0
-        df.loc[df[col] == "(At most) Complete Secondary"] = 1
-        df.loc[df[col] == "Some post-secondary"] = 1
+        df.loc[df[col] == "Some or complete graduate degree", col] = 0
+        df.loc[df[col] == "(At most) Complete Secondary", col] = 1
+        df.loc[df[col] == "Some post-secondary", col] = 1
     elif col == "annotator_political":
-        df.loc[df[col] == "Somewhat left-leaning"] = 0
-        df.loc[df[col] == "Very left-leaning"] = 0
-        df.loc[df[col] == "Somewhat right-leaning"] = 1
-        df.loc[df[col] == "Very right-leaning"] = 1
+        df.loc[df[col] == "Somewhat left-leaning", col] = 0
+        df.loc[df[col] == "Very left-leaning", col] = 0
+        df.loc[df[col] == "Somewhat right-leaning", col] = 1
+        df.loc[df[col] == "Very right-leaning", col] = 1
     elif col == "annotator_ethnicity":
-        df.loc[df[col] == "White"] = 0
-        df.loc[df[col] == "Black or African American"] = 1
+        df.loc[df[col] == "White", col] = 0
+        df.loc[df[col] == "Black or African American", col] = 1
 
     elif col == "age":
         df.loc[df[col] == "18-24 years old", col] = 0
