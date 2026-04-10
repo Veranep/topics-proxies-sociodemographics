@@ -20,34 +20,45 @@ from probing import balance_df, get_representations, train_probe
 # Inspiration: https://github.com/fholstege/uncensoringllms/tree/main
 
 
-def get_example_ids(df, item):
+def get_example_ids(df, item, item2):
+    n = 10
+    # n = 200
     all_ids = df["conversation_id"].unique()
     if item == "random":
-        ids = np.random.choice(all_ids, 400, replace=False)
-        in_ids = ids[:200]
-        out_ids = ids[-200:]
+        ids = np.random.choice(all_ids, n * 2, replace=False)
+        in_ids = ids[:n]
+        out_ids = ids[-n:]
     elif "topic" in item:
-        keywords = item.split(":")[1].split(",")
+        keywords1 = item.split(":")[1].split(",")
+        keywords2 = item2.split(":")[1].split(",")
         if "," in item:
             in_ids = []
-            for k in keywords:
+            for k in keywords1:
+                in_ids += df[df["topic"].str.contains(f" {k} ", na=False)][
+                    "conversation_id"
+                ].tolist()
+            out_ids = []
+            for k in keywords2:
                 in_ids += df[df["topic"].str.contains(f" {k} ", na=False)][
                     "conversation_id"
                 ].tolist()
         else:
-            in_ids = df[df["topic"] == f'"{keywords[0]}"'][
+            in_ids = df[df["topic"] == f'"{keywords1[0]}"'][
                 "conversation_id"
             ].tolist()
-        out_ids = [cid for cid in all_ids if cid not in in_ids]
+            out_ids = df[df["topic"] == f'"{keywords2[0]}"'][
+                "conversation_id"
+            ].tolist()
+        # out_ids = [cid for cid in all_ids if cid not in in_ids]
         np.random.shuffle(in_ids)
         np.random.shuffle(out_ids)
-        in_ids = in_ids[:200]
-        out_ids = out_ids[:200]
+        in_ids = in_ids[:n]
+        out_ids = out_ids[:n]
     elif "demographic" in item:
         df, col = binarize_df(df, item.split(":")[1])
         df = df.sort_values(by=col)
-        in_ids = df.iloc[:200]["conversation_id"].tolist()
-        out_ids = df.iloc[-200:]["conversation_id"].tolist()
+        in_ids = df.iloc[:n]["conversation_id"].tolist()
+        out_ids = df.iloc[-n:]["conversation_id"].tolist()
     else:
         if item not in df.columns:
             raise Exception(f"Column {item} is not in the data")
@@ -64,8 +75,8 @@ def get_example_ids(df, item):
             .reset_index()
         )
         df = df.sort_values(by=item)
-        in_ids = df.iloc[:200]["conversation_id"].tolist()
-        out_ids = df.iloc[-200:]["conversation_id"].tolist()
+        in_ids = df.iloc[:n]["conversation_id"].tolist()
+        out_ids = df.iloc[-n:]["conversation_id"].tolist()
     return in_ids, out_ids
 
 
@@ -390,47 +401,75 @@ if __name__ == "__main__":
 
     if args.dataset == "prism":
         convo_func = get_prism_convos
-        dim_dataset = "cad_en"
-        dim_convo_func = get_cad_convos
+        # dim_dataset = "cad_en"
+        # dim_convo_func = get_cad_convos
 
     elif "cad" in args.dataset:
         convo_func = get_cad_convos
-        dim_dataset = "prism"
-        dim_convo_func = get_prism_convos
+        # dim_dataset = "prism"
+        # dim_convo_func = get_prism_convos
 
-    dim_df = pd.read_pickle(
-        f"{args.data_folder}/{dim_dataset}_preprocessed.gz"
-    )
-    dim_linguistic_df = pd.read_pickle(
-        f"data/{dim_dataset}_utterances_linguistic.gz"
-    ).drop(
-        columns=["s_neutral_model_response", "s_neutral_user_prompt"],
-        errors="ignore",
-    )
-    for c in ["politeness_user_prompt", "politeness_model_response"]:
-        if c in dim_linguistic_df:
-            dim_linguistic_df[c] = dim_linguistic_df[c].replace(
-                {
-                    "impolite": 0,
-                    "neutral": 0.5,
-                    "polite": 1,
-                    "somewhat polite": 0.75,
-                }
-            )
-    dim_linguistic_df = dim_linguistic_df.rename(
-        columns={"gpt_description": "topic"}
-    )
+    dim_df = df
 
-    in_ids, out_ids = get_example_ids(
-        dim_linguistic_df,
-        args.item,
-    )
+    if os.path.isfile(
+        f"{args.results_folder}/{args.dataset}_dim_{args.item}{'_'+ args.item2 if args.item2 else ''}"
+    ):
+        with open(
+            f"{args.results_folder}/{args.dataset}_dim_{args.item}{'_'+ args.item2 if args.item2 else ''}",
+            "rb",
+        ) as infile:
+            ids_dict = pickle.load(infile)
+        in_ids = ids_dict["in_ids"]
+        out_ids = ids_dict["out_ids"]
 
-    if args.item2:
-        in_ids2, out_ids2 = get_example_ids(
+    else:
+        dim_linguistic_df = pd.read_pickle(
+            f"data/{args.dataset}_utterances_linguistic.gz"
+        ).drop(
+            columns=["s_neutral_model_response", "s_neutral_user_prompt"],
+            errors="ignore",
+        )
+
+        # dim_df = pd.read_pickle(
+        #     f"{args.data_folder}/{dim_dataset}_preprocessed.gz"
+        # )
+        # dim_linguistic_df = pd.read_pickle(
+        #     f"data/{dim_dataset}_utterances_linguistic.gz"
+        # ).drop(
+        #     columns=["s_neutral_model_response", "s_neutral_user_prompt"],
+        #     errors="ignore",
+        # )
+        for c in ["politeness_user_prompt", "politeness_model_response"]:
+            if c in dim_linguistic_df:
+                dim_linguistic_df[c] = dim_linguistic_df[c].replace(
+                    {
+                        "impolite": 0,
+                        "neutral": 0.5,
+                        "polite": 1,
+                        "somewhat polite": 0.75,
+                    }
+                )
+        dim_linguistic_df = dim_linguistic_df.rename(
+            columns={"gpt_description": "topic"}
+        )
+
+        in_ids, out_ids = get_example_ids(
             dim_linguistic_df,
+            args.item,
             args.item2,
         )
+
+        with open(
+            f"{args.results_folder}/{args.dataset}_dim_{args.item}{'_'+ args.item2 if args.item2 else ''}",
+            "wb",
+        ) as outfile:
+            pickle.dump({"in_ids": in_ids, "out_ids": out_ids})
+
+    # if args.item2:
+    #     in_ids2, out_ids2 = get_example_ids(
+    #         dim_linguistic_df,
+    #         args.item2,
+    #     )
 
     if args.domain:
         df_questions = pd.read_pickle(
@@ -584,146 +623,146 @@ if __name__ == "__main__":
         end_score,
     )
 
-    if args.item2:
-        dim_in_convos = dim_convo_func(
-            dim_df[dim_df["conversation_id"].isin(in_ids2)]
-        )
-        dim_out_convos = dim_convo_func(
-            dim_df[dim_df["conversation_id"].isin(out_ids2)]
-        )
+    # if args.item2:
+    #     dim_in_convos = dim_convo_func(
+    #         dim_df[dim_df["conversation_id"].isin(in_ids2)]
+    #     )
+    #     dim_out_convos = dim_convo_func(
+    #         dim_df[dim_df["conversation_id"].isin(out_ids2)]
+    #     )
 
-        inputs_0 = [
-            tokenizer.apply_chat_template(
-                convo,
-                tokenize=True,
-                add_generation_prompt=True,
-                return_tensors="pt",
-                return_dict=False,
-            )
-            for convo in dim_in_convos
-        ]
-        inputs_1 = [
-            tokenizer.apply_chat_template(
-                convo,
-                tokenize=True,
-                add_generation_prompt=True,
-                return_tensors="pt",
-                return_dict=False,
-            )
-            for convo in dim_out_convos
-        ]
+    #     inputs_0 = [
+    #         tokenizer.apply_chat_template(
+    #             convo,
+    #             tokenize=True,
+    #             add_generation_prompt=True,
+    #             return_tensors="pt",
+    #             return_dict=False,
+    #         )
+    #         for convo in dim_in_convos
+    #     ]
+    #     inputs_1 = [
+    #         tokenizer.apply_chat_template(
+    #             convo,
+    #             tokenize=True,
+    #             add_generation_prompt=True,
+    #             return_tensors="pt",
+    #             return_dict=False,
+    #         )
+    #         for convo in dim_out_convos
+    #     ]
 
-        representations_0 = np.array(
-            [
-                [
-                    rep[-1, -1, :].detach().cpu().clone().to(torch.float)
-                    for rep in model(
-                        inp.to(device),
-                        do_sample=False,
-                        output_hidden_states=True,
-                        max_new_tokens=1,
-                        return_dict=True,
-                    )["hidden_states"]
-                ]
-                for inp in tqdm(inputs_0)
-            ]
-        )
-        representations_1 = np.array(
-            [
-                [
-                    rep[-1, -1, :].detach().cpu().clone().to(torch.float)
-                    for rep in model(
-                        inp.to(device),
-                        do_sample=False,
-                        output_hidden_states=True,
-                        max_new_tokens=1,
-                        return_dict=True,
-                    )["hidden_states"]
-                ]
-                for inp in tqdm(inputs_1)
-            ]
-        )
+    #     representations_0 = np.array(
+    #         [
+    #             [
+    #                 rep[-1, -1, :].detach().cpu().clone().to(torch.float)
+    #                 for rep in model(
+    #                     inp.to(device),
+    #                     do_sample=False,
+    #                     output_hidden_states=True,
+    #                     max_new_tokens=1,
+    #                     return_dict=True,
+    #                 )["hidden_states"]
+    #             ]
+    #             for inp in tqdm(inputs_0)
+    #         ]
+    #     )
+    #     representations_1 = np.array(
+    #         [
+    #             [
+    #                 rep[-1, -1, :].detach().cpu().clone().to(torch.float)
+    #                 for rep in model(
+    #                     inp.to(device),
+    #                     do_sample=False,
+    #                     output_hidden_states=True,
+    #                     max_new_tokens=1,
+    #                     return_dict=True,
+    #                 )["hidden_states"]
+    #             ]
+    #             for inp in tqdm(inputs_1)
+    #         ]
+    #     )
 
-        layers = get_model_layers(model)
-        for layer_idx in range(1, args.n_layers):
+    #     layers = get_model_layers(model)
+    #     for layer_idx in range(1, args.n_layers):
 
-            # Extract hidden states at the specified layer and position
-            hidden_0 = [torch.tensor(r[layer_idx]) for r in representations_0]
-            hidden_1 = [torch.tensor(r[layer_idx]) for r in representations_1]
+    #         # Extract hidden states at the specified layer and position
+    #         hidden_0 = [torch.tensor(r[layer_idx]) for r in representations_0]
+    #         hidden_1 = [torch.tensor(r[layer_idx]) for r in representations_1]
 
-            if layer_idx == (args.n_layers - 1):
-                train_ids, test_ids, y_train, y_test = train_test_split(
-                    range(len(hidden_0 + hidden_1)),
-                    [0] * len(hidden_0) + [1] * len(hidden_1),
-                    test_size=0.33,
-                    random_state=42,
-                    stratify=[0] * len(hidden_0) + [1] * len(hidden_1),
-                )
-                lr = LogisticRegression(max_iter=1000).fit(
-                    np.array(hidden_0 + hidden_1)[train_ids],
-                    y_train,
-                )
-                beta = torch.from_numpy(lr.coef_)
-                print(beta.norm(p=torch.inf))
-                print(
-                    "start score half",
-                    lr.score(
-                        np.array(hidden_0 + hidden_1)[test_ids],
-                        y_test,
-                    ),
-                )
+    #         if layer_idx == (args.n_layers - 1):
+    #             train_ids, test_ids, y_train, y_test = train_test_split(
+    #                 range(len(hidden_0 + hidden_1)),
+    #                 [0] * len(hidden_0) + [1] * len(hidden_1),
+    #                 test_size=0.33,
+    #                 random_state=42,
+    #                 stratify=[0] * len(hidden_0) + [1] * len(hidden_1),
+    #             )
+    #             lr = LogisticRegression(max_iter=1000).fit(
+    #                 np.array(hidden_0 + hidden_1)[train_ids],
+    #                 y_train,
+    #             )
+    #             beta = torch.from_numpy(lr.coef_)
+    #             print(beta.norm(p=torch.inf))
+    #             print(
+    #                 "start score half",
+    #                 lr.score(
+    #                     np.array(hidden_0 + hidden_1)[test_ids],
+    #                     y_test,
+    #                 ),
+    #             )
 
-            # Compute mean of hidden states for each category
-            mean_0 = torch.stack(hidden_0).mean(dim=0)
-            mean_1 = torch.stack(hidden_1).mean(dim=0)
+    #         # Compute mean of hidden states for each category
+    #         mean_0 = torch.stack(hidden_0).mean(dim=0)
+    #         mean_1 = torch.stack(hidden_1).mean(dim=0)
 
-            # Compute refusal direction as the normalized difference between harmful and harmless means
-            concept_dir = mean_0 - mean_1
-            concept_dir = concept_dir / concept_dir.norm()
-            concept_dir = concept_dir.to(device)
-            model.model.layers[layer_idx] = AblationDecoderLayer(
-                layers[layer_idx], concept_dir.unsqueeze(dim=0)
-            )
+    #         # Compute refusal direction as the normalized difference between harmful and harmless means
+    #         concept_dir = mean_0 - mean_1
+    #         concept_dir = concept_dir / concept_dir.norm()
+    #         concept_dir = concept_dir.to(device)
+    #         model.model.layers[layer_idx] = AblationDecoderLayer(
+    #             layers[layer_idx], concept_dir.unsqueeze(dim=0)
+    #         )
 
-        with torch.no_grad():
-            after_0 = [
-                model(
-                    inp.to(device),
-                    do_sample=False,
-                    max_new_tokens=1,
-                )[
-                    "logits"
-                ][-1, -1, :]
-                .detach()
-                .cpu()
-                .clone()
-                .to(torch.float)
-                for inp in tqdm(inputs_0)
-            ]
-            after_1 = [
-                model(
-                    inp.to(device),
-                    do_sample=False,
-                    max_new_tokens=1,
-                )[
-                    "logits"
-                ][-1, -1, :]
-                .detach()
-                .cpu()
-                .clone()
-                .to(torch.float)
-                for inp in tqdm(inputs_1)
-            ]
+    #     with torch.no_grad():
+    #         after_0 = [
+    #             model(
+    #                 inp.to(device),
+    #                 do_sample=False,
+    #                 max_new_tokens=1,
+    #             )[
+    #                 "logits"
+    #             ][-1, -1, :]
+    #             .detach()
+    #             .cpu()
+    #             .clone()
+    #             .to(torch.float)
+    #             for inp in tqdm(inputs_0)
+    #         ]
+    #         after_1 = [
+    #             model(
+    #                 inp.to(device),
+    #                 do_sample=False,
+    #                 max_new_tokens=1,
+    #             )[
+    #                 "logits"
+    #             ][-1, -1, :]
+    #             .detach()
+    #             .cpu()
+    #             .clone()
+    #             .to(torch.float)
+    #             for inp in tqdm(inputs_1)
+    #         ]
 
-        lr = LogisticRegression(max_iter=1000).fit(
-            np.array(after_0 + after_1)[train_ids], y_train
-        )
-        beta = torch.from_numpy(lr.coef_)
-        print(beta.norm(p=torch.inf))
-        print(
-            "end score half",
-            lr.score(np.array(after_0 + after_1)[test_ids], y_test),
-        )
+    #     lr = LogisticRegression(max_iter=1000).fit(
+    #         np.array(after_0 + after_1)[train_ids], y_train
+    #     )
+    #     beta = torch.from_numpy(lr.coef_)
+    #     print(beta.norm(p=torch.inf))
+    #     print(
+    #         "end score half",
+    #         lr.score(np.array(after_0 + after_1)[test_ids], y_test),
+    #     )
 
     if args.domain:
         dim_pipeline = pipeline(
