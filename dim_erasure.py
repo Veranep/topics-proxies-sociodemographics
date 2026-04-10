@@ -411,6 +411,7 @@ if __name__ == "__main__":
         # dim_convo_func = get_prism_convos
 
     dim_df = df
+    dim_convo_func = convo_func
 
     if os.path.isfile(
         f"{args.results_folder}/{args.dataset}_dim_{args.item}{'_'+ args.item2 if args.item2 else ''}.pkl"
