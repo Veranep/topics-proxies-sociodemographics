@@ -183,8 +183,9 @@ def binarize_df(df, col):
     elif col == "employment_status":
         df.loc[df[col] == "Unemployed, seeking work", col] = 0
         df.loc[df[col] == "Unemployed, not seeking work", col] = 0
-        df.loc[df[col] == "Homemaker / Stay-at-home parent", col] = 0
+        # df.loc[df[col] == "Homemaker / Stay-at-home parent", col] = 0
         df.loc[df[col] == "Working full-time", col] = 1
+        df.loc[df[col] == "Working part-time", col] = 1
     elif col == "education":
         df.loc[df[col] == "Some Primary", col] = 0
         df.loc[df[col] == "Completed Primary School", col] = 0
