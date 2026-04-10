@@ -480,7 +480,7 @@ if __name__ == "__main__":
             ~df_questions["q_id"].isin(df.columns.values)
         ].reset_index(drop=True)
 
-        convos = convo_func(df)
+        convos = convo_func(df[~df["conversation_id"].isin(in_ids + out_ids)])
 
     dim_in_convos = dim_convo_func(
         dim_df[dim_df["conversation_id"].isin(in_ids)]
