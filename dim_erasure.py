@@ -413,10 +413,10 @@ if __name__ == "__main__":
     dim_df = df
 
     if os.path.isfile(
-        f"{args.results_folder}/{args.dataset}_dim_{args.item}{'_'+ args.item2 if args.item2 else ''}"
+        f"{args.results_folder}/{args.dataset}_dim_{args.item}{'_'+ args.item2 if args.item2 else ''}.pkl"
     ):
         with open(
-            f"{args.results_folder}/{args.dataset}_dim_{args.item}{'_'+ args.item2 if args.item2 else ''}",
+            f"{args.results_folder}/{args.dataset}_dim_{args.item}{'_'+ args.item2 if args.item2 else ''}.pkl",
             "rb",
         ) as infile:
             ids_dict = pickle.load(infile)
@@ -461,7 +461,7 @@ if __name__ == "__main__":
         )
 
         with open(
-            f"{args.results_folder}/{args.dataset}_dim_{args.item}{'_'+ args.item2 if args.item2 else ''}",
+            f"{args.results_folder}/{args.dataset}_dim_{args.item}{'_'+ args.item2 if args.item2 else ''}.pkl",
             "wb",
         ) as outfile:
             pickle.dump({"in_ids": in_ids, "out_ids": out_ids}, outfile)
