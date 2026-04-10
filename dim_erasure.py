@@ -464,7 +464,7 @@ if __name__ == "__main__":
             f"{args.results_folder}/{args.dataset}_dim_{args.item}{'_'+ args.item2 if args.item2 else ''}",
             "wb",
         ) as outfile:
-            pickle.dump({"in_ids": in_ids, "out_ids": out_ids})
+            pickle.dump({"in_ids": in_ids, "out_ids": out_ids}, outfile)
 
     # if args.item2:
     #     in_ids2, out_ids2 = get_example_ids(
