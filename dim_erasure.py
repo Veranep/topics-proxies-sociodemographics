@@ -39,7 +39,7 @@ def get_example_ids(df, item, item2):
                 ].tolist()
             out_ids = []
             for k in keywords2:
-                in_ids += df[df["topic"].str.contains(f" {k} ", na=False)][
+                out_ids += df[df["topic"].str.contains(f" {k} ", na=False)][
                     "conversation_id"
                 ].tolist()
         else:
