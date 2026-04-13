@@ -50,6 +50,8 @@ def get_example_ids(df, item, item2):
                 "conversation_id"
             ].tolist()
         # out_ids = [cid for cid in all_ids if cid not in in_ids]
+        in_ids = list(set(in_ids))
+        out_ids = list(set(out_ids))
         np.random.shuffle(in_ids)
         np.random.shuffle(out_ids)
         in_ids = in_ids[:n]
@@ -57,8 +59,9 @@ def get_example_ids(df, item, item2):
     elif "demographic" in item:
         df, col = binarize_df(df, item.split(":")[1])
         df = df.sort_values(by=col)
-        in_ids = df.iloc[:n]["conversation_id"].tolist()
-        out_ids = df.iloc[-n:]["conversation_id"].tolist()
+        ids = list(set(df["conversation_id"].tolist()))
+        in_ids = ids[:n]
+        out_ids = ids[-n:]
     else:
         if item not in df.columns:
             raise Exception(f"Column {item} is not in the data")
