@@ -26,8 +26,8 @@ def get_example_ids(df, item, item2):
     all_ids = df["conversation_id"].unique()
     if item == "random":
         ids = np.random.choice(all_ids, n * 2, replace=False)
-        in_ids = ids[:n]
-        out_ids = ids[-n:]
+        in_ids = ids[:n].tolist()
+        out_ids = ids[-n:].tolist()
     elif "topic" in item:
         keywords1 = item.split(":")[1].split(",")
         keywords2 = item2.split(":")[1].split(",")
