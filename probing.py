@@ -216,15 +216,16 @@ def train_probe(
     target,
     representations,
     dataset,
-    n_layers,
     demographic,
     save,
     save_file,
     mlp,
+    last_layer,
+    first_layer=0,
 ):
     scores = {
         n: {"f1": [], "majority f1": [], "random f1": []}
-        for n in range(n_layers)
+        for n in range(first_layer, last_layer)
     }
     for r in tqdm(range(5)):
         if save and r > 0:
@@ -260,7 +261,7 @@ def train_probe(
             ),
             average="macro",
         )
-        for l in tqdm(range(n_layers)):
+        for l in tqdm(range(first_layer, last_layer)):
             X_train = [rep[l] for rep in train_representations]
             X_test = [rep[l] for rep in test_representations]
             if mlp:
@@ -278,7 +279,7 @@ def train_probe(
             scores[l]["f1"].append(f1_score(y_test, y_pred, average="macro"))
             scores[l]["majority f1"].append(majority_f1)
             scores[l]["random f1"].append(random_f1)
-    for l in range(n_layers):
+    for l in range(first_layer, last_layer):
         scores[l]["majority aso"] = aso(
             scores[l]["f1"], scores[l]["majority f1"], seed=42
         )
@@ -413,11 +414,12 @@ if __name__ == "__main__":
             df[args.demographic].tolist(),
             representations,
             args.dataset,
-            args.n_layers,
             args.demographic,
             save=args.save,
             save_file=args.results_folder + f"/{args.model.split('/')[1]}",
             mlp=args.mlp,
+            last_layer=args.n_layers,
+            first_layer=0,
         )
         with open(
             args.results_folder

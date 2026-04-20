@@ -476,6 +476,8 @@ if __name__ == "__main__":
     #         args.item2,
     #     )
 
+    df = df[~df["conversation_id"].isin(in_ids + out_ids)]
+
     if args.domain:
         df_questions = pd.read_pickle(
             f"{args.data_folder}/{args.model.split('/')[1]}_questions.gz"
@@ -485,7 +487,7 @@ if __name__ == "__main__":
             ~df_questions["q_id"].isin(df.columns.values)
         ].reset_index(drop=True)
 
-        convos = convo_func(df[~df["conversation_id"].isin(in_ids + out_ids)])
+        convos = convo_func(df)
 
     dim_in_convos = dim_convo_func(
         dim_df[dim_df["conversation_id"].isin(in_ids)]
@@ -808,6 +810,13 @@ if __name__ == "__main__":
                 f"{args.results_folder}/{args.model.split('/')[1]}_{args.dataset}_dim_{args.domain}_{args.item}{'_'+ args.item2 if args.item2 else ''}_answers.gz"
             )
     elif args.demographic:
+        with open(
+            args.results_folder
+            + f"/{args.model.split('/')[1]}_{args.dataset}_representations.pkl",
+            "rb",
+        ) as infile:
+            old_representations = pickle.load(infile)
+
         representations = get_representations(
             df, convo_func, tokenizer, model, device
         )
@@ -831,6 +840,9 @@ if __name__ == "__main__":
             ):
                 pass
             specific_representations = representations[specific_df.index]
+            old_specific_representations = old_representations[
+                specific_df.index
+            ]
             scores = train_probe(
                 specific_df[args.demographic].tolist(),
                 specific_representations,
@@ -840,10 +852,27 @@ if __name__ == "__main__":
                 save=False,
                 save_file=args.results_folder + f"/{args.model.split('/')[1]}",
                 mlp=True,
+                last_layer=25,
+                first_layer=10,
+            )
+            old_scores = train_probe(
+                specific_df[args.demographic].tolist(),
+                old_specific_representations,
+                args.dataset,
+                args.n_layers,
+                args.demographic,
+                save=False,
+                save_file=args.results_folder + f"/{args.model.split('/')[1]}",
+                mlp=True,
+                last_layer=25,
+                first_layer=10,
             )
             with open(
                 args.results_folder
                 + f"/{args.model.split('/')[1]}_{args.dataset}_dim_{args.demographic.replace(' ','')}{specific_label}_{args.item}{'_'+ args.item2 if args.item2 else ''}_mlp_scores.pkl",
                 "wb",
             ) as outfile:
-                pickle.dump(scores, outfile)
+                pickle.dump(
+                    {"after_erasure": scores, "before_erasure": old_scores},
+                    outfile,
+                )
