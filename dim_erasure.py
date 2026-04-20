@@ -811,7 +811,7 @@ if __name__ == "__main__":
             )
     elif args.demographic:
         with open(
-            args.results_folder
+            "llama_probing_results"
             + f"/{args.model.split('/')[1]}_{args.dataset}_representations.pkl",
             "rb",
         ) as infile:
