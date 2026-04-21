@@ -476,8 +476,6 @@ if __name__ == "__main__":
     #         args.item2,
     #     )
 
-    df = df[~df["conversation_id"].isin(in_ids + out_ids)]
-
     if args.domain:
         df_questions = pd.read_pickle(
             f"{args.data_folder}/{args.model.split('/')[1]}_questions.gz"
@@ -487,7 +485,7 @@ if __name__ == "__main__":
             ~df_questions["q_id"].isin(df.columns.values)
         ].reset_index(drop=True)
 
-        convos = convo_func(df)
+        convos = convo_func(df[~df["conversation_id"].isin(in_ids + out_ids)])
 
     dim_in_convos = dim_convo_func(
         dim_df[dim_df["conversation_id"].isin(in_ids)]
@@ -772,6 +770,7 @@ if __name__ == "__main__":
     #     )
 
     if args.domain:
+        df = df[~df["conversation_id"].isin(in_ids + out_ids)]
         dim_pipeline = pipeline(
             "text-generation",
             model=model,
@@ -820,6 +819,7 @@ if __name__ == "__main__":
         representations = get_representations(
             df, convo_func, tokenizer, model, device
         )
+        df = df[~df["conversation_id"].isin(in_ids + out_ids)]
         non_balanced_df = df.loc[
             ~(df[args.demographic].isna())
             & (df[args.demographic] != "Prefer not to say")
