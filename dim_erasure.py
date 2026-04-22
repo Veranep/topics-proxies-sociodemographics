@@ -803,6 +803,7 @@ if __name__ == "__main__":
 
             df = pd.concat(
                 [df, pd.DataFrame({row.q_id: outputs})],
+                ignore_index=True,
                 axis=1,
             )
             df.to_pickle(
