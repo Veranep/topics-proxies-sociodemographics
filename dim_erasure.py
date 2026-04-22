@@ -770,7 +770,9 @@ if __name__ == "__main__":
     #     )
 
     if args.domain:
-        df = df[~df["conversation_id"].isin(in_ids + out_ids)]
+        df = df[~df["conversation_id"].isin(in_ids + out_ids)].reset_index(
+            drop=True
+        )
         dim_pipeline = pipeline(
             "text-generation",
             model=model,
@@ -801,11 +803,7 @@ if __name__ == "__main__":
                 )
             ]
 
-            df = pd.concat(
-                [df, pd.DataFrame({row.q_id: outputs})],
-                ignore_index=True,
-                axis=1,
-            )
+            df[row.q_id] = outputs
             df.to_pickle(
                 f"{args.results_folder}/{args.model.split('/')[1]}_{args.dataset}_dim_{args.domain}_{args.item}{'_'+ args.item2 if args.item2 else ''}_answers.gz"
             )
