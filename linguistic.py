@@ -10,6 +10,7 @@ from tqdm import tqdm
 from transformers import pipeline
 import pandas as pd
 import pickle
+import sys
 
 
 if __name__ == "__main__":
@@ -47,6 +48,7 @@ if __name__ == "__main__":
         df.to_pickle(
             f"{args.data_folder}/{args.dataset}_utterances_linguistic.gz"
         )
+        sys.exit(0)
 
     df = pd.read_pickle(
         f"{args.data_folder}/{args.dataset}_utterances_preprocessed.gz"
