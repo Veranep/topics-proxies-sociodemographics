@@ -9,7 +9,6 @@ from tqdm import tqdm
 from transformers import pipeline
 import pandas as pd
 import pickle
-import sys
 
 
 if __name__ == "__main__":
@@ -30,24 +29,6 @@ if __name__ == "__main__":
     parser.add_argument("--redo_emo_sent", action="store_true")
     args = parser.parse_args()
     device = "cuda" if torch.cuda.is_available() else "cpu"
-
-    if args.dataset in ["prism", "cad_en"]:
-        df = pd.read_pickle(
-            f"{args.data_folder}/{args.dataset}_utterances_linguistic.gz"
-        )
-        perplexity = evaluate.load("perplexity", module_type="metric")
-        for column in ["user_prompt", "model_response"]:
-            df[f"perplexity_{column}"] = perplexity.compute(
-                model_id="gpt2",
-                predictions=df[column].to_list(),
-                device=device,
-                max_length=512,
-                batch_size=8,
-            )["perplexities"]
-        df.to_pickle(
-            f"{args.data_folder}/{args.dataset}_utterances_linguistic.gz"
-        )
-        sys.exit(0)
 
     df = pd.read_pickle(
         f"{args.data_folder}/{args.dataset}_utterances_preprocessed.gz"
