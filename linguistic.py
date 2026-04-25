@@ -43,6 +43,7 @@ if __name__ == "__main__":
                 predictions=df[column].to_list(),
                 device=device,
                 max_length=512,
+                batch_size=1,
             )["perplexities"]
         df.to_pickle(
             f"{args.data_folder}/{args.dataset}_utterances_linguistic.gz"
@@ -161,6 +162,7 @@ if __name__ == "__main__":
             predictions=df[column].to_list(),
             device=device,
             max_length=512,
+            batch_size=1,
         )["perplexities"]
 
     del perplexity
