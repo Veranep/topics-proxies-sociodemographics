@@ -1,7 +1,6 @@
 import argparse
 from datasets import load_dataset
 import evaluate
-import nltk
 import numpy as np
 import spacy
 import textstat
@@ -202,10 +201,13 @@ if __name__ == "__main__":
             syllable_sum = 0
             concreteness_sum = 0
             unique_lemmas = set()
+            stop_words = 0
             for sent in spacy_doc.sents:
                 num_sents += 1
 
                 for token in sent:
+                    if token.is_stop:
+                        stop_words += 1
                     if token.is_alpha:
                         num_alpha_tokens += 1
                         if language in ["en", "it", "fr"]:
@@ -242,13 +244,7 @@ if __name__ == "__main__":
             num_entities_per_sent = (
                 num_entities / num_sents if num_sents > 0 else None
             )
-            punctuation = text.str.count(r"[^\w\s]+")
-            stop_words = (
-                text.str.replace(r"[^\w\s]", "")
-                .str.lower()
-                .apply(lambda x: [item for item in x.split() if item in stop])
-                .str.len()
-            )
+            punctuation = text.count(r"[^\w\s]+")
 
             if language in ["en", "it", "fr"]:
                 reading_ease = textstat.flesch_reading_ease(text)
