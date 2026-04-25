@@ -140,7 +140,7 @@ if __name__ == "__main__":
 
         df[f"perplexity_{column}"] = perplexity.compute(
             model_id="ai-forever/mGPT",
-            predictions=df[column].to_list(),
+            predictions=df[column].fillna("").to_list(),
             device=device,
             max_length=512,
             batch_size=16 if language not in ["fr", "en"] else 8,
