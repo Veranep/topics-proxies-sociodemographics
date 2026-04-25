@@ -31,6 +31,23 @@ if __name__ == "__main__":
     args = parser.parse_args()
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
+    if args.dataset in ["prism", "cad_en"]:
+        df = pd.read_pickle(
+            f"{args.data_folder}/{args.dataset}_utterances_linguistic.gz"
+        )
+        perplexity = evaluate.load("perplexity", module_type="metric")
+        for column in ["user_prompt", "model_response"]:
+            df[f"perplexity_{column}"] = perplexity.compute(
+                model_id="openai-community/gpt2",
+                predictions=df[column].to_list(),
+                device=device,
+                max_length=512,
+                batch_size=8,
+            )["perplexities"]
+        df.to_pickle(
+            f"{args.data_folder}/{args.dataset}_utterances_linguistic.gz"
+        )
+
     df = pd.read_pickle(
         f"{args.data_folder}/{args.dataset}_utterances_preprocessed.gz"
     )
@@ -139,11 +156,11 @@ if __name__ == "__main__":
             continue
 
         df[f"perplexity_{column}"] = perplexity.compute(
-            model_id="ai-forever/mGPT",
-            predictions=df[column].fillna("").to_list(),
+            model_id="openai-community/gpt2",
+            predictions=df[column].to_list(),
             device=device,
             max_length=512,
-            batch_size=16 if language not in ["fr", "en"] else 8,
+            batch_size=8,
         )["perplexities"]
 
     del perplexity

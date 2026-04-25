@@ -552,6 +552,8 @@ if __name__ == "__main__":
             for row in df.itertuples(index=False):
                 for t, turn in enumerate(row.conversation_history):
                     if turn["role"] == "user":
+                        if (t + 1) >= len(row.conversation_history):
+                            continue
                         final_data["age"].append(row.age)
                         final_data["gender"].append(row.gender)
                         final_data["ethnicity"].append(row.ethnicity)
@@ -559,12 +561,9 @@ if __name__ == "__main__":
                             row.conversation_id.iloc[0]
                         )
                         final_data["user_prompt"].append(turn["content"])
-                        if (t + 1) < len(row.conversation_history):
-                            final_data["model_response"].append(
-                                row.conversation_history[t + 1]["content"]
-                            )
-                        else:
-                            final_data["model_response"].append(None)
+                        final_data["model_response"].append(
+                            row.conversation_history[t + 1]["content"]
+                        )
                         final_data["topic"].append(row.topic)
             df = pd.DataFrame(final_data)
             if not os.path.isfile(
