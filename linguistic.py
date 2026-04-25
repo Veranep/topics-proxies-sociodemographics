@@ -39,7 +39,7 @@ if __name__ == "__main__":
         perplexity = evaluate.load("perplexity", module_type="metric")
         for column in ["user_prompt", "model_response"]:
             df[f"perplexity_{column}"] = perplexity.compute(
-                model_id="openai-community/gpt2",
+                model_id="gpt2",
                 predictions=df[column].to_list(),
                 device=device,
                 max_length=512,
