@@ -54,7 +54,8 @@ def get_personamem_convos(df, specify_text=False):
     convos = df["conversation_history"].tolist()
     if specify_text:
         for c in convos:
-            c["content"] = [{"type": "text", "text": c["content"]}]
+            for turn in c:
+                turn["content"] = [{"type": "text", "text": turn["content"]}]
     return convos
 
 
