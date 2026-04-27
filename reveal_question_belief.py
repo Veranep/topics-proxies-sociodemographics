@@ -243,9 +243,16 @@ if __name__ == "__main__":
                 tokens += 99
             elif domain == "salary":
                 tokens += 9
+            if "gemma" in args.model or "qwen" in args.model:
+                message = {
+                    "role": "user",
+                    "content": {"type": "text", "text": q},
+                }
+            else:
+                message = {"role": "user", "content": q}
             baseline_answers.append(
                 model(
-                    [{"role": "user", "content": q}],
+                    [message],
                     max_new_tokens=tokens,
                     return_full_text=False,
                     do_sample=False,
