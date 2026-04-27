@@ -8,6 +8,7 @@ import os
 import torch
 from transformers import (
     AutoModelForCausalLM,
+    AutoProcessor,
     AutoTokenizer,
     pipeline,
 )
@@ -134,10 +135,12 @@ if __name__ == "__main__":
         tokenizer.pad_token_id = tokenizer.eos_token_id
 
     if "gemma" in args.model or "qwen" in args.model:
+        processor = AutoProcessor.from_pretrained(args.model)
         model = pipeline(
             "image-text-to-text",
             model=model,
             tokenizer=tokenizer,
+            processor=processor,
             torch_dtype=torch.bfloat16,
             device_map="auto",
         )
