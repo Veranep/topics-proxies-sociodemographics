@@ -246,7 +246,6 @@ if __name__ == "__main__":
                 }
             else:
                 message = {"role": "user", "content": q}
-            print(message)
             baseline_answers.append(
                 model(
                     [message],
