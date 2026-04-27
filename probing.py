@@ -113,23 +113,18 @@ def balance_df(df, col, language):
             df.loc[df[col] == "White"] = 0
             df.loc[df[col] == "Brown/Mixed"] = 1
     elif col == "age":
-        df.loc[df[col] == "18-24 years old", col] = 0
-        df.loc[df[col] == "55-64 years old", col] = 1
-        df.loc[df[col] == "65+ years old", col] = 1
+        df.loc[df[col].str.contains("18-24"), col] = 0
+        df.loc[df[col].str.contains("55-64"), col] = 1
+        df.loc[df[col].str.contains("65+"), col] = 1
     elif col == "gender":
         df.loc[df[col] == "Male", col] = 0
         df.loc[df[col] == "Female", col] = 1
     elif col == "religion":
         df.loc[df[col] == "No Affiliation", col] = 0
         df.loc[df[col] == "Christian", col] = 1
-        # df.loc[df[col] == "Jewish", col] = 1
-        # df.loc[df[col] == "Muslim", col] = 1
     elif col == "ethnicity":
         df.loc[df[col] == "White", col] = 0
-        # df.loc[df[col] == "Hispanic", col] = 1
         df.loc[df[col] == "Black", col] = 1
-        # df.loc[df[col] == "Asian", col] = 1
-        # df.loc[df[col] == "Mixed", col] = 1
     elif col == "employment_status":
         df.loc[df[col] == "Unemployed, seeking work", col] = 0
         df.loc[df[col] == "Unemployed, not seeking work", col] = 0
@@ -338,14 +333,7 @@ if __name__ == "__main__":
         help="Whether to an MLP probe instead of a linear probe",
     )
     args = parser.parse_args()
-    if "belief" in args.data_folder:
-        df = pd.read_pickle(
-            f"{args.data_folder}/Llama-3.1-8B-Instruct_{args.dataset}_beliefs_preprocessed.gz"
-        )
-    else:
-        df = pd.read_pickle(
-            f"{args.data_folder}/{args.dataset}_preprocessed.gz"
-        )
+    df = pd.read_pickle(f"{args.data_folder}/{args.dataset}_preprocessed.gz")
 
     if os.path.isfile(
         args.results_folder
