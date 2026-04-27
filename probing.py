@@ -165,8 +165,10 @@ def balance_df(df, col, language):
     return selected_df.drop(index=indices_to_drop)
 
 
-def get_representations(df, convo_func, tokenizer, model, device):
-    convos = convo_func(df)
+def get_representations(df, convo_func, tokenizer, model, model_name, device):
+    convos = convo_func(
+        df, specify_text="gemma" in model_name or "qwen" in model_namel
+    )
     inputs = [
         tokenizer.apply_chat_template(
             convo,
@@ -396,7 +398,7 @@ if __name__ == "__main__":
         elif args.dataset == "personamem":
             convo_func = get_personamem_convos
         representations = get_representations(
-            df, convo_func, tokenizer, model, device
+            df, convo_func, tokenizer, model, args.model, device
         )
         with open(
             args.results_folder
