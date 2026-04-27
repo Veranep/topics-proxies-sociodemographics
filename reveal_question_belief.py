@@ -164,79 +164,62 @@ if __name__ == "__main__":
     if not os.path.isfile(
         f"{args.data_folder}/{args.model.split('/')[1]}_questions.gz"
     ):
-        old_df = pd.read_pickle(
-            f"{args.data_folder}/{args.model.split('/')[1]}_old_questions.gz"
+        llama_df = pd.read_pickle(
+            f"{args.data_folder}/Llama-3.1-8B-Instruct_questions.gz"
         )
-        questions = [
-            clean_health_misinfo_data(topic.find("question").text)
-            for topic in ET.parse(
-                f"{args.data_folder}/misinfo-2022-topics.xml"
-            )
-            .getroot()
-            .findall("topic")
-        ] + value_questions
-        correct_answers = [
-            topic.find("answer").text
-            for topic in ET.parse(
-                f"{args.data_folder}/misinfo-2022-topics.xml"
-            )
-            .getroot()
-            .findall("topic")
-        ] + [None] * len(value_questions)
-        revealed_belief = [None] * len(questions)
-        q_domain = [None] * len(questions)
-        for demo in revealed_belief_questions:
-            questions += revealed_belief_questions[demo]
-            revealed_belief += [demo] * len(revealed_belief_questions[demo])
-            correct_answers += [None] * len(revealed_belief_questions[demo])
-            q_domain += [None] * len(revealed_belief_questions[demo])
 
-        for domain in ["benefits", "political", "salary", "legal", "medical"]:
-            new_questions = pd.read_csv(
-                f"{args.data_folder}/{domain}_{'llama_' if domain in ['legal', 'medical'] else ''}prompts.csv"
-            )
-            new_questions["prompts"] = new_questions["prompts"].str.replace(
-                "additonal", "additional"
-            )
-            old_questions = [
-                q
-                for q in old_df["question"]
-                if q in new_questions["prompts"].tolist()
-            ]
-            new_questions = new_questions.loc[
-                ~new_questions["prompts"].isin(old_questions)
-            ]
-            new_questions = new_questions.sample(n=20)["prompts"].tolist()
-            questions += new_questions + old_questions
-            revealed_belief += [None] * len(new_questions + old_questions)
-            q_domain += [domain] * len(new_questions + old_questions)
-            if domain == "salary":
-                correct_answers += [None] * len(new_questions + old_questions)
-            elif domain in ["political", "legal"]:
-                correct_answers += [
-                    (
-                        "yes"
-                        if any([a in q for a in answer_key[domain]["yes"]])
-                        else "no"
-                    )
-                    for q in new_questions + old_questions
-                ]
-            else:
-                correct_answers += [
-                    (
-                        "yes"
-                        if (
-                            "should I treat myself at home" not in q
-                            and "should I ignore this for now" not in q
-                            and "Is there anything that might disqualify me"
-                            not in q
-                        )
-                        else "no"
-                    )
-                    for q in new_questions + old_questions
-                ]
+        # for domain in ["benefits", "political", "salary", "legal", "medical"]:
+        #     new_questions = pd.read_csv(
+        #         f"{args.data_folder}/{domain}_{'llama_' if domain in ['legal', 'medical'] else ''}prompts.csv"
+        #     )
+        #     new_questions["prompts"] = new_questions["prompts"].str.replace(
+        #         "additonal", "additional"
+        #     )
+        #     old_questions = [
+        #         q
+        #         for q in old_df["question"]
+        #         if q in new_questions["prompts"].tolist()
+        #     ]
+        #     new_questions = new_questions.loc[
+        #         ~new_questions["prompts"].isin(old_questions)
+        #     ]
+        #     new_questions = new_questions.sample(n=20)["prompts"].tolist()
+        #     questions += new_questions + old_questions
+        #     revealed_belief += [None] * len(new_questions + old_questions)
+        #     q_domain += [domain] * len(new_questions + old_questions)
+        #     if domain == "salary":
+        #         correct_answers += [None] * len(new_questions + old_questions)
+        #     elif domain in ["political", "legal"]:
+        #         correct_answers += [
+        #             (
+        #                 "yes"
+        #                 if any([a in q for a in answer_key[domain]["yes"]])
+        #                 else "no"
+        #             )
+        #             for q in new_questions + old_questions
+        #         ]
+        #     else:
+        #         correct_answers += [
+        #             (
+        #                 "yes"
+        #                 if (
+        #                     "should I treat myself at home" not in q
+        #                     and "should I ignore this for now" not in q
+        #                     and "Is there anything that might disqualify me"
+        #                     not in q
+        #                 )
+        #                 else "no"
+        #             )
+        #             for q in new_questions + old_questions
+        #         ]
 
-        q_ids = [f"q_{i}" for i in range(len(questions))]
+        # q_ids = [f"q_{i}" for i in range(len(questions))]
+        q_ids = llama_df["q_id"].tolist()
+        questions = llama_df["question"].tolist()
+        revealed_belief = llama_df["revealed_belief"].tolist()
+        correct_answers = llama_df["correct_answer"].tolist()
+        q_domain = llama_df["domain"].tolist()
+
         baseline_answers = []
         for q, q_id, domain in zip(questions, q_ids, q_domain):
             tokens = 1
