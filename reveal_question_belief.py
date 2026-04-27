@@ -271,27 +271,6 @@ if __name__ == "__main__":
         df_questions = pd.read_pickle(
             f"{args.data_folder}/{args.model.split('/')[1]}_questions.gz"
         )
-        salary_answers = []
-        for q, domain in zip(
-            df_questions["question"].tolist(), df_questions["domain"].tolist()
-        ):
-            if domain != "salary":
-                continue
-            else:
-                salary_answers.append(
-                    model(
-                        [{"role": "user", "content": q}],
-                        max_new_tokens=10,
-                        return_full_text=False,
-                        do_sample=False,
-                    )[0]["generated_text"]
-                )
-        df_questions.loc[
-            df_questions["domain"] == "salary", "baseline_answer"
-        ] = salary_answers
-        df_questions.to_pickle(
-            f"{args.data_folder}/{args.model.split('/')[1]}_questions.gz"
-        )
 
     # drop accuracy questions
     df_questions = df_questions[~df_questions["domain"].isna()].reset_index(
