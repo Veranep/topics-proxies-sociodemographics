@@ -113,9 +113,9 @@ def balance_df(df, col, language):
             df.loc[df[col] == "White"] = 0
             df.loc[df[col] == "Brown/Mixed"] = 1
     elif col == "age":
-        df.loc[df[col].str.contains("18-24"), col] = 0
-        df.loc[df[col].str.contains("55-64"), col] = 1
-        df.loc[df[col].str.contains("65+"), col] = 1
+        df.loc[df[col].str.contains("18-24", na=False), col] = 0
+        df.loc[df[col].str.contains("55-64", na=False), col] = 1
+        df.loc[df[col].str.contains("65+", na=False), col] = 1
     elif col == "gender":
         df.loc[df[col] == "Male", col] = 0
         df.loc[df[col] == "Female", col] = 1
