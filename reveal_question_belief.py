@@ -133,13 +133,22 @@ if __name__ == "__main__":
     if not tokenizer.pad_token_id:
         tokenizer.pad_token_id = tokenizer.eos_token_id
 
-    model = pipeline(
-        "text-generation",
-        model=model,
-        tokenizer=tokenizer,
-        torch_dtype=torch.bfloat16,
-        device_map="auto",
-    )
+    if "gemma" in args.model or "qwen" in args.model:
+        model = pipeline(
+            "image-text-to-text",
+            model=model,
+            tokenizer=tokenizer,
+            torch_dtype=torch.bfloat16,
+            device_map="auto",
+        )
+    else:
+        model = pipeline(
+            "text-generation",
+            model=model,
+            tokenizer=tokenizer,
+            torch_dtype=torch.bfloat16,
+            device_map="auto",
+        )
 
     if os.path.isfile(
         f"{args.results_folder}/{args.model.split('/')[1]}_{args.dataset}_answers.gz"
@@ -159,7 +168,9 @@ if __name__ == "__main__":
     elif args.dataset == "personamem":
         convo_func = get_personamem_convos
 
-    convos = convo_func(df)
+    convos = convo_func(
+        df, specify_text="gemma" in args.model or "qwen" in args.model
+    )
 
     if not os.path.isfile(
         f"{args.data_folder}/{args.model.split('/')[1]}_questions.gz"
@@ -295,6 +306,7 @@ if __name__ == "__main__":
                 convo + [{"role": "user", "content": row.question}],
                 tokenize=False,
                 add_generation_prompt=True,
+                enable_thinking=False,
             )
             for convo in convos
         ]
