@@ -16,7 +16,11 @@ import xml.etree.ElementTree as ET
 from torch.utils.data import Dataset
 from tqdm import tqdm
 
-from preprocess_data import get_prism_convos, get_cad_convos, get_chen_convos
+from preprocess_data import (
+    get_prism_convos,
+    get_cad_convos,
+    get_personamem_convos,
+)
 from data.answer_key import answer_key
 
 
@@ -161,8 +165,8 @@ if __name__ == "__main__":
         convo_func = get_prism_convos
     elif "cad" in args.dataset:
         convo_func = get_cad_convos
-    elif args.dataset == "chen":
-        convo_func = get_chen_convos
+    elif args.dataset == "personamem":
+        convo_func = get_personamem_convos
 
     convos = convo_func(df)
 

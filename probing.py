@@ -13,7 +13,11 @@ from sklearn.metrics import f1_score
 from huggingface_hub import login
 from deepsig import aso
 
-from preprocess_data import get_prism_convos, get_cad_convos, get_chen_convos
+from preprocess_data import (
+    get_prism_convos,
+    get_cad_convos,
+    get_personamem_convos,
+)
 
 
 # np.random.seed(42)
@@ -233,19 +237,6 @@ def train_probe(
         y_train, y_test, train_representations, test_representations = (
             train_test_split(target, representations, shuffle=True)
         )
-        # if dataset == "chen":
-        #     train_indices = np.concat(
-        #         [train_indices, indices_train + 1, indices_train + 2]
-        #     )
-        #     df_train = df_train.loc[df_train.index.repeat(3)].reset_index(
-        #         drop=True
-        #     )
-        #     test_indices = np.concat(
-        #         [test_indices, indices_test + 1, indices_test + 2]
-        #     )
-        #     df_test = df_test.loc[df_test.index.repeat(3)].reset_index(
-        #         drop=True
-        #     )
         print("Training probe")
         values, counts = np.unique(y_test, return_counts=True)
         majority = values[np.argmax(counts)]
@@ -269,12 +260,6 @@ def train_probe(
             else:
                 clf = LogisticRegression(random_state=42)
             clf = clf.fit(X_train, y_train)
-            # if save:
-            #     with open(
-            #         save_file + f"_{demographic}_{l}.pkl", "wb"
-            #     ) as outfile:
-            #         pickle.dump(clf, outfile)
-            # else:
             y_pred = clf.predict(X_test)
             scores[l]["f1"].append(f1_score(y_test, y_pred, average="macro"))
             scores[l]["majority f1"].append(majority_f1)
@@ -286,16 +271,6 @@ def train_probe(
         scores[l]["random aso"] = aso(
             scores[l]["f1"], scores[l]["random f1"], seed=42
         )
-    # if save:
-    #     id_col = "conversation_id" if dataset != "chen" else "text_id"
-    #     with open(save_file + f"_{demographic}_ids.pkl", "wb") as outfile:
-    #         pickle.dump(
-    #             (
-    #                 df_train[id_col].to_numpy(),
-    #                 df_test[id_col].to_numpy(),
-    #             ),
-    #             outfile,
-    #         )
     return scores
 
 
@@ -442,8 +417,8 @@ if __name__ == "__main__":
             convo_func = get_prism_convos
         elif "cad" in args.dataset:
             convo_func = get_cad_convos
-        elif args.dataset == "chen":
-            convo_func = get_chen_convos
+        elif args.dataset == "personamem":
+            convo_func = get_personamem_convos
         representations = get_representations(
             df, convo_func, tokenizer, model, device
         )
