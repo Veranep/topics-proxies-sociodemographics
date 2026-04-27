@@ -5,7 +5,7 @@ import numpy as np
 import pickle
 import torch
 from tqdm import tqdm
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer, AutoProcessor
 from sklearn.linear_model import LogisticRegression
 from sklearn.neural_network import MLPClassifier
 from sklearn.model_selection import train_test_split
@@ -167,44 +167,29 @@ def balance_df(df, col, language):
 
 def get_representations(df, convo_func, tokenizer, model, device):
     convos = convo_func(df)
-    if tokenizer.chat_template:
-        inputs = [
-            tokenizer.apply_chat_template(
-                convo,
-                tokenize=True,
-                add_generation_prompt=True,
-                return_tensors="pt",
-                return_dict=False,
-            )
-            for convo in convos
-        ]
-    else:
-        inputs = [tokenizer(inp, return_tensors="pt") for inp in convos]
+    inputs = [
+        tokenizer.apply_chat_template(
+            convo,
+            tokenize=True,
+            add_generation_prompt=True,
+            return_tensors="pt",
+            return_dict=False,
+            enable_thinking=False,
+        )
+        for convo in convos
+    ]
     representations = np.array(
         [
-            (
-                [
-                    rep[-1, -1, :].detach().cpu().clone().to(torch.float)
-                    for rep in model(
-                        inp.to(device),
-                        do_sample=False,
-                        output_hidden_states=True,
-                        max_new_tokens=1,
-                        return_dict=True,
-                    )["hidden_states"]
-                ]
-                if tokenizer.chat_template
-                else [
-                    rep[-1, -1, :].detach().cpu().clone().to(torch.float)
-                    for rep in model(
-                        **inp.to(device),
-                        do_sample=False,
-                        output_hidden_states=True,
-                        max_new_tokens=1,
-                        return_dict=True,
-                    )["hidden_states"]
-                ]
-            )
+            [
+                rep[-1, -1, :].detach().cpu().clone().to(torch.float)
+                for rep in model(
+                    inp.to(device),
+                    do_sample=False,
+                    output_hidden_states=True,
+                    max_new_tokens=1,
+                    return_dict=True,
+                )["hidden_states"]
+            ]
             for inp in tqdm(inputs)
         ]
     )
@@ -395,7 +380,10 @@ if __name__ == "__main__":
         if args.token:
             login(args.token)
         device = "cuda" if torch.cuda.is_available() else "cpu"
-        tokenizer = AutoTokenizer.from_pretrained(args.model)
+        if "gemma" in args.model or "qwen" in args.model:
+            tokenizer = AutoProcessor.from_pretrained(args.model)
+        else:
+            tokenizer = AutoTokenizer.from_pretrained(args.model)
         model = AutoModelForCausalLM.from_pretrained(
             args.model,
             torch_dtype=torch.bfloat16,
