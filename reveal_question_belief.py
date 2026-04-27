@@ -242,7 +242,7 @@ if __name__ == "__main__":
             if "gemma" in args.model or "qwen" in args.model:
                 message = {
                     "role": "user",
-                    "content": {"type": "text", "text": q},
+                    "content": [{"type": "text", "text": q}],
                 }
             else:
                 message = {"role": "user", "content": q}

@@ -15,7 +15,7 @@ def get_prism_turns(row, specify_text):
         turns = [
             {
                 "role": turn["role"].replace("model", "assistant"),
-                "content": {"type": "text", "text": turn["content"]},
+                "content": [{"type": "text", "text": turn["content"]}],
             }
             for turn in row.conversation_history
             if turn["role"] == "user" or turn["if_chosen"] == True
@@ -54,7 +54,7 @@ def get_personamem_convos(df, specify_text=False):
     convos = df["conversation_history"].tolist()
     if specify_text:
         for c in convos:
-            c["content"] = {"type": "text", "text": c["content"]}
+            c["content"] = [{"type": "text", "text": c["content"]}]
     return convos
 
 
@@ -69,20 +69,24 @@ def get_cad_turns(row, specify_text):
                 turns += [
                     {
                         "role": "user",
-                        "content": {
-                            "type": "text",
-                            "text": getattr(row, f"{turn}_turn_prompt"),
-                        },
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": getattr(row, f"{turn}_turn_prompt"),
+                            }
+                        ],
                     },
                     {
                         "role": "assistant",
-                        "content": {
-                            "type": "text",
-                            "text": getattr(
-                                row,
-                                f"{turn}_turn_response_{getattr(row,pref_response)[-1]}",
-                            ),
-                        },
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": getattr(
+                                    row,
+                                    f"{turn}_turn_response_{getattr(row,pref_response)[-1]}",
+                                ),
+                            }
+                        ],
                     },
                 ]
             else:
