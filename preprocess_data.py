@@ -10,20 +10,35 @@ from tqdm import tqdm
 from collections import Counter
 
 
-def get_prism_turns(row):
-    turns = [
-        {
-            "role": turn["role"].replace("model", "assistant"),
-            "content": turn["content"],
-        }
-        for turn in row.conversation_history
-        if turn["role"] == "user" or turn["if_chosen"] == True
-    ]
+def get_prism_turns(row, specify_text):
+    if specify_text:
+        turns = [
+            {
+                "role": turn["role"].replace("model", "assistant"),
+                "content": {"type": "text", "text": turn["content"]},
+            }
+            for turn in row.conversation_history
+            if turn["role"] == "user" or turn["if_chosen"] == True
+        ]
+    else:
+        turns = [
+            {
+                "role": turn["role"].replace("model", "assistant"),
+                "content": turn["content"],
+            }
+            for turn in row.conversation_history
+            if turn["role"] == "user" or turn["if_chosen"] == True
+        ]
     return turns
 
 
-def get_prism_convos(df):
-    convos = list(map(get_prism_turns, df.itertuples(index=False)))
+def get_prism_convos(df, specify_text=False):
+    convos = list(
+        map(
+            lambda x: get_prism_turns(x, specify_text),
+            df.itertuples(index=False),
+        )
+    )
     for convo in convos:
         to_remove = []
         for i in range(len(convo)):
@@ -35,18 +50,42 @@ def get_prism_convos(df):
     return convos
 
 
-def get_personamem_convos(df):
-    return df["conversation_history"].tolist()
+def get_personamem_convos(df, specify_text=False):
+    convos = df["conversation_history"].tolist()
+    if specify_text:
+        for c in convos:
+            c["content"] = {"type": "text", "text": c["content"]}
+    return convos
 
 
-def get_cad_turns(row):
+def get_cad_turns(row, specify_text):
     turns = []
     for turn in ["first", "second", "third", "fourth"]:
         pref_response = f"{turn}_turn_preferred_response"
         if not getattr(row, pref_response):
             return turns
         else:
-            try:
+            if specify_text:
+                turns += [
+                    {
+                        "role": "user",
+                        "content": {
+                            "type": "text",
+                            "text": getattr(row, f"{turn}_turn_prompt"),
+                        },
+                    },
+                    {
+                        "role": "assistant",
+                        "content": {
+                            "type": "text",
+                            "text": getattr(
+                                row,
+                                f"{turn}_turn_response_{getattr(row,pref_response)[-1]}",
+                            ),
+                        },
+                    },
+                ]
+            else:
                 turns += [
                     {
                         "role": "user",
@@ -60,13 +99,16 @@ def get_cad_turns(row):
                         ),
                     },
                 ]
-            except:
-                print(getattr(row, pref_response))
     return turns
 
 
-def get_cad_convos(df):
-    return list(map(get_cad_turns, df.itertuples(index=False)))
+def get_cad_convos(df, specify_text=False):
+    return list(
+        map(
+            lambda x: get_cad_turns(x, specify_text),
+            df.itertuples(index=False),
+        )
+    )
 
 
 if __name__ == "__main__":
@@ -409,7 +451,7 @@ if __name__ == "__main__":
                             if d != "race" or not alternative_found:
                                 data[d].append(None)
                     data["conversation_id"].append(
-                        df["conversation_id"].astype(str) + f"_{i}"
+                        str(df["conversation_id"].iloc[0]) + f"_{i}"
                     )
                     data["conversation_history"].append(
                         conversation["conversations"]
@@ -535,9 +577,6 @@ if __name__ == "__main__":
                 for e in df["race"]
             ]
             df = df.rename(columns={"race": "ethnicity"})
-            print(get_personamem_convos(df)[:5])
-            if not os.path.isfile(f"{args.folder}/personamem_preprocessed.gz"):
-                df.to_pickle(f"{args.folder}/personamem_preprocessed.gz")
 
             final_data = {
                 "age": [],
@@ -552,23 +591,46 @@ if __name__ == "__main__":
             for row in df.itertuples(index=False):
                 for t, turn in enumerate(row.conversation_history):
                     if turn["role"] == "user":
-                        if (t + 1) >= len(row.conversation_history):
+                        if (
+                            (t + 1) >= len(row.conversation_history)
+                            or len(turn["content"]) == 0
+                            or len(row.conversation_history[t + 1]["content"])
+                            == 0
+                        ):
                             continue
                         final_data["age"].append(row.age)
                         final_data["gender"].append(row.gender)
                         final_data["ethnicity"].append(row.ethnicity)
                         final_data["conversation_id"].append(
-                            row.conversation_id.iloc[0]
+                            row.conversation_id
                         )
                         final_data["user_prompt"].append(turn["content"])
                         final_data["model_response"].append(
                             row.conversation_history[t + 1]["content"]
                         )
                         final_data["topic"].append(row.topic)
-            df = pd.DataFrame(final_data)
+            df_utt = pd.DataFrame(final_data)
+
+            to_drop = [
+                df_utt.iloc[i]["conversation_id"]
+                for i in range(len(df_utt))
+                if type(df_utt.iloc[i]["user_prompt"]) != str
+            ]
+
+            df = df.loc[~df["conversation_id"].isin(to_drop)].reset_index()
+            df_utt = df_utt.loc[
+                ~df_utt["conversation_id"].isin(to_drop)
+            ].reset_index()
+
+            print(get_personamem_convos(df)[:5])
+            print(df.shape)
+
+            if not os.path.isfile(f"{args.folder}/personamem_preprocessed.gz"):
+                df.to_pickle(f"{args.folder}/personamem_preprocessed.gz")
+
             if not os.path.isfile(
                 f"{args.folder}/personamem_utterances_preprocessed.gz"
             ):
-                df.to_pickle(
+                df_utt.to_pickle(
                     f"{args.folder}/personamem_utterances_preprocessed.gz"
                 )
