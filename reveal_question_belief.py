@@ -237,11 +237,7 @@ if __name__ == "__main__":
         baseline_answers = []
         for q, q_id, domain in zip(questions, q_ids, q_domain):
             tokens = 1
-            if int(q_id.split("_")[1]) == 58:
-                tokens += 3
-            elif int(q_id.split("_")[1]) in [59, 60]:
-                tokens += 99
-            elif domain == "salary":
+            if domain == "salary":
                 tokens += 9
             if "gemma" in args.model or "qwen" in args.model:
                 message = {
@@ -250,6 +246,7 @@ if __name__ == "__main__":
                 }
             else:
                 message = {"role": "user", "content": q}
+            print(message)
             baseline_answers.append(
                 model(
                     [message],
