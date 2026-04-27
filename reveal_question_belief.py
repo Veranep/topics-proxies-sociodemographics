@@ -299,18 +299,14 @@ if __name__ == "__main__":
             for convo in convos
         ]
         tokens = 1
-        if int(row.q_id.split("_")[1]) == 58:
-            tokens += 3
-        elif int(row.q_id.split("_")[1]) in [59, 60]:
-            tokens += 99
-        elif row.domain == "salary":
+        if row.domain == "salary":
             tokens += 9
         outputs = [
             answer[0]["generated_text"]
             for answer in tqdm(
                 model(
                     ListDataset(convos_and_questions),
-                    batch_size=32,
+                    batch_size=16,
                     max_new_tokens=tokens,
                     return_full_text=False,
                     do_sample=False,
