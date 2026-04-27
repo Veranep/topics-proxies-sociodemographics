@@ -303,9 +303,9 @@ if __name__ == "__main__":
         )
 
     # drop accuracy questions
-    df_questions = df_questions[
-        ~df_questions["q_id"].isin([f"q_{i}" for i in range(50)])
-    ].reset_index(drop=True)
+    df_questions = df_questions[~df_questions["domain"].isna()].reset_index(
+        drop=True
+    )
 
     df_questions = df_questions[
         ~df_questions["q_id"].isin(df.columns.values)
