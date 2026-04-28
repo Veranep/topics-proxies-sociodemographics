@@ -102,6 +102,13 @@ if __name__ == "__main__":
         help="Dataset to evaluate on",
     )
     parser.add_argument(
+        "-dom",
+        "--domain",
+        type=str,
+        default="",
+        help="Domain to evaluate",
+    )
+    parser.add_argument(
         "-df",
         "--data_folder",
         type=str,
@@ -162,10 +169,10 @@ if __name__ == "__main__":
         )
 
     if os.path.isfile(
-        f"{args.results_folder}/{args.model.split('/')[1]}_{args.dataset}_answers.gz"
+        f"{args.results_folder}/{args.model.split('/')[1]}_{args.dataset}_{args.domain}_answers.gz"
     ):
         df = pd.read_pickle(
-            f"{args.results_folder}/{args.model.split('/')[1]}_{args.dataset}_answers.gz"
+            f"{args.results_folder}/{args.model.split('/')[1]}_{args.dataset}_{args.domain}_answers.gz"
         )
     else:
         df = pd.read_pickle(
@@ -281,9 +288,9 @@ if __name__ == "__main__":
         )
 
     # drop accuracy questions
-    df_questions = df_questions[~df_questions["domain"].isna()].reset_index(
-        drop=True
-    )
+    df_questions = df_questions[
+        df_questions["domain"] == args.domain
+    ].reset_index(drop=True)
 
     df_questions = df_questions[
         ~df_questions["q_id"].isin(df.columns.values)
@@ -321,5 +328,5 @@ if __name__ == "__main__":
 
         df = pd.concat([df, pd.DataFrame({row.q_id: outputs})], axis=1)
         df.to_pickle(
-            f"{args.results_folder}/{args.model.split('/')[1]}_{args.dataset}_answers.gz"
+            f"{args.results_folder}/{args.model.split('/')[1]}_{args.dataset}_{args.domain}_answers.gz"
         )
