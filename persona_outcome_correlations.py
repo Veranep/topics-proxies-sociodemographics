@@ -31,7 +31,9 @@ demographics = {
 
 domains = ["legal", "salary", "medical", "benefits", "political"]
 
-questions = pd.read_pickle("data/Llama-3.1-8B-Instruct_questions.gz")
+questions = pd.read_pickle(
+    "/scratch/vneplen/sociodemographics-interpretability-mitigation/data/Llama-3.1-8B-Instruct_questions.gz"
+)
 questions_correct_answers = dict(zip(questions.q_id, questions.correct_answer))
 domain_qid_map = {
     domain: questions.loc[questions["domain"] == domain, "q_id"].tolist()
@@ -57,7 +59,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     all_cols = deepcopy(demographics[args.dataset])
     df = pd.read_pickle(
-        f"behavior/{args.model.split('/')[1]}_{args.dataset}_answers.gz"
+        f"/scratch/vneplen/sociodemographics-interpretability-mitigation/behavior/{args.model.split('/')[1]}_{args.dataset}_answers.gz"
     )
     df = df.rename(columns={"label": "Gender"})
 
