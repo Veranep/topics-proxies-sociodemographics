@@ -253,6 +253,13 @@ if __name__ == "__main__":
                 }
             else:
                 message = {"role": "user", "content": q}
+
+            message = tokenizer.apply_chat_template(
+                message,
+                tokenize=False,
+                add_generation_prompt=True,
+                enable_thinking=False,
+            )
             baseline_answers.append(
                 model(
                     [message],
