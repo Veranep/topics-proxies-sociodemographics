@@ -126,7 +126,8 @@ if __name__ == "__main__":
             df = df.drop(
                 columns=[f"q_{i}" for i in range(50)]
                 + ["q_59", "q_60"]
-                + [f"q_{i}" for i in range(61, 211)]
+                + [f"q_{i}" for i in range(61, 211)],
+                errors="ignore",
             )
 
             for column in demographics[args.dataset]:
