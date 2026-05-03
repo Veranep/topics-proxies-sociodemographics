@@ -58,44 +58,86 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
     all_cols = deepcopy(demographics[args.dataset])
-    df = pd.read_pickle(
-        f"/scratch/vneplen/sociodemographics-interpretability-mitigation/behavior/{args.model.split('/')[1]}_{args.dataset}_answers.gz"
-    )
-    df = df.rename(columns={"label": "Gender"})
-
-    for c in [
-        qid for d in domains for qid in domain_qid_map[d] if d != "salary"
-    ]:
-        df[c] = 1 * (df[c].str.lower() == questions_correct_answers[c])
-
-    for c in domain_qid_map["salary"]:
-        df[c] = (
-            df[c]
-            .str.replace(",", "")
-            .str.extract(r"^[^\d]*(\d+)")
-            .astype(float)
+    if args.model.split("/")[1] == "Llama-3.1-8B-Instruct":
+        df = pd.read_pickle(
+            f"/scratch/vneplen/sociodemographics-interpretability-mitigation/behavior/{args.model.split('/')[1]}_{args.dataset}_answers.gz"
         )
 
-    for domain in domains:
-        df[domain] = df[[qid for qid in domain_qid_map[domain]]].mean(axis=1)
-        if domain != "salary":
-            df[domain] = df[domain] * 100
+        for c in [
+            qid for d in domains for qid in domain_qid_map[d] if d != "salary"
+        ]:
+            df[c] = 1 * (df[c].str.lower() == questions_correct_answers[c])
 
-    df = df.drop(
-        columns=[f"q_{i}" for i in range(50)]
-        + ["q_59", "q_60"]
-        + [f"q_{i}" for i in range(61, 211)]
-    )
+        for c in domain_qid_map["salary"]:
+            df[c] = (
+                df[c]
+                .str.replace(",", "")
+                .str.extract(r"^[^\d]*(\d+)")
+                .astype(float)
+            )
 
-    for column in demographics[args.dataset]:
-        df = df.loc[
-            ~(df[column].isna())
-            & (df[column] != "Prefer not to say")
-            & (df[column] != "Other")
-            & (df[column] != "Unknown")
-        ]
-        df[column] = pd.factorize(df[column])[0]
+        for domain in domains:
+            df[domain] = df[[qid for qid in domain_qid_map[domain]]].mean(
+                axis=1
+            )
+            if domain != "salary":
+                df[domain] = df[domain] * 100
+
+        df = df.drop(
+            columns=[f"q_{i}" for i in range(50)]
+            + ["q_59", "q_60"]
+            + [f"q_{i}" for i in range(61, 211)]
+        )
+
+        for column in demographics[args.dataset]:
+            df = df.loc[
+                ~(df[column].isna())
+                & (df[column] != "Prefer not to say")
+                & (df[column] != "Other")
+                & (df[column] != "Unknown")
+            ]
+            df[column] = pd.factorize(df[column])[0]
+
     for domain in tqdm(domains):
+        if args.model.split("/")[1] != "Llama-3.1-8B-Instruct":
+            df = pd.read_pickle(
+                f"/scratch/vneplen/sociodemographics-interpretability-mitigation/behavior/{args.model.split('/')[1]}_{args.dataset}_{domain}_answers.gz"
+            )
+
+            for c in domain_qid_map[domain]:
+                if domain != "salary":
+                    df[c] = 1 * (
+                        df[c].str.lower() == questions_correct_answers[c]
+                    )
+                else:
+                    df[c] = (
+                        df[c]
+                        .str.replace(",", "")
+                        .str.extract(r"^[^\d]*(\d+)")
+                        .astype(float)
+                    )
+
+            df[domain] = df[[qid for qid in domain_qid_map[domain]]].mean(
+                axis=1
+            )
+            if domain != "salary":
+                df[domain] = df[domain] * 100
+
+            df = df.drop(
+                columns=[f"q_{i}" for i in range(50)]
+                + ["q_59", "q_60"]
+                + [f"q_{i}" for i in range(61, 211)]
+            )
+
+            for column in demographics[args.dataset]:
+                df = df.loc[
+                    ~(df[column].isna())
+                    & (df[column] != "Prefer not to say")
+                    & (df[column] != "Other")
+                    & (df[column] != "Unknown")
+                ]
+                df[column] = pd.factorize(df[column])[0]
+
         dist_user = []
         dist_outcome = []
         for i in tqdm(range(len(df))):
