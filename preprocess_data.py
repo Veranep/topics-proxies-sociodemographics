@@ -50,15 +50,6 @@ def get_prism_convos(df, specify_text=False):
     return convos
 
 
-def get_personamem_convos(df, specify_text=False):
-    convos = df["conversation_history"].tolist()
-    if specify_text:
-        for c in convos:
-            for turn in c:
-                turn["content"] = [{"type": "text", "text": turn["content"]}]
-    return convos
-
-
 def get_cad_turns(row, specify_text):
     turns = []
     for turn in ["first", "second", "third", "fourth"]:
@@ -125,13 +116,6 @@ if __name__ == "__main__":
         default="prism",
         help="Dataset to preprocess",
     )
-    parser.add_argument(
-        "-f",
-        "--folder",
-        type=str,
-        help="Folder to save dataset in",
-        default="",  # "/scratch/vneplen/sociodemographics-interpretability-mitigation"
-    )
     args = parser.parse_args()
     if args.dataset == "prism":
         conversations = load_dataset(
@@ -166,8 +150,8 @@ if __name__ == "__main__":
                 )
             )
 
-        if not os.path.isfile(f"{args.folder}/prism_preprocessed.gz"):
-            df.to_pickle(f"{args.folder}/prism_preprocessed.gz")
+        if not os.path.isfile(f"data/prism_preprocessed.gz"):
+            df.to_pickle(f"data/prism_preprocessed.gz")
         print(get_prism_convos(df)[:5])
 
         df_utterances = pd.merge(utterances, survey, on=["user_id"])
@@ -193,20 +177,13 @@ if __name__ == "__main__":
             .first()
             .reset_index()
         )
-        if not os.path.isfile(
-            f"{args.folder}/prism_utterances_preprocessed.gz"
-        ):
-            df_utterances.to_pickle(
-                f"{args.folder}/prism_utterances_preprocessed.gz"
-            )
+        if not os.path.isfile(f"data/prism_utterances_preprocessed.gz"):
+            df_utterances.to_pickle(f"data/prism_utterances_preprocessed.gz")
 
     elif args.dataset == "cad":
         ds = load_dataset(
             "facebook/community-alignment-dataset", split="filtered"
-        )
-        if not os.path.isfile(f"{args.folder}/cad_preprocessed.gz"):
-            ds.to_pandas().to_pickle(f"{args.folder}/cad_preprocessed.gz")
-        print(get_cad_convos(ds.to_pandas())[:5])
+        ).filter(lambda example: example["assigned_lang"] == "en")
 
         df = ds.to_pandas()
         df["first_turn_preferred_response"] = df.to_numpy()[
@@ -370,272 +347,5 @@ if __name__ == "__main__":
             .drop(columns=["turn2"])
         )
         print(df)
-        if not os.path.isfile(f"{args.folder}/cad_utterances_preprocessed.gz"):
-            df.to_pickle(f"{args.folder}/cad_utterances_preprocessed.gz")
-
-        for language in ["en", "fr", "it", "pt", "hi"]:
-            filtered_ds = ds.filter(
-                lambda example: example["assigned_lang"] == language
-            )
-            if not os.path.isfile(
-                f"{args.folder}/cad_{language}_preprocessed.gz"
-            ):
-                filtered_ds.to_pandas().to_pickle(
-                    f"{args.folder}/cad_{language}_preprocessed.gz"
-                )
-            lang_df = df[df["assigned_lang"] == language].reset_index()
-            if not os.path.isfile(
-                f"{args.folder}/cad_{language}_utterances_preprocessed.gz"
-            ):
-                lang_df.to_pickle(
-                    f"{args.folder}/cad_{language}_utterances_preprocessed.gz"
-                )
-
-    elif args.dataset == "personamem":
-        demographic_cols = [
-            "age",
-            "gender",
-            "race",
-        ]
-        if len(os.listdir("data/personamem")) == 0:
-            snapshot_download(
-                repo_id="bowen-upenn/PersonaMem-v2",
-                repo_type="dataset",
-                allow_patterns=["data/raw_data/**"],
-                local_dir="data",
-            )
-        else:
-            data = {
-                "age": [],
-                "gender": [],
-                "race": [],
-                "conversation_id": [],
-                "conversation_history": [],
-                "topic": [],
-            }
-            for file_name in tqdm(os.listdir("data/personamem")):
-                df = pd.read_json(f"data/personamem/{file_name}").T
-                df = df.reset_index(names="conversation_id")
-
-                all_conversations = []
-                for k, v in df.iloc[0]["conversations"].items():
-                    if k != "translation":
-                        all_conversations.extend(v)
-
-                for i, conversation in enumerate(all_conversations):
-                    if "topic_query" not in conversation:
-                        continue
-                    for d in demographic_cols:
-                        if d in df:
-                            if d != "age":
-                                data[d].append(
-                                    df[d]
-                                    .astype("string")
-                                    .str.lower()
-                                    .str.strip()
-                                    .iloc[0]
-                                )
-                            else:
-                                data[d].append(int(df[d].iloc[0]))
-
-                        else:
-                            if d == "race":
-                                alternative_found = False
-                                for alternative in [
-                                    "racial_ethnic_identity",
-                                    "race_ethnicity",
-                                ]:
-                                    if alternative in df:
-                                        data[d].append(
-                                            df[alternative]
-                                            .astype("string")
-                                            .str.lower()
-                                            .str.strip()
-                                        )
-                                        alternative_found = True
-                            if d != "race" or not alternative_found:
-                                data[d].append(None)
-                    data["conversation_id"].append(
-                        str(df["conversation_id"].iloc[0]) + f"_{i}"
-                    )
-                    data["conversation_history"].append(
-                        conversation["conversations"]
-                    )
-                    data["topic"].append(
-                        conversation["topic_query"].lower().strip()
-                    )
-            counter_topics = Counter(data["topic"])
-            interesting_topics = [
-                c
-                for c in counter_topics
-                if counter_topics[c] >= 20 and c != "empty"
-            ]
-            print(interesting_topics)
-            print(
-                np.sum(
-                    [min(counter_topics[i], 75) for i in interesting_topics]
-                )
-            )
-
-            final_data = {
-                "age": [],
-                "gender": [],
-                "race": [],
-                "conversation_id": [],
-                "conversation_history": [],
-                "topic": [],
-            }
-            topic_counter = {c: 0 for c in interesting_topics}
-            ids = list(range(len(data["conversation_id"])))
-            np.random.shuffle(ids)
-            for i in tqdm(ids):
-                if (
-                    data["topic"][i] in topic_counter
-                    and topic_counter[data["topic"][i]] < 75
-                ):
-                    for d in data:
-                        final_data[d].append(data[d][i])
-                    topic_counter[data["topic"][i]] += 1
-            df = pd.DataFrame(final_data)
-            for d in demographic_cols:
-                if d != "age":
-                    df[d] = df[d].astype("string")
-
-            df["age"] = [
-                (
-                    None
-                    if pd.isna(a)
-                    else (
-                        "18-24"
-                        if a >= 18 and a < 25
-                        else (
-                            "25-34"
-                            if a >= 25 and a < 35
-                            else (
-                                "35-44"
-                                if a >= 35 and a < 45
-                                else (
-                                    "45-54"
-                                    if a >= 45 and a < 55
-                                    else (
-                                        "55-64"
-                                        if a >= 55 and a < 65
-                                        else "65+" if a >= 65 else None
-                                    )
-                                )
-                            )
-                        )
-                    )
-                )
-                for a in df["age"]
-            ]
-            df["gender"] = [
-                (
-                    "Female"
-                    if re.search(r"woman|female|girl", str(g), re.IGNORECASE)
-                    else (
-                        "Male"
-                        if re.search(r"man|male|boy", str(g), re.IGNORECASE)
-                        else "Non-binary / third gender"
-                    )
-                )
-                for g in df["gender"]
-            ]
-            df["race"] = [
-                (
-                    None
-                    if re.search(r"mixed|multiethnic", str(e), re.IGNORECASE)
-                    else (
-                        "White"
-                        if re.search(
-                            r"white|ashkenazi|eastern european",
-                            str(e),
-                            re.IGNORECASE,
-                        )
-                        else (
-                            "Hispanic"
-                            if re.search(
-                                r"latin|hispanic|mexican|puerto rican",
-                                str(e),
-                                re.IGNORECASE,
-                            )
-                            else (
-                                "Asian"
-                                if re.search(
-                                    r"asian|chinese|japanese|thai|indonesian|korean|japonesa|rohingya",
-                                    str(e),
-                                    re.IGNORECASE,
-                                )
-                                else (
-                                    "Black"
-                                    if re.search(
-                                        r"black|afro|african",
-                                        str(e),
-                                        re.IGNORECASE,
-                                    )
-                                    else None
-                                )
-                            )
-                        )
-                    )
-                )
-                for e in df["race"]
-            ]
-            df = df.rename(columns={"race": "ethnicity"})
-
-            final_data = {
-                "age": [],
-                "gender": [],
-                "ethnicity": [],
-                "conversation_id": [],
-                "user_prompt": [],
-                "model_response": [],
-                "topic": [],
-            }
-
-            for row in df.itertuples(index=False):
-                for t, turn in enumerate(row.conversation_history):
-                    if turn["role"] == "user":
-                        if (
-                            (t + 1) >= len(row.conversation_history)
-                            or len(turn["content"]) == 0
-                            or len(row.conversation_history[t + 1]["content"])
-                            == 0
-                        ):
-                            continue
-                        final_data["age"].append(row.age)
-                        final_data["gender"].append(row.gender)
-                        final_data["ethnicity"].append(row.ethnicity)
-                        final_data["conversation_id"].append(
-                            row.conversation_id
-                        )
-                        final_data["user_prompt"].append(turn["content"])
-                        final_data["model_response"].append(
-                            row.conversation_history[t + 1]["content"]
-                        )
-                        final_data["topic"].append(row.topic)
-            df_utt = pd.DataFrame(final_data)
-
-            to_drop = [
-                df_utt.iloc[i]["conversation_id"]
-                for i in range(len(df_utt))
-                if type(df_utt.iloc[i]["user_prompt"]) != str
-            ]
-
-            df = df.loc[~df["conversation_id"].isin(to_drop)].reset_index()
-            df_utt = df_utt.loc[
-                ~df_utt["conversation_id"].isin(to_drop)
-            ].reset_index()
-
-            print(get_personamem_convos(df)[:5])
-            print(df.shape)
-
-            if not os.path.isfile(f"{args.folder}/personamem_preprocessed.gz"):
-                df.to_pickle(f"{args.folder}/personamem_preprocessed.gz")
-
-            if not os.path.isfile(
-                f"{args.folder}/personamem_utterances_preprocessed.gz"
-            ):
-                df_utt.to_pickle(
-                    f"{args.folder}/personamem_utterances_preprocessed.gz"
-                )
+        ds.to_pandas().to_pickle(f"data/cad_en_preprocessed.gz")
+        df.to_pickle(f"data/cad_en_utterances_preprocessed.gz")

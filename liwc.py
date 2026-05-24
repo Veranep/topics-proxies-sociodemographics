@@ -12,34 +12,12 @@ if __name__ == "__main__":
         default="prism",
         help="Dataset to evaluate on",
     )
-    parser.add_argument(
-        "-df",
-        "--data_folder",
-        type=str,
-        default="",
-    )
     args = parser.parse_args()
-    df = pd.read_pickle(
-        f"{args.data_folder}/{args.dataset}{'_utterances' if args.dataset != 'chen' else ''}_linguistic.gz"
-    )
-    if "cad" in args.dataset:
-        language = args.dataset.split("_")[1]
-    else:
-        language = "en"
-
+    df = pd.read_pickle(f"data/{args.dataset}_utterances_linguistic.gz")
     liwc = Liwc("/opt/liwc-22/bin/LIWC-22-cli")
-    if language == "en":
-        liwc_dict = "LIWC22"
-    elif language == "it":
-        liwc_dict = f"{args.data_folder}/LIWC2007 Dictionary - Italian.dicx"
-    elif language == "fr":
-        liwc_dict = f"{args.data_folder}/LIWC2007 Dictionary - French.dicx"
-    elif language == "pt":
-        liwc_dict = f"{args.data_folder}/LIWC2015 Dictionary - Brazilian Portuguese.dicx"
+    liwc_dict = "LIWC22"
 
     for column in ["user_prompt", "model_response"]:
-        if column not in df:
-            continue
         df = pd.concat(
             [
                 df,
@@ -49,6 +27,4 @@ if __name__ == "__main__":
             ],
             axis=1,
         )
-        df.to_pickle(
-            f"{args.data_folder}/{args.dataset}{'_utterances' if args.dataset != 'chen' else ''}_linguistic.gz"
-        )
+        df.to_pickle(f"data/{args.dataset}_utterances_linguistic.gz")

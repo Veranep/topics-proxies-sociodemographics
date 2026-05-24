@@ -20,26 +20,18 @@ if __name__ == "__main__":
         default="prism",
         help="Dataset to evaluate on",
     )
-    parser.add_argument(
-        "-df",
-        "--data_folder",
-        type=str,
-        default="",
-    )
     parser.add_argument("--redo_emo_sent", action="store_true")
     args = parser.parse_args()
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    df = pd.read_pickle(
-        f"{args.data_folder}/{args.dataset}_utterances_preprocessed.gz"
-    )
+    df = pd.read_pickle(f"data/{args.dataset}_utterances_preprocessed.gz")
     if args.dataset == "prism":
-        cluster_ids = pd.read_csv(
-            f"{args.data_folder}/opening_prompt_text_df_original.csv"
-        )[["id", "cluster_id"]]
-        clusters = pd.read_csv(
-            f"{args.data_folder}/opening_prompt_cluster_df_original.csv"
-        )[["cluster_id", "gpt_description"]]
+        cluster_ids = pd.read_csv(f"data/opening_prompt_text_df_original.csv")[
+            ["id", "cluster_id"]
+        ]
+        clusters = pd.read_csv(f"data/opening_prompt_cluster_df_original.csv")[
+            ["cluster_id", "gpt_description"]
+        ]
         cluster_ids = cluster_ids.merge(clusters).drop(columns=["cluster_id"])
         df = (
             df.merge(cluster_ids, left_on="conversation_id", right_on="id")
@@ -83,9 +75,7 @@ if __name__ == "__main__":
             max_length=512,
             truncation=True,
         )
-        concreteness_df = pd.read_excel(
-            f"{args.data_folder}/13428_2013_403_MOESM1_ESM.xlsx"
-        )
+        concreteness_df = pd.read_excel(f"data/13428_2013_403_MOESM1_ESM.xlsx")
         concreteness_dict = pd.Series(
             concreteness_df["Conc.M"].values, index=concreteness_df["Word"]
         ).to_dict()
@@ -262,4 +252,4 @@ if __name__ == "__main__":
         for annotation in annotations:
             df[f"{annotation}_{column}"] = annotations[annotation]
 
-    df.to_pickle(f"{args.data_folder}/{args.dataset}_utterances_linguistic.gz")
+    df.to_pickle(f"data/{args.dataset}_utterances_linguistic.gz")
