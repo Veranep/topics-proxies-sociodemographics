@@ -35,7 +35,7 @@ python eval_model_behavior.py -m meta-llama/Llama-3.1-8B-Instruct -d prism -dom 
 - `liwc.py` contains the code for computing the LIWC features on the the user and model turns of the conversational history datasets. Note that this requires a valid LIWC license and the LIWC program to be running in the background.
 - `preprocess_data.py` contains the code for preprocessing the conversation history datasets and separating the turns of each conversation for further processing.
 - `probing.py` contains the code for obtaining representations of the model's hidden states when processing the conversational histories, and training and evaluating linear probes on those representations.
-- `probing_results.ipynb` contains code for visualizaing the probing results.
+- `probing_results.ipynb` contains code for visualizing the probing results.
 - `prompting.py` contains the code to prompt Kimi to infer user sociodemographics from the PRISM dataset.
 - `prompting_figure.py` contains code for creating heatmaps of Kimi's predictions and for computing whether it beats the random and majority baseline in inferring user sociodemographics.
 - `square_behavior_table.ipynb` contains code to compute and visualize the results of the 2x2 design with topic and user sociodemographics. 
