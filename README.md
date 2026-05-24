@@ -15,3 +15,9 @@ pip install -r requirements.txt
 This project was developed using Python 3.12.
 
 ## Using this repository
+Please download:
+- prompts from https://github.com/MatthewTKearney/sociolinguistic-bias-benchmark/tree/main
+- concreteness scores from https://link.springer.com/article/10.3758/s13428-013-0403-5#MOESM1
+- topic cluster information for PRISM from https://github.com/HannahKirk/prism-alignment
+
+and place all in the `data` folder before continuing.
