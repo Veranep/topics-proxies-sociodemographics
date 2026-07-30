@@ -72,7 +72,7 @@ if __name__ == "__main__":
         "-rf",
         "--results_folder",
         type=str,
-        default="",  # "/scratch/vneplen/sociodemographics-interpretability-mitigation"
+        default="",
     )
     parser.add_argument(
         "-token",
