@@ -31,6 +31,7 @@ Example usage:
 ```
 python eval_model_behavior.py -m meta-llama/Llama-3.1-8B-Instruct -d prism -dom salary -rf results -token "your_huggingface_token" --debias
 ```
+- `interaction_topic_sociodemographics.ipynb` contains code to compute and visualize whether topics are significantly more/less common across sociodemographic groups in the PRISM dataset.
 - `linguistic.py` contains the code for computing all psycholinguistic features except LIWC on the user and model turns of the conversational history datasets.
 - `liwc.py` contains the code for computing the LIWC features on the the user and model turns of the conversational history datasets. Note that this requires a valid LIWC license and the LIWC program to be running in the background.
 - `preprocess_data.py` contains the code for preprocessing the conversation history datasets and separating the turns of each conversation for further processing.
