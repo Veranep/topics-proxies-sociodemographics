@@ -1,5 +1,5 @@
 # Topics as Proxies for Sociodemographics: How Conversational Context Affects LLM Answers
-This is the repository for **Topics as Proxies for Sociodemographics: How Conversational Context Affects LLM Answers.**
+This is the repository for [**Topics as Proxies for Sociodemographics: How Conversational Context Affects LLM Answers**](https://arxiv.org/abs/2606.02776).
 
 ![Introduction](figure.png)
 
@@ -39,4 +39,18 @@ python eval_model_behavior.py -m meta-llama/Llama-3.1-8B-Instruct -d prism -dom 
 - `probing_results.ipynb` contains code for visualizing the probing results.
 - `prompting.py` contains the code to prompt Kimi to infer user sociodemographics from the PRISM dataset.
 - `prompting_figure.py` contains code for creating heatmaps of Kimi's predictions and for computing whether it beats the random and majority baseline in inferring user sociodemographics.
-- `square_behavior_table.ipynb` contains code to compute and visualize the results of the 2x2 design with topic and user sociodemographics. 
+- `square_behavior_table.ipynb` contains code to compute and visualize the results of the 2x2 design with topic and user sociodemographics.
+
+## Citation
+If you use the code in this repository, please cite the following paper:
+```bibtex
+@misc{neplenbroek2026topicsproxiessociodemographicsconversational,
+      title={Topics as Proxies for Sociodemographics: How Conversational Context Affects LLM Answers}, 
+      author={Vera Neplenbroek and Gabriele Sarti and Arianna Bisazza and Raquel Fernández},
+      year={2026},
+      eprint={2606.02776},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL},
+      url={https://arxiv.org/abs/2606.02776}, 
+}
+```
