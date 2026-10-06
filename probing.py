@@ -160,7 +160,7 @@ def train_probe(
         random_f1 = f1_score(
             y_test,
             np.random.choice(
-                np.unique(y_test), size=len(y_test), replace=True
+                np.unique(y_train), size=len(y_test), replace=True
             ),
             average="macro",
         )
