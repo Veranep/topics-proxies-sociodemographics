@@ -7,7 +7,7 @@ import torch
 from tqdm import tqdm
 from transformers import AutoModelForCausalLM, AutoTokenizer, AutoProcessor
 from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import StratifiedGroupKFold  # train_test_split
 from sklearn.metrics import f1_score
 from huggingface_hub import login
 from deepsig import aso
@@ -16,7 +16,6 @@ from preprocess_data import (
     get_prism_convos,
     get_cad_convos,
 )
-
 
 # np.random.seed(42)
 
@@ -130,6 +129,7 @@ def get_representations(df, convo_func, tokenizer, model, model_name, device):
 def train_probe(
     target,
     representations,
+    groups,
     dataset,
     demographic,
     save,
@@ -141,14 +141,16 @@ def train_probe(
         n: {"f1": [], "majority f1": [], "random f1": []}
         for n in range(first_layer, last_layer)
     }
-    for r in tqdm(range(5)):
-        if save and r > 0:
-            break
-        y_train, y_test, train_representations, test_representations = (
-            train_test_split(target, representations, shuffle=True)
-        )
+    sgkf = StratifiedGroupKFold(n_splits=5, shuffle=True, random_state=42)
+    for i, (train_index, test_index) in enumerate(
+        sgkf.split(representations, target, groups)
+    ):
+        train_representations = representations[train_index]
+        test_representations = representations[test_index]
+        y_train = target[train_index]
+        y_test = target[test_index]
         print("Training probe")
-        values, counts = np.unique(y_test, return_counts=True)
+        values, counts = np.unique(y_train, return_counts=True)
         majority = values[np.argmax(counts)]
         majority_f1 = f1_score(
             y_test,
@@ -259,6 +261,7 @@ if __name__ == "__main__":
                 args.demographic,
                 args.dataset.split("_")[-1] if "cad" in args.dataset else "",
             )
+            target = df[args.demographic].to_numpy().astype(np.float64)
         else:
             df = df.loc[
                 ~(df[args.demographic].isna())
@@ -267,6 +270,7 @@ if __name__ == "__main__":
                 & (df[args.demographic] != "Unknown")
                 & (df[args.demographic] != "female-male-non-binary")
             ]
+            target = df[args.demographic].to_numpy()
 
         print(df.index, len(df.index), len(representations))
         representations = representations[df.index]
@@ -275,8 +279,13 @@ if __name__ == "__main__":
         print("ready df")
 
         scores = train_probe(
-            df[args.demographic].tolist(),
+            target,
             representations,
+            (
+                df["user_id"].tolist()
+                if args.dataset == "prism"
+                else df["annotator_id"].tolist()
+            ),
             args.dataset,
             args.demographic,
             save=args.save,
