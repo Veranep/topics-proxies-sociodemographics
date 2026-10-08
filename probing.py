@@ -29,17 +29,17 @@ def balance_df(df, col, language):
         df.loc[df[col] == "male", col] = 0
         df.loc[df[col] == "female", col] = 1
     elif col == "annotator_education_level":
-        df.loc[df[col] == "Some or complete graduate degree"] = 0
-        df.loc[df[col] == "(At most) Complete Secondary"] = 1
-        df.loc[df[col] == "Some post-secondary"] = 1
+        df.loc[df[col] == "Some or complete graduate degree", col] = 0
+        df.loc[df[col] == "(At most) Complete Secondary", col] = 1
+        df.loc[df[col] == "Some post-secondary", col] = 1
     elif col == "annotator_political":
-        df.loc[df[col] == "Somewhat left-leaning"] = 0
-        df.loc[df[col] == "Very left-leaning"] = 0
-        df.loc[df[col] == "Somewhat right-leaning"] = 1
-        df.loc[df[col] == "Very right-leaning"] = 1
+        df.loc[df[col] == "Somewhat left-leaning", col] = 0
+        df.loc[df[col] == "Very left-leaning", col] = 0
+        df.loc[df[col] == "Somewhat right-leaning", col] = 1
+        df.loc[df[col] == "Very right-leaning", col] = 1
     elif col == "annotator_ethnicity":
-        df.loc[df[col] == "White"] = 0
-        df.loc[df[col] == "Black or African American"] = 1
+        df.loc[df[col] == "White", col] = 0
+        df.loc[df[col] == "Black or African American", col] = 1
     elif col == "age":
         df.loc[df[col].str.contains("18-24", na=False), col] = 0
         df.loc[df[col].str.contains("55-64", na=False), col] = 1
@@ -79,8 +79,8 @@ def balance_df(df, col, language):
         df.loc[df[col] == "Intermediate", col] = 1
         df.loc[df[col] == "Basic", col] = 1
     elif col == "lm_familiarity":
-        df.loc[df[col] == "Not familiar at all"] = 0
-        df.loc[df[col] == "Very familiar"] = 1
+        df.loc[df[col] == "Not familiar at all", col] = 0
+        df.loc[df[col] == "Very familiar", col] = 1
     selected_df = df[df[col].isin([0, 1])]
     max_amount = list(selected_df[col].value_counts())[-1]
 
